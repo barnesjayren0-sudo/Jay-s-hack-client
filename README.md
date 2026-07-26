@@ -1,48 +1,99 @@
-# Jay's Hack Client
+# ⚔️ Jay's Hack Client
 
-**Minecraft 1.21.11 Sword PvP Client**  
-Focused purely on sword combat dominance.
+**Minecraft 1.21.11 • Sword PvP Focused Client**
 
-## Features (Sword PvP Focused)
+A clean Fabric client built specifically for sword combat.
+
+---
+
+## Features
 
 | Module | Description |
 |--------|-------------|
-| **KillAura** | Smart sword-only KillAura with rotation & timing |
+| **KillAura** | Sword-only KillAura with smart targeting |
 | **AutoSword** | Automatically switches to best sword |
 | **Reach** | Extended attack reach |
-| **Criticals** | Packet / jump criticals |
-| **AutoSprint** | Perfect sprint reset |
+| **Criticals** | Packet-based critical hits |
+| **AutoSprint** | Perfect sprint for combos |
 | **Velocity** | Reduce / cancel knockback |
-| **ESP** | Player outlines + tracers |
+| **ESP** | See players through walls |
 | **NoSlow** | No slowdown while using items |
-| **Scaffold** | Fast bridging (optional) |
+
+---
 
 ## Requirements
 
 - Minecraft **1.21.11**
 - Fabric Loader
 - Fabric API
+- Java 21+
 
-## Installation
+---
 
-1. Install Fabric for 1.21.11
-2. Download the latest release of this client
-3. Put the `.jar` into your `mods` folder
-4. Launch the game
-
-## Building from Source
+## How to Build the .jar
 
 ```bash
+# 1. Clone the repo
+git clone https://github.com/barnesjayren0-sudo/Jay-s-hack-client.git
+cd Jay-s-hack-client
+
+# 2. Build
 ./gradlew build
 ```
 
-The built jar will be in `build/libs/`
+After building, the jar will be here:
+
+```
+build/libs/jays-hack-client-1.0.0.jar
+```
+
+### Creating a GitHub Release
+
+1. Go to your repo → **Releases** → **Create a new release**
+2. Tag: `v1.0.0`
+3. Upload the `.jar` from `build/libs/`
+4. Publish
+
+---
+
+## Installation
+
+1. Install Fabric for Minecraft 1.21.11
+2. Put `jays-hack-client-1.0.0.jar` into your `.minecraft/mods` folder
+3. Launch the game
+
+---
 
 ## Controls
 
-- Right Shift → Open ClickGUI
+- **Right Shift** → Open ClickGUI (coming soon)
+
+---
+
+## Project Structure
+
+```
+src/main/java/com/jay/hackclient/
+├── JayHackClient.java          ← Main entrypoint
+├── module/
+│   ├── Module.java
+│   ├── ModuleManager.java
+│   └── modules/
+│       ├── KillAura.java
+│       ├── AutoSword.java
+│       ├── Reach.java
+│       ├── Criticals.java
+│       ├── AutoSprint.java
+│       ├── Velocity.java
+│       ├── ESP.java
+│       └── NoSlow.java
+└── resources/
+    └── fabric.mod.json
+```
+
+---
 
 ## Credits
 
 Created by **barnesjayren0-sudo**  
-Sword PvP focused client.
+Sword PvP only. No trash modules.
