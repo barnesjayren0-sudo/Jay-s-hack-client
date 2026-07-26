@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "jayhackclient",
+  "version": "1.0.0",
+  "name": "Jay's Hack Client",
+  "description": "Sword PvP focused Minecraft client for 1.21.11",
+  "authors": ["barnesjayren0-sudo"],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.jay.hackclient.JayHackClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
