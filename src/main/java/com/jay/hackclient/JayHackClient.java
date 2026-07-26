@@ -22,7 +22,7 @@ public class JayHackClient implements ClientModInitializer {
         INSTANCE = this;
         moduleManager = new ModuleManager();
 
-        // Register Sword PvP modules
+        // === Sword PvP Modules ===
         moduleManager.register(new KillAura());
         moduleManager.register(new AutoSword());
         moduleManager.register(new Reach());
@@ -41,14 +41,14 @@ public class JayHackClient implements ClientModInitializer {
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (clickGuiKey.wasPressed()) {
-                // Open ClickGUI here later
-                client.player.sendMessage(net.minecraft.text.Text.literal("§bJay's Hack Client §f- ClickGUI (coming soon)"), false);
+            if (clickGuiKey.wasPressed() && client.player != null) {
+                client.player.sendMessage(net.minecraft.text.Text.literal("§b[Jay's Hack Client] §fClickGUI coming soon - Modules loaded!"), false);
             }
 
             moduleManager.onTick();
         });
 
-        System.out.println("[Jay's Hack Client] Loaded - Sword PvP Focused (1.21.11)");
+        System.out.println("[Jay's Hack Client] v1.0 - Sword PvP Focused for 1.21.11");
+        System.out.println("[Jay's Hack Client] Modules: KillAura, AutoSword, Reach, Criticals, AutoSprint, Velocity, ESP, NoSlow");
     }
 }
