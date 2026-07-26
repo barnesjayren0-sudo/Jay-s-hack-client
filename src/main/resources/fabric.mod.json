@@ -5,7 +5,9 @@
   "name": "Jay's Hack Client",
   "description": "Sword PvP focused Minecraft client for 1.21.11",
   "authors": ["barnesjayren0-sudo"],
-  "contact": {},
+  "contact": {
+    "sources": "https://github.com/barnesjayren0-sudo/Jay-s-hack-client"
+  },
   "license": "All-Rights-Reserved",
   "environment": "client",
   "entrypoints": {
