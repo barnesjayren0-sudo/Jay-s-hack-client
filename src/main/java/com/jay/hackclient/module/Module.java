@@ -1,5 +1,8 @@
 package com.jay.hackclient.module;
 
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
+
 public abstract class Module {
 
     private final String name;
@@ -17,9 +20,25 @@ public abstract class Module {
     }
 
     public void toggle() {
-        this.enabled = !this.enabled;
-        if (this.enabled) onEnable();
-        else onDisable();
+        setEnabled(!this.enabled);
+    }
+
+    public void setEnabled(boolean state) {
+        this.enabled = state;
+        if (state) {
+            onEnable();
+            sendMessage("§aEnabled");
+        } else {
+            onDisable();
+            sendMessage("§cDisabled");
+        }
+    }
+
+    private void sendMessage(String status) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player != null) {
+            mc.player.sendMessage(Text.literal("§7[§bJay§7] §f" + name + " " + status), false);
+        }
     }
 
     public void onEnable() {}
@@ -30,15 +49,17 @@ public abstract class Module {
     public String getDescription() { return description; }
     public Category getCategory() { return category; }
     public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public int getKeyBind() { return keyBind; }
     public void setKeyBind(int keyBind) { this.keyBind = keyBind; }
 
     public enum Category {
-        COMBAT,
-        MOVEMENT,
-        RENDER,
-        PLAYER,
-        MISC
+        COMBAT("Combat"),
+        MOVEMENT("Movement"),
+        RENDER("Render"),
+        PLAYER("Player"),
+        MISC("Misc");
+
+        public final String name;
+        Category(String name) { this.name = name; }
     }
 }
