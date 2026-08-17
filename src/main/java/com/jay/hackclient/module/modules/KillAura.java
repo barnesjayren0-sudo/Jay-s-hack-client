@@ -1,5 +1,6 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -43,7 +44,7 @@ public class KillAura extends Module {
         for (Entity entity : mc.world.getEntities()) {
             if (!(entity instanceof PlayerEntity player)) continue;
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
-            if (player.isInvisible()) continue;
+            if (JayHackClient.friendManager != null && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
 
             double dist = mc.player.distanceTo(player);
             if (dist <= closest) {
@@ -57,15 +58,12 @@ public class KillAura extends Module {
     private void lookAt(LivingEntity target) {
         Vec3d eyes = mc.player.getEyePos();
         Vec3d pos = target.getPos().add(0, target.getHeight() * 0.85, 0);
-
         double dx = pos.x - eyes.x;
         double dy = pos.y - eyes.y;
         double dz = pos.z - eyes.z;
-
         double horiz = Math.sqrt(dx * dx + dz * dz);
         float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
         float pitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
-
         mc.player.setYaw(yaw);
         mc.player.setPitch(MathHelper.clamp(pitch, -90f, 90f));
     }

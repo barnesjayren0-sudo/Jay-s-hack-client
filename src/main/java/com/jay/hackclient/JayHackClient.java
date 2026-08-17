@@ -4,22 +4,28 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
+import com.jay.hackclient.config.ConfigManager;
+import com.jay.hackclient.friend.FriendManager;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.ModuleManager;
 import com.jay.hackclient.module.modules.*;
+import com.jay.hackclient.render.HudRenderer;
 
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.1.0";
+    public static final String VERSION = "1.1.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
+    public static FriendManager friendManager;
+    public static ConfigManager configManager;
 
     private static KeyBinding menuKey;
     private static KeyBinding killAuraKey;
@@ -29,8 +35,9 @@ public class JayHackClient implements ClientModInitializer {
     public void onInitializeClient() {
         INSTANCE = this;
         moduleManager = new ModuleManager();
+        friendManager = new FriendManager();
+        configManager = new ConfigManager();
 
-        // Combat
         moduleManager.register(new KillAura());
         moduleManager.register(new TriggerBot());
         moduleManager.register(new AutoClicker());
@@ -39,52 +46,43 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
         moduleManager.register(new Reach());
-
-        // Movement
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
-
-        // Render
+        moduleManager.register(new Speed());
         moduleManager.register(new ESP());
         moduleManager.register(new FullBright());
+        moduleManager.register(new StorageESP());
+        moduleManager.register(new HUD());
+
+        // Default HUD on
+        Module hud = moduleManager.getModuleByName("HUD");
+        if (hud != null) hud.setEnabled(true);
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.clickgui",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_RIGHT_SHIFT,
-                "category.jayhackclient"
-        ));
-
+                "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT, "category.jayhackclient"));
         killAuraKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_killaura",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_R,
-                "category.jayhackclient"
-        ));
-
+                "key.jayhackclient.toggle_killaura", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_R, "category.jayhackclient"));
         sprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_sprint",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_G,
-                "category.jayhackclient"
-        ));
+                "key.jayhackclient.toggle_sprint", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G, "category.jayhackclient"));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
 
-            if (menuKey.wasPressed()) {
-                printMenu(client.player);
-            }
-            if (killAuraKey.wasPressed()) {
-                Module m = moduleManager.getModuleByName("KillAura");
-                if (m != null) m.toggle();
-            }
-            if (sprintKey.wasPressed()) {
-                Module m = moduleManager.getModuleByName("AutoSprint");
-                if (m != null) m.toggle();
-            }
+            if (menuKey.wasPressed()) printMenu();
+            if (killAuraKey.wasPressed()) toggle("KillAura");
+            if (sprintKey.wasPressed()) toggle("AutoSprint");
 
             moduleManager.onTick();
+        });
+
+        HudRenderCallback.EVENT.register((context, tickCounter) -> {
+            Module h = moduleManager.getModuleByName("HUD");
+            if (h != null && h.isEnabled()) {
+                HudRenderer.render(context);
+            }
         });
 
         ClientSendMessageEvents.ALLOW_CHAT.register(message -> {
@@ -95,23 +93,28 @@ public class JayHackClient implements ClientModInitializer {
             return true;
         });
 
-        System.out.println("========================================");
-        System.out.println("[" + NAME + "] v" + VERSION + " loaded");
-        System.out.println("[" + NAME + "] Modules: " + moduleManager.getModules().size());
-        System.out.println("========================================");
+        configManager.load();
+
+        System.out.println("[" + NAME + "] v" + VERSION + " loaded — modules: " + moduleManager.getModules().size());
     }
 
-    private void printMenu(net.minecraft.entity.player.PlayerEntity player) {
-        player.sendMessage(Text.literal("§8§m---------------------------"), false);
-        player.sendMessage(Text.literal("§b" + NAME + " §7v" + VERSION), false);
-        player.sendMessage(Text.literal("§7Sword PvP · Fabric 1.21.11"), false);
-        player.sendMessage(Text.literal("§8§m---------------------------"), false);
+    private void toggle(String name) {
+        Module m = moduleManager.getModuleByName(name);
+        if (m != null) m.toggle();
+    }
+
+    private void printMenu() {
+        var p = net.minecraft.client.MinecraftClient.getInstance().player;
+        if (p == null) return;
+        p.sendMessage(Text.literal("§8§m--------------------------------"), false);
+        p.sendMessage(Text.literal("§b" + NAME + " §7v" + VERSION), false);
+        p.sendMessage(Text.literal("§8§m--------------------------------"), false);
         for (Module m : moduleManager.getModules()) {
-            String state = m.isEnabled() ? "§aON" : "§cOFF";
-            player.sendMessage(Text.literal("§7[" + state + "§7] §f" + m.getName() + " §8- §7" + m.getDescription()), false);
+            String st = m.isEnabled() ? "§aON" : "§cOFF";
+            p.sendMessage(Text.literal("§7[" + st + "§7] §f" + m.getName()), false);
         }
-        player.sendMessage(Text.literal("§8§m---------------------------"), false);
-        player.sendMessage(Text.literal("§7Chat: §f.jay toggle <name> §7| §f.jay list"), false);
+        p.sendMessage(Text.literal("§8§m--------------------------------"), false);
+        p.sendMessage(Text.literal("§7.jay toggle <name> §8| §7.jay friend §8| §7.jay config"), false);
     }
 
     private void handleCommand(String message) {
@@ -120,24 +123,68 @@ public class JayHackClient implements ClientModInitializer {
 
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            client.player.sendMessage(Text.literal("§7[§bJay§7] §f.jay list | .jay toggle <module>"), false);
+            msg("§f.jay list | toggle | friend | config");
             return;
         }
 
         String sub = args[1].toLowerCase();
-        if (sub.equals("list") || sub.equals("help")) {
-            printMenu(client.player);
-            return;
-        }
-        if (sub.equals("toggle") && args.length >= 3) {
-            Module m = moduleManager.getModuleByName(args[2]);
-            if (m == null) {
-                client.player.sendMessage(Text.literal("§7[§bJay§7] §cModule not found: " + args[2]), false);
-            } else {
-                m.toggle();
+        switch (sub) {
+            case "list", "help", "menu" -> printMenu();
+            case "toggle" -> {
+                if (args.length < 3) { msg("§cUsage: .jay toggle <module>"); return; }
+                Module m = moduleManager.getModuleByName(args[2]);
+                if (m == null) msg("§cUnknown module: " + args[2]);
+                else m.toggle();
             }
+            case "friend", "friends" -> handleFriend(args);
+            case "config", "cfg" -> handleConfig(args);
+            default -> msg("§cUnknown. Try .jay help");
+        }
+    }
+
+    private void handleFriend(String[] args) {
+        if (args.length < 3) {
+            msg("§f.jay friend add/del/list <name>");
             return;
         }
-        client.player.sendMessage(Text.literal("§7[§bJay§7] §cUnknown command"), false);
+        String action = args[2].toLowerCase();
+        if (action.equals("list")) {
+            msg("§fFriends: §a" + String.join(", ", friendManager.getFriends()));
+            return;
+        }
+        if (args.length < 4) {
+            msg("§cNeed a player name");
+            return;
+        }
+        String name = args[3];
+        if (action.equals("add")) {
+            friendManager.add(name);
+            msg("§aAdded friend §f" + name);
+            configManager.save();
+        } else if (action.equals("del") || action.equals("remove")) {
+            friendManager.remove(name);
+            msg("§cRemoved friend §f" + name);
+            configManager.save();
+        }
+    }
+
+    private void handleConfig(String[] args) {
+        if (args.length < 3) {
+            msg("§f.jay config save | load");
+            return;
+        }
+        String action = args[2].toLowerCase();
+        if (action.equals("save")) {
+            configManager.save();
+            msg("§aConfig saved");
+        } else if (action.equals("load")) {
+            configManager.load();
+            msg("§aConfig loaded");
+        }
+    }
+
+    private void msg(String s) {
+        var p = net.minecraft.client.MinecraftClient.getInstance().player;
+        if (p != null) p.sendMessage(Text.literal("§7[§bJay§7] " + s), false);
     }
 }

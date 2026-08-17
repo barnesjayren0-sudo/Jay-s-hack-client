@@ -1,5 +1,6 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -27,6 +28,7 @@ public class TriggerBot extends Module {
         Entity entity = hit.getEntity();
         if (!(entity instanceof PlayerEntity player)) return;
         if (player == mc.player || !player.isAlive()) return;
+        if (JayHackClient.friendManager != null && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < delayMs) return;
