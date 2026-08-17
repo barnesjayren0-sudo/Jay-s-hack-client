@@ -23,7 +23,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.3.1";
+    public static final String VERSION = "1.4.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -83,10 +83,9 @@ public class JayHackClient implements ClientModInitializer {
 
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
-                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll modules off. §7.jay unpanic"), false);
+                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off · §7.jay unpanic"), false);
             }
 
-            // Open / close ClickGUI
             if (menuKey.wasPressed()) {
                 if (client.currentScreen instanceof ClickGuiScreen) {
                     client.setScreen(null);
@@ -116,12 +115,12 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " ClickGUI ready");
+        System.out.println("[" + NAME + "] v" + VERSION + " Vape-style GUI loaded");
     }
 
     private void toggle(String name) {
         if (moduleManager.isFrozen()) {
-            msg("§cFrozen — .jay unpanic first");
+            msg("§cUnpanic first");
             return;
         }
         Module m = moduleManager.getModuleByName(name);
@@ -133,24 +132,19 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui | list | toggle | off | panic | unpanic | profile | scan | radar | friend | config");
+            msg("§fgui | toggle | off | panic | unpanic | profile | scan | radar | friend | config");
             return;
         }
 
         switch (args[1].toLowerCase()) {
-            case "gui", "clickgui", "menu" -> {
-                client.setScreen(new ClickGuiScreen());
-            }
-            case "list", "help" -> {
-                client.setScreen(new ClickGuiScreen());
-            }
+            case "gui", "clickgui", "menu", "list", "help" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> {
                 if (args.length < 3) { msg("§c.jay toggle <module>"); return; }
                 toggle(args[2]);
             }
             case "off", "disableall", "disable" -> {
                 moduleManager.disableAll();
-                msg("§eAll modules off");
+                msg("§eAll off");
             }
             case "panic" -> {
                 moduleManager.panic();
@@ -161,10 +155,7 @@ public class JayHackClient implements ClientModInitializer {
                 msg("§aUnfrozen");
             }
             case "profile" -> {
-                if (args.length < 3) {
-                    msg("§fprofile legit|semi|rage|scout");
-                    return;
-                }
+                if (args.length < 3) { msg("§flegit|semi|rage|scout"); return; }
                 switch (args[2].toLowerCase()) {
                     case "legit" -> { LegitProfile.applyLegit(); msg("§aLegit"); }
                     case "semi" -> { LegitProfile.applySemi(); msg("§eSemi"); }
@@ -183,7 +174,7 @@ public class JayHackClient implements ClientModInitializer {
             }
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
-            default -> msg("§cUnknown — try .jay gui");
+            default -> msg("§cUnknown");
         }
     }
 
@@ -191,23 +182,23 @@ public class JayHackClient implements ClientModInitializer {
         if (args.length < 3) { msg("§ffriend add|del|list"); return; }
         String a = args[2].toLowerCase();
         if (a.equals("list")) {
-            msg("§fFriends: §a" + String.join(", ", friendManager.getFriends()));
+            msg("§f" + String.join(", ", friendManager.getFriends()));
             return;
         }
-        if (args.length < 4) { msg("§cNeed name"); return; }
+        if (args.length < 4) return;
         if (a.equals("add")) {
             friendManager.add(args[3]);
-            msg("§a+ " + args[3]);
             configManager.save();
+            msg("§a+ " + args[3]);
         } else if (a.equals("del") || a.equals("remove")) {
             friendManager.remove(args[3]);
-            msg("§c- " + args[3]);
             configManager.save();
+            msg("§c- " + args[3]);
         }
     }
 
     private void handleConfig(String[] args) {
-        if (args.length < 3) { msg("§fconfig save|load"); return; }
+        if (args.length < 3) return;
         if (args[2].equalsIgnoreCase("save")) {
             configManager.save();
             msg("§aSaved");

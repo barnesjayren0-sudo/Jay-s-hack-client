@@ -11,113 +11,226 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Simple dark ClickGUI — open with Right Shift, close with Escape / Right Shift / Close button.
+ * Vape-inspired ClickGUI:
+ * - Centered dark window
+ * - Left category sidebar
+ * - Module rows with pill toggles
+ * - Accent purple line
+ * - Closable (ESC / RShift / X)
  */
 public class ClickGuiScreen extends Screen {
 
-    private static final int PANEL_W = 130;
-    private static final int HEADER_H = 18;
-    private static final int ROW_H = 14;
-    private static final int PAD = 8;
+    // Layout
+    private static final int WIN_W = 420;
+    private static final int WIN_H = 280;
+    private static final int SIDEBAR_W = 100;
+    private static final int HEADER_H = 28;
+    private static final int ROW_H = 22;
 
-    private final List<Panel> panels = new ArrayList<>();
-    private Panel dragging;
-    private int dragOffX, dragOffY;
+    // Colors (Vape-like dark + purple accent)
+    private static final int BG_OVERLAY = 0xAA000000;
+    private static final int BG_WINDOW = 0xF0121218;
+    private static final int BG_SIDEBAR = 0xF00C0C10;
+    private static final int BG_HEADER = 0xF0161620;
+    private static final int ACCENT = 0xFFB24BF3;      // purple
+    private static final int ACCENT_DIM = 0xFF6B2A9A;
+    private static final int TEXT = 0xFFE8E8F0;
+    private static final int TEXT_DIM = 0xFF8888A0;
+    private static final int ROW_HOVER = 0x18FFFFFF;
+    private static final int ROW_ON = 0x22B24BF3;
+    private static final int TOGGLE_ON = 0xFFB24BF3;
+    private static final int TOGGLE_OFF = 0xFF333344;
+
+    private Module.Category selected = Module.Category.COMBAT;
+    private int scroll;
 
     public ClickGuiScreen() {
-        super(Text.literal("Jay ClickGUI"));
-        buildPanels();
-    }
-
-    private void buildPanels() {
-        panels.clear();
-        int startX = 40;
-        int startY = 40;
-        int i = 0;
-        for (Module.Category cat : Module.Category.values()) {
-            List<Module> mods = JayHackClient.moduleManager.getByCategory(cat);
-            if (mods.isEmpty()) continue;
-            panels.add(new Panel(cat, mods, startX + i * (PANEL_W + PAD), startY));
-            i++;
-            if (i >= 4) {
-                i = 0;
-                startY += 200;
+        super(Text.literal("Jay"));
+        // Pick first category that has modules
+        for (Module.Category c : Module.Category.values()) {
+            if (!JayHackClient.moduleManager.getByCategory(c).isEmpty()) {
+                selected = c;
+                break;
             }
         }
     }
 
+    private int winX() { return (this.width - WIN_W) / 2; }
+    private int winY() { return (this.height - WIN_H) / 2; }
+
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Dim background
-        context.fill(0, 0, this.width, this.height, 0x99000000);
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        // Dim world
+        ctx.fill(0, 0, this.width, this.height, BG_OVERLAY);
 
-        // Title bar
-        String title = "Jay's Hack Client  v" + JayHackClient.VERSION;
-        int tw = textRenderer.getWidth(title);
-        context.fill(this.width / 2 - tw / 2 - 12, 8, this.width / 2 + tw / 2 + 12, 24, 0xEE101018);
-        context.drawTextWithShadow(textRenderer, title, this.width / 2 - tw / 2, 12, 0x55CCFF);
+        int x = winX();
+        int y = winY();
 
-        String hint = "RShift / ESC close  ·  click module to toggle";
-        context.drawTextWithShadow(textRenderer, hint, this.width / 2 - textRenderer.getWidth(hint) / 2, 28, 0x888888);
+        // Window shadow
+        ctx.fill(x + 4, y + 4, x + WIN_W + 4, y + WIN_H + 4, 0x55000000);
 
-        for (Panel p : panels) {
-            p.render(context, mouseX, mouseY, textRenderer);
+        // Main window
+        ctx.fill(x, y, x + WIN_W, y + WIN_H, BG_WINDOW);
+
+        // Header
+        ctx.fill(x, y, x + WIN_W, y + HEADER_H, BG_HEADER);
+        ctx.fill(x, y + HEADER_H - 1, x + WIN_W, y + HEADER_H, ACCENT_DIM);
+
+        // Brand
+        ctx.drawTextWithShadow(textRenderer, "§dJ§fay", x + 10, y + 10, TEXT);
+        ctx.drawTextWithShadow(textRenderer, "§8v" + JayHackClient.VERSION, x + 36, y + 10, TEXT_DIM);
+
+        // Status
+        String status = JayHackClient.moduleManager.isFrozen() ? "§cFROZEN" : "§aREADY";
+        ctx.drawTextWithShadow(textRenderer, status, x + WIN_W - 70, y + 10, TEXT);
+
+        // Close X
+        int closeX = x + WIN_W - 22;
+        int closeY = y + 6;
+        boolean hoverX = mouseX >= closeX && mouseX <= closeX + 16 && mouseY >= closeY && mouseY <= closeY + 16;
+        ctx.fill(closeX, closeY, closeX + 16, closeY + 16, hoverX ? 0xFFAA3333 : 0x00000000);
+        ctx.drawCenteredTextWithShadow(textRenderer, "x", closeX + 8, closeY + 4, hoverX ? 0xFFFFFF : TEXT_DIM);
+
+        // Sidebar
+        ctx.fill(x, y + HEADER_H, x + SIDEBAR_W, y + WIN_H, BG_SIDEBAR);
+        ctx.fill(x + SIDEBAR_W - 1, y + HEADER_H, x + SIDEBAR_W, y + WIN_H, 0x22FFFFFF);
+
+        int catY = y + HEADER_H + 8;
+        for (Module.Category cat : Module.Category.values()) {
+            List<Module> mods = JayHackClient.moduleManager.getByCategory(cat);
+            if (mods.isEmpty()) continue;
+
+            boolean sel = cat == selected;
+            boolean hover = mouseX >= x && mouseX < x + SIDEBAR_W
+                    && mouseY >= catY && mouseY < catY + 18;
+
+            if (sel) {
+                ctx.fill(x, catY, x + SIDEBAR_W, catY + 18, 0x33B24BF3);
+                ctx.fill(x, catY, x + 2, catY + 18, ACCENT);
+            } else if (hover) {
+                ctx.fill(x, catY, x + SIDEBAR_W, catY + 18, 0x15FFFFFF);
+            }
+
+            int col = sel ? ACCENT : (hover ? TEXT : TEXT_DIM);
+            ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 10, catY + 5, col);
+            catY += 20;
         }
 
-        // Close button top-right
-        int cx = this.width - 60;
-        int cy = 10;
-        boolean hoverClose = mouseX >= cx && mouseX <= cx + 50 && mouseY >= cy && mouseY <= cy + 16;
-        context.fill(cx, cy, cx + 50, cy + 16, hoverClose ? 0xFFAA3333 : 0xFF662222);
-        context.drawCenteredTextWithShadow(textRenderer, "Close", cx + 25, cy + 4, 0xFFFFFF);
+        // Module list area
+        int listX = x + SIDEBAR_W;
+        int listY = y + HEADER_H;
+        int listW = WIN_W - SIDEBAR_W;
+        int listH = WIN_H - HEADER_H;
 
-        super.render(context, mouseX, mouseY, delta);
+        // Section title
+        ctx.drawTextWithShadow(textRenderer, selected.displayName.toUpperCase(),
+                listX + 12, listY + 8, TEXT_DIM);
+
+        List<Module> modules = new ArrayList<>(JayHackClient.moduleManager.getByCategory(selected));
+        int rowTop = listY + 24;
+        int maxRows = (listH - 28) / ROW_H;
+
+        for (int i = 0; i < modules.size(); i++) {
+            if (i < scroll) continue;
+            int drawIndex = i - scroll;
+            if (drawIndex >= maxRows) break;
+
+            Module m = modules.get(i);
+            int ry = rowTop + drawIndex * ROW_H;
+
+            boolean hover = mouseX >= listX && mouseX < x + WIN_W
+                    && mouseY >= ry && mouseY < ry + ROW_H;
+
+            if (m.isEnabled()) {
+                ctx.fill(listX + 4, ry, x + WIN_W - 4, ry + ROW_H - 1, ROW_ON);
+            } else if (hover) {
+                ctx.fill(listX + 4, ry, x + WIN_W - 4, ry + ROW_H - 1, ROW_HOVER);
+            }
+
+            // Name + description
+            ctx.drawTextWithShadow(textRenderer, m.getName(), listX + 12, ry + 7, m.isEnabled() ? TEXT : TEXT_DIM);
+
+            // Pill toggle (right side)
+            int tx = x + WIN_W - 36;
+            int ty = ry + 5;
+            int tw = 22;
+            int th = 12;
+            ctx.fill(tx, ty, tx + tw, ty + th, m.isEnabled() ? TOGGLE_ON : TOGGLE_OFF);
+            // knob
+            int knob = m.isEnabled() ? tx + tw - 11 : tx + 1;
+            ctx.fill(knob, ty + 1, knob + 10, ty + th - 1, 0xFFF0F0F8);
+        }
+
+        // Footer hint
+        ctx.drawTextWithShadow(textRenderer, "ESC / RShift close",
+                x + 8, y + WIN_H - 12, 0xFF555566);
+
+        super.render(ctx, mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Close button
-        int cx = this.width - 60;
-        int cy = 10;
-        if (mouseX >= cx && mouseX <= cx + 50 && mouseY >= cy && mouseY <= cy + 16) {
+        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+
+        int x = winX();
+        int y = winY();
+
+        // Close X
+        int closeX = x + WIN_W - 22;
+        int closeY = y + 6;
+        if (mouseX >= closeX && mouseX <= closeX + 16 && mouseY >= closeY && mouseY <= closeY + 16) {
             close();
             return true;
         }
 
-        if (button == 0) {
-            for (int i = panels.size() - 1; i >= 0; i--) {
-                Panel p = panels.get(i);
-                if (p.mouseClicked(mouseX, mouseY)) {
-                    // move to front
-                    panels.remove(i);
-                    panels.add(p);
-                    if (p.draggingHeader) {
-                        dragging = p;
-                        dragOffX = (int) mouseX - p.x;
-                        dragOffY = (int) mouseY - p.y;
+        // Sidebar categories
+        int catY = y + HEADER_H + 8;
+        for (Module.Category cat : Module.Category.values()) {
+            List<Module> mods = JayHackClient.moduleManager.getByCategory(cat);
+            if (mods.isEmpty()) continue;
+            if (mouseX >= x && mouseX < x + SIDEBAR_W && mouseY >= catY && mouseY < catY + 18) {
+                selected = cat;
+                scroll = 0;
+                return true;
+            }
+            catY += 20;
+        }
+
+        // Module rows
+        List<Module> modules = JayHackClient.moduleManager.getByCategory(selected);
+        int listX = x + SIDEBAR_W;
+        int rowTop = y + HEADER_H + 24;
+        int maxRows = (WIN_H - HEADER_H - 28) / ROW_H;
+
+        for (int i = 0; i < modules.size(); i++) {
+            if (i < scroll) continue;
+            int drawIndex = i - scroll;
+            if (drawIndex >= maxRows) break;
+
+            int ry = rowTop + drawIndex * ROW_H;
+            if (mouseX >= listX && mouseX < x + WIN_W && mouseY >= ry && mouseY < ry + ROW_H) {
+                if (JayHackClient.moduleManager.isFrozen()) {
+                    if (client != null && client.player != null) {
+                        client.player.sendMessage(Text.literal("§8[§bJay§8] §cUnpanic first"), false);
                     }
-                    return true;
+                } else {
+                    modules.get(i).toggle();
                 }
+                return true;
             }
         }
+
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        dragging = null;
-        for (Panel p : panels) p.draggingHeader = false;
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
-        if (dragging != null) {
-            dragging.x = (int) mouseX - dragOffX;
-            dragging.y = (int) mouseY - dragOffY;
-            return true;
-        }
-        return super.mouseDragged(mouseX, mouseY, button, dx, dy);
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        List<Module> modules = JayHackClient.moduleManager.getByCategory(selected);
+        int maxRows = (WIN_H - HEADER_H - 28) / ROW_H;
+        int maxScroll = Math.max(0, modules.size() - maxRows);
+        if (verticalAmount > 0) scroll = Math.max(0, scroll - 1);
+        else if (verticalAmount < 0) scroll = Math.min(maxScroll, scroll + 1);
+        return true;
     }
 
     @Override
@@ -131,92 +244,6 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean shouldPause() {
-        return false; // keep world running behind GUI
-    }
-
-    // ── Panel ──────────────────────────────────────────────
-
-    private static class Panel {
-        final Module.Category category;
-        final List<Module> modules;
-        int x, y;
-        boolean open = true;
-        boolean draggingHeader = false;
-
-        Panel(Module.Category category, List<Module> modules, int x, int y) {
-            this.category = category;
-            this.modules = modules;
-            this.x = x;
-            this.y = y;
-        }
-
-        int height() {
-            return HEADER_H + (open ? modules.size() * ROW_H : 0) + 2;
-        }
-
-        void render(DrawContext ctx, int mx, int my, net.minecraft.client.font.TextRenderer tr) {
-            int h = height();
-            // shadow
-            ctx.fill(x + 2, y + 2, x + PANEL_W + 2, y + h + 2, 0x44000000);
-            // body
-            ctx.fill(x, y, x + PANEL_W, y + h, 0xEE0C0C14);
-            // header
-            int headerColor = categoryColor(category);
-            ctx.fill(x, y, x + PANEL_W, y + HEADER_H, headerColor);
-            ctx.drawTextWithShadow(tr, category.displayName, x + 6, y + 5, 0xFFFFFF);
-            ctx.drawTextWithShadow(tr, open ? "-" : "+", x + PANEL_W - 12, y + 5, 0xCCCCCC);
-
-            if (!open) return;
-
-            int rowY = y + HEADER_H;
-            for (Module m : modules) {
-                boolean hover = mx >= x && mx <= x + PANEL_W && my >= rowY && my < rowY + ROW_H;
-                int bg = m.isEnabled() ? 0x4422AA66 : (hover ? 0x33FFFFFF : 0x00000000);
-                if (bg != 0) ctx.fill(x + 1, rowY, x + PANEL_W - 1, rowY + ROW_H, bg);
-
-                String mark = m.isEnabled() ? "§a● " : "§8○ ";
-                ctx.drawTextWithShadow(tr, mark + "§f" + m.getName(), x + 6, rowY + 3, 0xFFFFFF);
-                rowY += ROW_H;
-            }
-            // bottom accent
-            ctx.fill(x, y + h - 1, x + PANEL_W, y + h, headerColor);
-        }
-
-        boolean mouseClicked(double mx, double my) {
-            if (mx < x || mx > x + PANEL_W || my < y || my > y + height()) return false;
-
-            // header → drag or collapse
-            if (my < y + HEADER_H) {
-                if (mx > x + PANEL_W - 18) {
-                    open = !open;
-                } else {
-                    draggingHeader = true;
-                }
-                return true;
-            }
-
-            if (!open) return true;
-
-            int rowY = y + HEADER_H;
-            for (Module m : modules) {
-                if (my >= rowY && my < rowY + ROW_H) {
-                    m.toggle();
-                    return true;
-                }
-                rowY += ROW_H;
-            }
-            return true;
-        }
-
-        private static int categoryColor(Module.Category c) {
-            return switch (c) {
-                case COMBAT -> 0xDD882222;
-                case MOVEMENT -> 0xDD228822;
-                case RENDER -> 0xDD226688;
-                case PLAYER -> 0xDD886622;
-                case WORLD -> 0xDD4444AA;
-                case MISC -> 0xDD662266;
-            };
-        }
+        return false;
     }
 }

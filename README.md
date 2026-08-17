@@ -1,43 +1,38 @@
-# Jay's Hack Client v1.3.1
+# Jay's Hack Client v1.4.0
 
-Fabric **1.21.11** · ClickGUI · Sword PvP · Base Finders
-
----
-
-## ClickGUI
-
-| Action | How |
-|--------|-----|
-| **Open** | **Right Shift** or `.jay gui` |
-| **Close** | **Escape**, **Right Shift** again, or **Close** button |
-| **Toggle module** | Left-click the module name |
-| **Collapse category** | Click **+ / -** on panel header |
-| **Move panel** | Drag the category header |
-
-Game does **not** pause while GUI is open.
+Fabric **1.21.11** · **Vape-style ClickGUI** · Sword PvP · Base Finders
 
 ---
 
-## Panic
+## ClickGUI (Vape-inspired)
 
-- **Delete** → disable everything + freeze
-- `.jay unpanic` → allow toggles again
-- `.jay off` → disable all without freeze
+| Control | Action |
+|---------|--------|
+| **Right Shift** | Open / close |
+| **ESC** | Close |
+| **X** button | Close |
+| Sidebar | Switch category |
+| Module row / pill | Toggle |
+| Scroll wheel | Scroll module list |
+
+Design notes:
+- Centered dark window
+- Left category sidebar with purple accent
+- Pill toggles on the right
+- Does not pause the game
 
 ---
 
-## Profiles
+## Other
 
-`.jay profile legit | semi | rage | scout`
-
----
-
-## Build
+- **Delete** = panic (all off + freeze)
+- `.jay profile legit|semi|rage|scout`
+- `.jay unpanic` / `.jay off`
 
 ```bash
 ./gradlew build
 ```
 
-`build/libs/jays-hack-client-1.3.1.jar`
+`build/libs/jays-hack-client-1.4.0.jar`
 
 https://github.com/barnesjayren0-sudo/Jay-s-hack-client
