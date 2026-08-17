@@ -4,20 +4,16 @@ import com.jay.hackclient.module.Module;
 
 public class Reach extends Module {
 
+    public static final double EXTRA = 0.5;
+
     public Reach() {
-        super("Reach", "Extends attack reach for sword PvP", Category.COMBAT);
+        super("Reach", "Extra reach helper (mixin later)", Category.COMBAT);
     }
 
-    // Note: Real reach modification requires mixin on GameRenderer or PlayerEntity interaction distance.
-    // This is a placeholder that will be expanded with mixins.
-
-    @Override
-    public void onEnable() {
-        // Future: increase reach value via mixin
-    }
-
-    @Override
-    public void onDisable() {
-        // Future: restore original reach
+    public static boolean isActive() {
+        // Used by future mixins
+        return com.jay.hackclient.JayHackClient.moduleManager != null
+                && com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Reach") != null
+                && com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Reach").isEnabled();
     }
 }

@@ -5,6 +5,8 @@ import net.minecraft.text.Text;
 
 public abstract class Module {
 
+    protected static final MinecraftClient mc = MinecraftClient.getInstance();
+
     private final String name;
     private final String description;
     private final Category category;
@@ -24,18 +26,18 @@ public abstract class Module {
     }
 
     public void setEnabled(boolean state) {
+        if (this.enabled == state) return;
         this.enabled = state;
         if (state) {
             onEnable();
-            sendMessage("§aEnabled");
+            sendStatus("§aEnabled");
         } else {
             onDisable();
-            sendMessage("§cDisabled");
+            sendStatus("§cDisabled");
         }
     }
 
-    private void sendMessage(String status) {
-        MinecraftClient mc = MinecraftClient.getInstance();
+    private void sendStatus(String status) {
         if (mc.player != null) {
             mc.player.sendMessage(Text.literal("§7[§bJay§7] §f" + name + " " + status), false);
         }
@@ -59,7 +61,7 @@ public abstract class Module {
         PLAYER("Player"),
         MISC("Misc");
 
-        public final String name;
-        Category(String name) { this.name = name; }
+        public final String displayName;
+        Category(String displayName) { this.displayName = displayName; }
     }
 }

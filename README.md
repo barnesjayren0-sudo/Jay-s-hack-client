@@ -1,65 +1,96 @@
-# ⚔️ Jay's Hack Client
+# Jay's Hack Client
 
-**Version 1.0.0**  
-Minecraft **1.21.11** • Sword PvP Focused Client
+**Version 1.1.0**  
+Minecraft **1.21.11** (Fabric) · Sword PvP focused
 
 ---
 
 ## Modules
 
-| Module | Category | Description |
-|--------|----------|-------------|
-| KillAura | Combat | Sword-only KillAura with targeting + rotation |
-| AutoSword | Combat | Switches to the best sword automatically |
-| Reach | Combat | Extended attack reach |
-| Criticals | Combat | Packet critical hits |
-| AutoSprint | Movement | Perfect sprint for combos |
-| Velocity | Combat | Reduce knockback |
-| ESP | Render | See players through walls |
-| NoSlow | Movement | No slowdown while using items |
+| Module | Category | Key | Description |
+|--------|----------|-----|-------------|
+| KillAura | Combat | R | Sword-only aura with look + timing |
+| TriggerBot | Combat | - | Attacks when crosshair is on a player |
+| AutoClicker | Combat | - | Timed left-click CPS for sword |
+| AutoSword | Combat | - | Switches to best hotbar sword |
+| Criticals | Combat | - | Packet crit helper |
+| Velocity | Combat | - | Reduces horizontal knockback |
+| WTap | Combat | - | Sprint-reset style taps |
+| Reach | Combat | - | Extra attack range helper |
+| AutoSprint | Movement | G | Keeps sprint for combos |
+| NoSlow | Movement | - | Less slowdown while using items |
+| ESP | Render | - | Glow outline on players |
+| FullBright | Render | - | Max gamma / night vision style |
 
 ---
 
 ## Requirements
 
-- Minecraft 1.21.11
-- Fabric Loader
-- Fabric API
-- Java 21+
+- Java **21+**
+- Minecraft **1.21.11**
+- Fabric Loader **0.16+**
+- Fabric API for 1.21.11
 
 ---
 
-## How to Build
+## Build
 
 ```bash
 git clone https://github.com/barnesjayren0-sudo/Jay-s-hack-client.git
 cd Jay-s-hack-client
+
+# If gradlew is missing:
+gradle wrapper --gradle-version 8.10.2
+
 ./gradlew build
 ```
 
-Output jar:
+Output:
 ```
-build/libs/jays-hack-client-1.0.0.jar
+build/libs/jays-hack-client-1.1.0.jar
+```
+
+Windows:
+```bat
+gradlew.bat build
 ```
 
 ---
 
-## Installation
+## Install
 
 1. Install Fabric for 1.21.11
-2. Drop the jar into `.minecraft/mods`
-3. Launch the game
-4. Press **Right Shift** to see client info
+2. Put `jays-hack-client-1.1.0.jar` in `.minecraft/mods`
+3. Also install Fabric API
+4. Launch Minecraft
+5. Press **Right Shift** for menu / status
 
 ---
 
 ## Controls
 
-- **Right Shift** → Show client info / module count
+| Key | Action |
+|-----|--------|
+| **Right Shift** | Client menu (lists modules + toggle help) |
+| **R** | Toggle KillAura |
+| **G** | Toggle AutoSprint |
+
+Chat commands (type in chat):
+```
+.jay help
+.jay list
+.jay toggle <module>
+```
 
 ---
 
-## Credits
+## Notes
 
-Created by **barnesjayren0-sudo**  
-First official version - Sword PvP only.
+- Client-side only. Many servers detect combat mods — use at your own risk.
+- Reach / Velocity / NoSlow are improved stubs; full power needs mixins (planned).
+- Built for learning Fabric + sword PvP tooling.
+
+---
+
+**Author:** barnesjayren0-sudo  
+**Repo:** https://github.com/barnesjayren0-sudo/Jay-s-hack-client

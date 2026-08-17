@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "jayhackclient",
-  "version": "1.0.0",
+  "version": "${version}",
   "name": "Jay's Hack Client",
-  "description": "Sword PvP focused Minecraft client for 1.21.11",
+  "description": "Sword PvP focused Minecraft client for 1.21.11 - Combat, Movement, Render",
   "authors": ["barnesjayren0-sudo"],
   "contact": {
     "sources": "https://github.com/barnesjayren0-sudo/Jay-s-hack-client"
@@ -11,7 +11,9 @@
   "license": "All-Rights-Reserved",
   "environment": "client",
   "entrypoints": {
-    "client": ["com.jay.hackclient.JayHackClient"]
+    "client": [
+      "com.jay.hackclient.JayHackClient"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.16.0",

@@ -1,6 +1,7 @@
 package com.jay.hackclient.module;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ModuleManager {
@@ -12,7 +13,15 @@ public class ModuleManager {
     }
 
     public List<Module> getModules() {
-        return modules;
+        return Collections.unmodifiableList(modules);
+    }
+
+    public List<Module> getByCategory(Module.Category category) {
+        List<Module> list = new ArrayList<>();
+        for (Module m : modules) {
+            if (m.getCategory() == category) list.add(m);
+        }
+        return list;
     }
 
     public Module getModuleByName(String name) {
@@ -25,7 +34,11 @@ public class ModuleManager {
     public void onTick() {
         for (Module m : modules) {
             if (m.isEnabled()) {
-                m.onTick();
+                try {
+                    m.onTick();
+                } catch (Exception e) {
+                    System.err.println("[JayHack] Error in module " + m.getName() + ": " + e.getMessage());
+                }
             }
         }
     }
