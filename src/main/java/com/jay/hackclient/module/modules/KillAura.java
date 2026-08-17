@@ -2,22 +2,22 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.MathUtil;
+import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 
 public class KillAura extends Module {
 
     private long lastAttack = 0;
-    private final double range = 4.2;
-    private final int delayMs = 500;
+    private int nextDelay = 480;
+    private final double range = 4.15;
 
     public KillAura() {
-        super("KillAura", "Sword-only KillAura with targeting", Category.COMBAT);
+        super("KillAura", "Legit-timed sword aura", Category.COMBAT);
     }
 
     @Override
@@ -29,12 +29,16 @@ public class KillAura extends Module {
         if (target == null) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastAttack < delayMs) return;
+        if (now - lastAttack < nextDelay) return;
 
-        lookAt(target);
+        // Smooth look (harder to flag than instant snap)
+        RotationUtil.lookAt(target, 0.55f);
+
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
+
         lastAttack = now;
+        nextDelay = MathUtil.randomDelay(420, 620); // humanized CPS
     }
 
     private LivingEntity findTarget() {
@@ -44,7 +48,8 @@ public class KillAura extends Module {
         for (Entity entity : mc.world.getEntities()) {
             if (!(entity instanceof PlayerEntity player)) continue;
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
-            if (JayHackClient.friendManager != null && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
+            if (JayHackClient.friendManager != null
+                    && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
 
             double dist = mc.player.distanceTo(player);
             if (dist <= closest) {
@@ -53,18 +58,5 @@ public class KillAura extends Module {
             }
         }
         return best;
-    }
-
-    private void lookAt(LivingEntity target) {
-        Vec3d eyes = mc.player.getEyePos();
-        Vec3d pos = target.getPos().add(0, target.getHeight() * 0.85, 0);
-        double dx = pos.x - eyes.x;
-        double dy = pos.y - eyes.y;
-        double dz = pos.z - eyes.z;
-        double horiz = Math.sqrt(dx * dx + dz * dz);
-        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
-        float pitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
-        mc.player.setYaw(yaw);
-        mc.player.setPitch(MathHelper.clamp(pitch, -90f, 90f));
     }
 }

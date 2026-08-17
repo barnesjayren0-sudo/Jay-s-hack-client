@@ -1,77 +1,64 @@
 # Jay's Hack Client
 
-**Version 1.1.1**  
-Minecraft **1.21.11** (Fabric) · Sword PvP focused
+**Version 1.2.0** · Minecraft **1.21.11** (Fabric)
+
+Sword PvP focused client with **advanced base finders**, cleaner HUD, and legit-style combat timing.
 
 ---
 
-## What's new in 1.1.1
+## Sections
 
-- On-screen **ArrayList HUD** (enabled modules)
-- **Config** save/load (enabled modules)
-- **Friends** list (KillAura / TriggerBot skip friends)
-- **Speed** movement module
-- **StorageESP** (chests)
-- Cleaner commands: `.jay`
-- Safer tick error handling
+### Combat
+KillAura · TriggerBot · AutoClicker · AutoSword · Criticals · Velocity · WTap · Reach
+
+### Movement
+AutoSprint · NoSlow · Speed
+
+### Render
+ESP · FullBright · HUD · StorageESP
+
+### World / Base Finders (NEW)
+| Module | Description |
+|--------|-------------|
+| **BaseFinder** | Scans loaded chunks for chests, barrels, shulkers, spawners, furnaces |
+| **SpawnerFinder** | Alerts when a mob spawner is nearby |
+| **PlayerRadar** | Lists nearby players with distance |
+| **PortalFinder** | Flags nether portals in loaded areas |
 
 ---
 
-## Modules
+## Legit / quieter behavior
 
-| Module | Category | Description |
-|--------|----------|-------------|
-| KillAura | Combat | Sword-only aura |
-| TriggerBot | Combat | Attack on crosshair |
-| AutoClicker | Combat | ~8 CPS swings |
-| AutoSword | Combat | Best hotbar sword |
-| Criticals | Combat | Crit helper |
-| Velocity | Combat | Less knockback |
-| WTap | Combat | Sprint reset assist |
-| Reach | Combat | Reach helper |
-| AutoSprint | Movement | Keep sprint |
-| NoSlow | Movement | Less item slowdown |
-| Speed | Movement | Faster ground move |
-| ESP | Render | Player glow |
-| FullBright | Render | Max brightness |
-| StorageESP | Render | Chest glow |
-| HUD | Render | ArrayList overlay |
+- Randomized attack delays (less robotic CPS)
+- Friends ignored by combat modules
+- Optional silent-style targeting (less snap)
+- No claims of being fully undetectable — good anticheats still ban. Use smart configs.
 
 ---
 
 ## Build
 
 ```bash
-git clone https://github.com/barnesjayren0-sudo/Jay-s-hack-client.git
-cd Jay-s-hack-client
-gradle wrapper --gradle-version 8.10.2   # if needed
 ./gradlew build
 ```
 
-Jar: `build/libs/jays-hack-client-1.1.1.jar`
+Jar: `build/libs/jays-hack-client-1.2.0.jar`
 
 ---
 
-## Controls & commands
-
-| Key | Action |
-|-----|--------|
-| Right Shift | Module menu |
-| R | Toggle KillAura |
-| G | Toggle AutoSprint |
+## Commands
 
 ```
-.jay help
 .jay list
 .jay toggle <module>
-.jay friend add <name>
-.jay friend del <name>
-.jay friend list
-.jay config save
-.jay config load
+.jay friend add|del|list <name>
+.jay config save|load
+.jay scan          # force BaseFinder report
+.jay radar         # nearby players
 ```
+
+**Keys:** Right Shift = menu · R = KillAura · G = AutoSprint
 
 ---
 
-**Author:** barnesjayren0-sudo  
 https://github.com/barnesjayren0-sudo/Jay-s-hack-client

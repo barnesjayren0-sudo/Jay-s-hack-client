@@ -30,16 +30,16 @@ public abstract class Module {
         this.enabled = state;
         if (state) {
             onEnable();
-            sendStatus("§aEnabled");
+            notify("§aenabled");
         } else {
             onDisable();
-            sendStatus("§cDisabled");
+            notify("§cdisabled");
         }
     }
 
-    private void sendStatus(String status) {
+    private void notify(String status) {
         if (mc.player != null) {
-            mc.player.sendMessage(Text.literal("§7[§bJay§7] §f" + name + " " + status), false);
+            mc.player.sendMessage(Text.literal("§8[§bJay§8] §f" + name + " " + status), false);
         }
     }
 
@@ -59,6 +59,7 @@ public abstract class Module {
         MOVEMENT("Movement"),
         RENDER("Render"),
         PLAYER("Player"),
+        WORLD("World"),
         MISC("Misc");
 
         public final String displayName;
