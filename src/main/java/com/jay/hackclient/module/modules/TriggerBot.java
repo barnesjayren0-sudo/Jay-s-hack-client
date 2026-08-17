@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.MathUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.SwordItem;
@@ -12,29 +13,32 @@ import net.minecraft.util.hit.HitResult;
 public class TriggerBot extends Module {
 
     private long lastAttack = 0;
-    private final int delayMs = 520;
+    private int nextDelay = 500;
 
     public TriggerBot() {
-        super("TriggerBot", "Attacks when crosshair is on a player", Category.COMBAT);
+        super("TriggerBot", "Attacks only when crosshair is on enemy", Category.COMBAT);
     }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (!(mc.player.getMainHandStack().getItem() instanceof SwordItem)) return;
+        if (mc.currentScreen != null) return;
         if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
 
         EntityHitResult hit = (EntityHitResult) mc.crosshairTarget;
         Entity entity = hit.getEntity();
         if (!(entity instanceof PlayerEntity player)) return;
         if (player == mc.player || !player.isAlive()) return;
-        if (JayHackClient.friendManager != null && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
+        if (JayHackClient.friendManager != null
+                && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastAttack < delayMs) return;
+        if (now - lastAttack < nextDelay) return;
 
         mc.interactionManager.attackEntity(mc.player, player);
         mc.player.swingHand(Hand.MAIN_HAND);
         lastAttack = now;
+        nextDelay = MathUtil.randomDelay(450, 680);
     }
 }

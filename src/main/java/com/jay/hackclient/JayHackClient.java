@@ -15,12 +15,13 @@ import com.jay.hackclient.friend.FriendManager;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.ModuleManager;
 import com.jay.hackclient.module.modules.*;
+import com.jay.hackclient.profile.LegitProfile;
 import com.jay.hackclient.render.HudRenderer;
 
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.2.0";
+    public static final String VERSION = "1.3.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -30,6 +31,7 @@ public class JayHackClient implements ClientModInitializer {
     private static KeyBinding menuKey;
     private static KeyBinding killAuraKey;
     private static KeyBinding sprintKey;
+    private static KeyBinding panicKey;
 
     @Override
     public void onInitializeClient() {
@@ -38,7 +40,6 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        // Combat
         moduleManager.register(new KillAura());
         moduleManager.register(new TriggerBot());
         moduleManager.register(new AutoClicker());
@@ -47,24 +48,19 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
         moduleManager.register(new Reach());
-
-        // Movement
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
-
-        // Render
         moduleManager.register(new ESP());
         moduleManager.register(new FullBright());
         moduleManager.register(new StorageESP());
         moduleManager.register(new HUD());
-
-        // World / Base finders
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
 
+        // Safe default: only HUD
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
 
@@ -77,16 +73,26 @@ public class JayHackClient implements ClientModInitializer {
         sprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.toggle_sprint", InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_G, "category.jayhackclient"));
+        panicKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.jayhackclient.panic", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_DELETE, "category.jayhackclient"));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
+
+            if (panicKey.wasPressed()) {
+                moduleManager.panic();
+                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll modules disabled. §7.jay unpanic to restore"), false);
+            }
             if (menuKey.wasPressed()) printMenu();
             if (killAuraKey.wasPressed()) toggle("KillAura");
             if (sprintKey.wasPressed()) toggle("AutoSprint");
+
             moduleManager.onTick();
         });
 
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
+            if (moduleManager.isFrozen()) return;
             Module h = moduleManager.getModuleByName("HUD");
             if (h != null && h.isEnabled()) HudRenderer.render(context);
         });
@@ -100,10 +106,14 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " ready — " + moduleManager.getModules().size() + " modules");
+        System.out.println("[" + NAME + "] v" + VERSION + " — " + moduleManager.getModules().size() + " modules");
     }
 
     private void toggle(String name) {
+        if (moduleManager.isFrozen()) {
+            msg("§cClient frozen — .jay unpanic first");
+            return;
+        }
         Module m = moduleManager.getModuleByName(name);
         if (m != null) m.toggle();
     }
@@ -111,7 +121,8 @@ public class JayHackClient implements ClientModInitializer {
     private void printMenu() {
         var p = net.minecraft.client.MinecraftClient.getInstance().player;
         if (p == null) return;
-        p.sendMessage(Text.literal("§8§m──────── §bJay §fv" + VERSION + " §8§m────────"), false);
+        String freeze = moduleManager.isFrozen() ? " §c[FROZEN]" : "";
+        p.sendMessage(Text.literal("§8§m────── §bJay §fv" + VERSION + freeze + " §8§m──────"), false);
         Module.Category last = null;
         for (Module m : moduleManager.getModules()) {
             if (m.getCategory() != last) {
@@ -119,10 +130,10 @@ public class JayHackClient implements ClientModInitializer {
                 p.sendMessage(Text.literal("§8▪ §d" + last.displayName), false);
             }
             String st = m.isEnabled() ? "§a●" : "§7○";
-            p.sendMessage(Text.literal("  " + st + " §f" + m.getName() + " §8— §7" + m.getDescription()), false);
+            p.sendMessage(Text.literal("  " + st + " §f" + m.getName()), false);
         }
         p.sendMessage(Text.literal("§8§m────────────────────────────"), false);
-        p.sendMessage(Text.literal("§7.jay toggle §8| §7scan §8| §7radar §8| §7friend §8| §7config"), false);
+        p.sendMessage(Text.literal("§7DEL=panic §8| §7.jay off §8| §7.jay profile legit/semi/rage/scout"), false);
     }
 
     private void handleCommand(String message) {
@@ -130,7 +141,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.jay list | toggle | scan | radar | friend | config");
+            msg("§flist toggle off panic unpanic profile scan radar friend config");
             return;
         }
 
@@ -138,19 +149,40 @@ public class JayHackClient implements ClientModInitializer {
             case "list", "help", "menu" -> printMenu();
             case "toggle" -> {
                 if (args.length < 3) { msg("§c.jay toggle <module>"); return; }
-                Module m = moduleManager.getModuleByName(args[2]);
-                if (m == null) msg("§cUnknown: " + args[2]);
-                else m.toggle();
+                toggle(args[2]);
+            }
+            case "off", "disableall", "disable" -> {
+                moduleManager.disableAll();
+                msg("§eAll modules off");
+            }
+            case "panic" -> {
+                moduleManager.panic();
+                msg("§cPANIC — everything off & frozen");
+            }
+            case "unpanic", "unfreeze" -> {
+                moduleManager.unfreeze();
+                msg("§aUnfrozen — toggle modules again");
+            }
+            case "profile" -> {
+                if (args.length < 3) {
+                    msg("§f.jay profile legit | semi | rage | scout");
+                    return;
+                }
+                switch (args[2].toLowerCase()) {
+                    case "legit" -> { LegitProfile.applyLegit(); msg("§aLegit profile"); }
+                    case "semi" -> { LegitProfile.applySemi(); msg("§eSemi profile"); }
+                    case "rage" -> { LegitProfile.applyRage(); msg("§cRage profile"); }
+                    case "scout" -> { LegitProfile.applyScout(); msg("§bScout profile"); }
+                    default -> msg("§cUnknown profile");
+                }
             }
             case "scan" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
-                if (bf instanceof BaseFinder finder) finder.scan(true);
-                else msg("§cBaseFinder missing");
+                if (bf instanceof BaseFinder f) f.scan(true);
             }
             case "radar" -> {
                 Module pr = moduleManager.getModuleByName("PlayerRadar");
-                if (pr instanceof PlayerRadar radar) radar.report(true);
-                else msg("§cPlayerRadar missing");
+                if (pr instanceof PlayerRadar r) r.report(true);
             }
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
@@ -159,33 +191,32 @@ public class JayHackClient implements ClientModInitializer {
     }
 
     private void handleFriend(String[] args) {
-        if (args.length < 3) { msg("§f.jay friend add|del|list"); return; }
-        String action = args[2].toLowerCase();
-        if (action.equals("list")) {
+        if (args.length < 3) { msg("§ffriend add|del|list"); return; }
+        String a = args[2].toLowerCase();
+        if (a.equals("list")) {
             msg("§fFriends: §a" + String.join(", ", friendManager.getFriends()));
             return;
         }
         if (args.length < 4) { msg("§cNeed name"); return; }
-        String name = args[3];
-        if (action.equals("add")) {
-            friendManager.add(name);
-            msg("§a+ friend §f" + name);
+        if (a.equals("add")) {
+            friendManager.add(args[3]);
+            msg("§a+ " + args[3]);
             configManager.save();
-        } else if (action.equals("del") || action.equals("remove")) {
-            friendManager.remove(name);
-            msg("§c- friend §f" + name);
+        } else if (a.equals("del") || a.equals("remove")) {
+            friendManager.remove(args[3]);
+            msg("§c- " + args[3]);
             configManager.save();
         }
     }
 
     private void handleConfig(String[] args) {
-        if (args.length < 3) { msg("§f.jay config save|load"); return; }
+        if (args.length < 3) { msg("§fconfig save|load"); return; }
         if (args[2].equalsIgnoreCase("save")) {
             configManager.save();
-            msg("§aConfig saved");
+            msg("§aSaved");
         } else if (args[2].equalsIgnoreCase("load")) {
             configManager.load();
-            msg("§aConfig loaded");
+            msg("§aLoaded");
         }
     }
 

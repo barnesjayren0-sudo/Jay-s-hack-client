@@ -1,38 +1,42 @@
-# Jay's Hack Client
+# Jay's Hack Client v1.3.0
 
-**Version 1.2.0** · Minecraft **1.21.11** (Fabric)
-
-Sword PvP focused client with **advanced base finders**, cleaner HUD, and legit-style combat timing.
+Fabric **1.21.11** · Sword PvP + Base Finders
 
 ---
 
-## Sections
+## Panic / turn everything off
 
-### Combat
-KillAura · TriggerBot · AutoClicker · AutoSword · Criticals · Velocity · WTap · Reach
+| Action | How |
+|--------|-----|
+| **Panic (freeze)** | Press **Delete** or `.jay panic` |
+| **Unfreeze** | `.jay unpanic` |
+| **Disable all** | `.jay off` |
+| **Toggle one** | `.jay toggle KillAura` |
 
-### Movement
-AutoSprint · NoSlow · Speed
-
-### Render
-ESP · FullBright · HUD · StorageESP
-
-### World / Base Finders (NEW)
-| Module | Description |
-|--------|-------------|
-| **BaseFinder** | Scans loaded chunks for chests, barrels, shulkers, spawners, furnaces |
-| **SpawnerFinder** | Alerts when a mob spawner is nearby |
-| **PlayerRadar** | Lists nearby players with distance |
-| **PortalFinder** | Flags nether portals in loaded areas |
+While frozen, no module ticks and HUD hides.
 
 ---
 
-## Legit / quieter behavior
+## Profiles
 
-- Randomized attack delays (less robotic CPS)
-- Friends ignored by combat modules
-- Optional silent-style targeting (less snap)
-- No claims of being fully undetectable — good anticheats still ban. Use smart configs.
+```
+.jay profile legit   # Sprint + HUD only
+.jay profile semi    # TriggerBot, Velocity, ESP…
+.jay profile rage    # Full combat stack
+.jay profile scout   # Base/spawner/radar finders
+```
+
+---
+
+## Quieter behavior (not magic undetection)
+
+- Randomized CPS / velocity factors
+- Soft KB reduction (not 0%)
+- Smooth KillAura rotations
+- Friends ignored
+- Combat **off by default** (only HUD on)
+
+Strong server anticheat can still ban. Play smart.
 
 ---
 
@@ -42,22 +46,7 @@ ESP · FullBright · HUD · StorageESP
 ./gradlew build
 ```
 
-Jar: `build/libs/jays-hack-client-1.2.0.jar`
-
----
-
-## Commands
-
-```
-.jay list
-.jay toggle <module>
-.jay friend add|del|list <name>
-.jay config save|load
-.jay scan          # force BaseFinder report
-.jay radar         # nearby players
-```
-
-**Keys:** Right Shift = menu · R = KillAura · G = AutoSprint
+`build/libs/jays-hack-client-1.3.0.jar`
 
 ---
 

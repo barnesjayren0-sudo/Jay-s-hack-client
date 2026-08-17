@@ -7,6 +7,7 @@ import java.util.List;
 public class ModuleManager {
 
     private final List<Module> modules = new ArrayList<>();
+    private boolean frozen = false; // panic / master off
 
     public void register(Module module) {
         modules.add(module);
@@ -31,13 +32,46 @@ public class ModuleManager {
         return null;
     }
 
+    public boolean isFrozen() {
+        return frozen;
+    }
+
+    /** Instantly disables every module and blocks ticks until unfrozen. */
+    public void panic() {
+        frozen = true;
+        for (Module m : modules) {
+            if (m.isEnabled()) {
+                m.setEnabled(false);
+            }
+        }
+    }
+
+    public void unfreeze() {
+        frozen = false;
+    }
+
+    public void disableAll() {
+        for (Module m : modules) {
+            if (m.isEnabled()) m.setEnabled(false);
+        }
+    }
+
+    public void disableCategory(Module.Category category) {
+        for (Module m : modules) {
+            if (m.getCategory() == category && m.isEnabled()) {
+                m.setEnabled(false);
+            }
+        }
+    }
+
     public void onTick() {
+        if (frozen) return;
         for (Module m : modules) {
             if (m.isEnabled()) {
                 try {
                     m.onTick();
                 } catch (Exception e) {
-                    System.err.println("[JayHack] Error in module " + m.getName() + ": " + e.getMessage());
+                    System.err.println("[JayHack] " + m.getName() + ": " + e.getMessage());
                 }
             }
         }
