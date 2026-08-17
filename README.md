@@ -1,42 +1,34 @@
-# Jay's Hack Client v1.3.0
+# Jay's Hack Client v1.3.1
 
-Fabric **1.21.11** · Sword PvP + Base Finders
+Fabric **1.21.11** · ClickGUI · Sword PvP · Base Finders
 
 ---
 
-## Panic / turn everything off
+## ClickGUI
 
 | Action | How |
 |--------|-----|
-| **Panic (freeze)** | Press **Delete** or `.jay panic` |
-| **Unfreeze** | `.jay unpanic` |
-| **Disable all** | `.jay off` |
-| **Toggle one** | `.jay toggle KillAura` |
+| **Open** | **Right Shift** or `.jay gui` |
+| **Close** | **Escape**, **Right Shift** again, or **Close** button |
+| **Toggle module** | Left-click the module name |
+| **Collapse category** | Click **+ / -** on panel header |
+| **Move panel** | Drag the category header |
 
-While frozen, no module ticks and HUD hides.
+Game does **not** pause while GUI is open.
+
+---
+
+## Panic
+
+- **Delete** → disable everything + freeze
+- `.jay unpanic` → allow toggles again
+- `.jay off` → disable all without freeze
 
 ---
 
 ## Profiles
 
-```
-.jay profile legit   # Sprint + HUD only
-.jay profile semi    # TriggerBot, Velocity, ESP…
-.jay profile rage    # Full combat stack
-.jay profile scout   # Base/spawner/radar finders
-```
-
----
-
-## Quieter behavior (not magic undetection)
-
-- Randomized CPS / velocity factors
-- Soft KB reduction (not 0%)
-- Smooth KillAura rotations
-- Friends ignored
-- Combat **off by default** (only HUD on)
-
-Strong server anticheat can still ban. Play smart.
+`.jay profile legit | semi | rage | scout`
 
 ---
 
@@ -46,8 +38,6 @@ Strong server anticheat can still ban. Play smart.
 ./gradlew build
 ```
 
-`build/libs/jays-hack-client-1.3.0.jar`
-
----
+`build/libs/jays-hack-client-1.3.1.jar`
 
 https://github.com/barnesjayren0-sudo/Jay-s-hack-client

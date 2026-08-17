@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
@@ -12,6 +13,7 @@ import org.lwjgl.glfw.GLFW;
 
 import com.jay.hackclient.config.ConfigManager;
 import com.jay.hackclient.friend.FriendManager;
+import com.jay.hackclient.gui.ClickGuiScreen;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.ModuleManager;
 import com.jay.hackclient.module.modules.*;
@@ -21,7 +23,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.3.0";
+    public static final String VERSION = "1.3.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -60,7 +62,6 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
 
-        // Safe default: only HUD
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
 
@@ -82,9 +83,18 @@ public class JayHackClient implements ClientModInitializer {
 
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
-                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll modules disabled. §7.jay unpanic to restore"), false);
+                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll modules off. §7.jay unpanic"), false);
             }
-            if (menuKey.wasPressed()) printMenu();
+
+            // Open / close ClickGUI
+            if (menuKey.wasPressed()) {
+                if (client.currentScreen instanceof ClickGuiScreen) {
+                    client.setScreen(null);
+                } else if (client.currentScreen == null) {
+                    client.setScreen(new ClickGuiScreen());
+                }
+            }
+
             if (killAuraKey.wasPressed()) toggle("KillAura");
             if (sprintKey.wasPressed()) toggle("AutoSprint");
 
@@ -106,47 +116,34 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " — " + moduleManager.getModules().size() + " modules");
+        System.out.println("[" + NAME + "] v" + VERSION + " ClickGUI ready");
     }
 
     private void toggle(String name) {
         if (moduleManager.isFrozen()) {
-            msg("§cClient frozen — .jay unpanic first");
+            msg("§cFrozen — .jay unpanic first");
             return;
         }
         Module m = moduleManager.getModuleByName(name);
         if (m != null) m.toggle();
     }
 
-    private void printMenu() {
-        var p = net.minecraft.client.MinecraftClient.getInstance().player;
-        if (p == null) return;
-        String freeze = moduleManager.isFrozen() ? " §c[FROZEN]" : "";
-        p.sendMessage(Text.literal("§8§m────── §bJay §fv" + VERSION + freeze + " §8§m──────"), false);
-        Module.Category last = null;
-        for (Module m : moduleManager.getModules()) {
-            if (m.getCategory() != last) {
-                last = m.getCategory();
-                p.sendMessage(Text.literal("§8▪ §d" + last.displayName), false);
-            }
-            String st = m.isEnabled() ? "§a●" : "§7○";
-            p.sendMessage(Text.literal("  " + st + " §f" + m.getName()), false);
-        }
-        p.sendMessage(Text.literal("§8§m────────────────────────────"), false);
-        p.sendMessage(Text.literal("§7DEL=panic §8| §7.jay off §8| §7.jay profile legit/semi/rage/scout"), false);
-    }
-
     private void handleCommand(String message) {
-        var client = net.minecraft.client.MinecraftClient.getInstance();
+        var client = MinecraftClient.getInstance();
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§flist toggle off panic unpanic profile scan radar friend config");
+            msg("§fgui | list | toggle | off | panic | unpanic | profile | scan | radar | friend | config");
             return;
         }
 
         switch (args[1].toLowerCase()) {
-            case "list", "help", "menu" -> printMenu();
+            case "gui", "clickgui", "menu" -> {
+                client.setScreen(new ClickGuiScreen());
+            }
+            case "list", "help" -> {
+                client.setScreen(new ClickGuiScreen());
+            }
             case "toggle" -> {
                 if (args.length < 3) { msg("§c.jay toggle <module>"); return; }
                 toggle(args[2]);
@@ -157,22 +154,22 @@ public class JayHackClient implements ClientModInitializer {
             }
             case "panic" -> {
                 moduleManager.panic();
-                msg("§cPANIC — everything off & frozen");
+                msg("§cPANIC");
             }
             case "unpanic", "unfreeze" -> {
                 moduleManager.unfreeze();
-                msg("§aUnfrozen — toggle modules again");
+                msg("§aUnfrozen");
             }
             case "profile" -> {
                 if (args.length < 3) {
-                    msg("§f.jay profile legit | semi | rage | scout");
+                    msg("§fprofile legit|semi|rage|scout");
                     return;
                 }
                 switch (args[2].toLowerCase()) {
-                    case "legit" -> { LegitProfile.applyLegit(); msg("§aLegit profile"); }
-                    case "semi" -> { LegitProfile.applySemi(); msg("§eSemi profile"); }
-                    case "rage" -> { LegitProfile.applyRage(); msg("§cRage profile"); }
-                    case "scout" -> { LegitProfile.applyScout(); msg("§bScout profile"); }
+                    case "legit" -> { LegitProfile.applyLegit(); msg("§aLegit"); }
+                    case "semi" -> { LegitProfile.applySemi(); msg("§eSemi"); }
+                    case "rage" -> { LegitProfile.applyRage(); msg("§cRage"); }
+                    case "scout" -> { LegitProfile.applyScout(); msg("§bScout"); }
                     default -> msg("§cUnknown profile");
                 }
             }
@@ -186,7 +183,7 @@ public class JayHackClient implements ClientModInitializer {
             }
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
-            default -> msg("§cUnknown command");
+            default -> msg("§cUnknown — try .jay gui");
         }
     }
 
@@ -221,7 +218,7 @@ public class JayHackClient implements ClientModInitializer {
     }
 
     private void msg(String s) {
-        var p = net.minecraft.client.MinecraftClient.getInstance().player;
+        var p = MinecraftClient.getInstance().player;
         if (p != null) p.sendMessage(Text.literal("§8[§bJay§8] " + s), false);
     }
 }
