@@ -1,44 +1,37 @@
-# Jay's Hack Client v1.6.0
+# Jay's Hack Client v1.7.0
 
-Fabric **1.21.11** · Sword / Nethpot / UHC
+Fabric **1.21.11** · SMP kits · UHC · Nethpot · Sword PvP
 
----
-
-## Detection note
-
-Nothing is fully undetectable. After getting flagged:
-
-- Prefer **`.jay profile legit`** or **semi** — not rage
-- Avoid KillAura; use **AimAssist + TriggerBot**
-- Keep **Hitboxes** expand low (default ~0.15–0.18)
-- Press **Delete** panic between fights if needed
-- Don't enable Speed + KillAura + big Hitboxes together
+Nice win — keep using **legit/semi/kit** profiles, not rage, if the server has AC.
 
 ---
 
-## New modules
+## New SMP kit modules
 
-| Module | Use |
-|--------|-----|
-| **Hitboxes** | Expand enemy boxes (mixin) |
-| **AutoPot** | Splash heal when low (nethpot) |
-| **AutoGap** | Eat gaps when low (UHC) |
-| **AutoHead** | Golden heads (UHC) |
-| **PearlCatch** | Look at nearby pearls |
+| Module | What it does |
+|--------|----------------|
+| **AutoTotem** | Restocks offhand totem |
+| **OffhandGap** | Gap in offhand when HP is safe |
+| **ShieldBreak** | Axe-swaps when enemy is blocking |
+| **Refill** | Pulls pots/pearls/gaps/crystals into empty hotbar |
+| **AnchorMacro** | Faster respawn-anchor charge clicks |
 
 ## Profiles
 
 ```
-.jay profile legit
+.jay profile kit       # SMP kit PvP
+.jay profile crystal   # totem + anchor + refill
 .jay profile semi
+.jay profile legit
 .jay profile nethpot
 .jay profile uhc
-.jay profile rage
 ```
+
+Or: `.jay kit` / `.jay crystal`
 
 ---
 
-## Build (Termux)
+## Build
 
 ```bash
 cd ~/Jay-s-hack-client

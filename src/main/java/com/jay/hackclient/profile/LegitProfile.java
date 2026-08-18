@@ -29,6 +29,7 @@ public final class LegitProfile {
         enable("AimAssist");
         enable("Velocity");
         enable("Hitboxes");
+        enable("AutoTotem");
         enable("HUD");
         enable("TargetHUD");
     }
@@ -47,6 +48,7 @@ public final class LegitProfile {
         enable("ESP");
         enable("Nametags");
         enable("FullBright");
+        enable("AutoTotem");
         enable("HUD");
         enable("TargetHUD");
     }
@@ -65,7 +67,6 @@ public final class LegitProfile {
         enable("HUD");
     }
 
-    /** Nethpot-oriented stack */
     public static void applyNethpot() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
@@ -78,11 +79,11 @@ public final class LegitProfile {
         enable("Velocity");
         enable("Hitboxes");
         enable("AutoPot");
+        enable("AutoTotem");
         enable("HUD");
         enable("TargetHUD");
     }
 
-    /** UHC-oriented stack */
     public static void applyUhc() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
@@ -97,6 +98,42 @@ public final class LegitProfile {
         enable("AutoGap");
         enable("AutoHead");
         enable("PearlCatch");
+        enable("HUD");
+        enable("TargetHUD");
+    }
+
+    /** SMP / kit PvP stack */
+    public static void applyKit() {
+        if (JayHackClient.moduleManager == null) return;
+        JayHackClient.moduleManager.disableAll();
+        JayHackClient.moduleManager.unfreeze();
+        Hitboxes.setExpand(0.14);
+        enable("AimAssist");
+        enable("TriggerBot");
+        enable("AutoSword");
+        enable("ShieldBreak");
+        enable("AutoSprint");
+        enable("Velocity");
+        enable("Hitboxes");
+        enable("AutoTotem");
+        enable("OffhandGap");
+        enable("Refill");
+        enable("HUD");
+        enable("TargetHUD");
+    }
+
+    public static void applyCrystal() {
+        if (JayHackClient.moduleManager == null) return;
+        JayHackClient.moduleManager.disableAll();
+        JayHackClient.moduleManager.unfreeze();
+        Hitboxes.setExpand(0.12);
+        enable("AimAssist");
+        enable("AutoTotem");
+        enable("OffhandGap");
+        enable("Refill");
+        enable("AnchorMacro");
+        enable("AutoSprint");
+        enable("Velocity");
         enable("HUD");
         enable("TargetHUD");
     }
