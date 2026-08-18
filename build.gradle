@@ -46,10 +46,3 @@ jar {
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
-
-// Easier local builds
-tasks.register('printVersion') {
-    doLast {
-        println "Jay's Hack Client ${version} for MC ${minecraft_version}"
-    }
-}
