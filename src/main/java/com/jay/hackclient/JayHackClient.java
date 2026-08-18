@@ -24,7 +24,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.5.1";
+    public static final String VERSION = "1.6.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -46,6 +46,7 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
+        // Combat
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
@@ -55,17 +56,30 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
         moduleManager.register(new Reach());
+        moduleManager.register(new Hitboxes());
+        moduleManager.register(new AutoPot());
+
+        // Movement
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
+
+        // Render
         moduleManager.register(new ESP());
         moduleManager.register(new Nametags());
         moduleManager.register(new FullBright());
         moduleManager.register(new StorageESP());
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
+
+        // Player / UHC / utility
         moduleManager.register(new AutoArmor());
+        moduleManager.register(new AutoGap());
+        moduleManager.register(new AutoHead());
+        moduleManager.register(new PearlCatch());
+
+        // World
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
@@ -75,25 +89,17 @@ public class JayHackClient implements ClientModInitializer {
         if (hud != null) hud.setEnabled(true);
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.clickgui",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_RIGHT_SHIFT,
-                CATEGORY));
+                "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
         killAuraKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_killaura",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_R,
-                CATEGORY));
+                "key.jayhackclient.toggle_killaura", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_R, CATEGORY));
         sprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_sprint",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_G,
-                CATEGORY));
+                "key.jayhackclient.toggle_sprint", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G, CATEGORY));
         panicKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.panic",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_DELETE,
-                CATEGORY));
+                "key.jayhackclient.panic", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_DELETE, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
@@ -146,7 +152,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui toggle off panic unpanic profile scan radar friend config");
+            msg("§fgui toggle off panic profile nethpot uhc scan radar friend config");
             return;
         }
 
@@ -169,15 +175,19 @@ public class JayHackClient implements ClientModInitializer {
                 msg("§aUnfrozen");
             }
             case "profile" -> {
-                if (args.length < 3) { msg("§flegit|semi|rage|scout"); return; }
+                if (args.length < 3) { msg("§flegit|semi|rage|scout|nethpot|uhc"); return; }
                 switch (args[2].toLowerCase()) {
                     case "legit" -> { LegitProfile.applyLegit(); msg("§aLegit"); }
                     case "semi" -> { LegitProfile.applySemi(); msg("§eSemi"); }
                     case "rage" -> { LegitProfile.applyRage(); msg("§cRage"); }
                     case "scout" -> { LegitProfile.applyScout(); msg("§bScout"); }
+                    case "nethpot", "pot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
+                    case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
                     default -> msg("§cUnknown profile");
                 }
             }
+            case "nethpot" -> { LegitProfile.applyNethpot(); msg("§dNethpot profile"); }
+            case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC profile"); }
             case "scan" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);

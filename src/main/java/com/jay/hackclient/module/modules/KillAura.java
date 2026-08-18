@@ -13,11 +13,11 @@ import net.minecraft.util.Hand;
 public class KillAura extends Module {
 
     private long lastAttack = 0;
-    private int nextDelay = 500;
-    private final double range = 4.2;
+    private int nextDelay = 550;
+    private final double range = 3.6; // quieter default than 4.2
 
     public KillAura() {
-        super("KillAura", "Sword/axe aura with humanized timing", Category.COMBAT);
+        super("KillAura", "Sword/axe aura (legit range + jitter)", Category.COMBAT);
     }
 
     @Override
@@ -31,16 +31,17 @@ public class KillAura extends Module {
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            RotationUtil.lookAt(target, 0.25f);
+            RotationUtil.lookAt(target, 0.18f); // very soft track
             return;
         }
 
-        RotationUtil.lookAt(target, 0.6f);
+        RotationUtil.lookAt(target, 0.45f);
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
         lastAttack = now;
-        nextDelay = MathUtil.randomDelay(430, 640);
+        // wider humanized window
+        nextDelay = MathUtil.randomDelay(480, 720);
     }
 
     private LivingEntity findTarget() {

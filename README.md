@@ -1,35 +1,51 @@
-# Jay's Hack Client v1.5.0
+# Jay's Hack Client v1.6.0
 
-Fabric **1.21.11** · Sword PvP · Mobile GUI · Base Finders
-
----
-
-## New in 1.5.0
-
-| Module | Category | Notes |
-|--------|----------|-------|
-| **AimAssist** | Combat | Soft pull toward target (no auto hit) |
-| **TargetHUD** | Render | Center HP bar for current target |
-| **Nametags** | Render | Glow on players |
-| **NoFall** | Movement | Soft fall assist |
-| **AutoArmor** | Player | Armor helper (stub for equip) |
-| **KillAura** | Combat | Now supports axes + tracking between hits |
-
-Profiles updated: legit uses AimAssist; semi adds TargetHUD; rage adds Nametags.
+Fabric **1.21.11** · Sword / Nethpot / UHC
 
 ---
 
-## Quick use
+## Detection note
 
-- **Right Shift** — ClickGUI (full-screen on phones)
-- **Delete** — Panic
-- `.jay profile legit|semi|rage|scout`
-- Search bar inside GUI
+Nothing is fully undetectable. After getting flagged:
 
-```bash
-./gradlew build
+- Prefer **`.jay profile legit`** or **semi** — not rage
+- Avoid KillAura; use **AimAssist + TriggerBot**
+- Keep **Hitboxes** expand low (default ~0.15–0.18)
+- Press **Delete** panic between fights if needed
+- Don't enable Speed + KillAura + big Hitboxes together
+
+---
+
+## New modules
+
+| Module | Use |
+|--------|-----|
+| **Hitboxes** | Expand enemy boxes (mixin) |
+| **AutoPot** | Splash heal when low (nethpot) |
+| **AutoGap** | Eat gaps when low (UHC) |
+| **AutoHead** | Golden heads (UHC) |
+| **PearlCatch** | Look at nearby pearls |
+
+## Profiles
+
+```
+.jay profile legit
+.jay profile semi
+.jay profile nethpot
+.jay profile uhc
+.jay profile rage
 ```
 
-`build/libs/jays-hack-client-1.5.0.jar`
+---
+
+## Build (Termux)
+
+```bash
+cd ~/Jay-s-hack-client
+git fetch origin && git reset --hard origin/main
+export GRADLE_OPTS="-Xmx1536m"
+./gradlew clean build --no-daemon
+cp build/libs/jays-hack-client-*.jar /sdcard/Download/
+```
 
 https://github.com/barnesjayren0-sudo/Jay-s-hack-client
