@@ -2,13 +2,12 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.MathUtil;
 import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
 
 public class KillAura extends Module {
@@ -25,16 +24,13 @@ public class KillAura extends Module {
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
-
-        var held = mc.player.getMainHandStack().getItem();
-        if (!(held instanceof SwordItem) && !(held instanceof AxeItem)) return;
+        if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
 
         LivingEntity target = findTarget();
         if (target == null) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            // keep soft tracking between hits
             RotationUtil.lookAt(target, 0.25f);
             return;
         }

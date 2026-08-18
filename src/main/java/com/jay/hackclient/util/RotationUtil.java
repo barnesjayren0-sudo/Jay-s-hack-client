@@ -14,7 +14,7 @@ public final class RotationUtil {
         if (mc.player == null || target == null) return;
 
         Vec3d eyes = mc.player.getEyePos();
-        Vec3d pos = target.getPos().add(0, target.getHeight() * 0.9, 0);
+        Vec3d pos = target.getEntityPos().add(0, target.getHeight() * 0.9, 0);
 
         double dx = pos.x - eyes.x;
         double dy = pos.y - eyes.y;
@@ -25,7 +25,6 @@ public final class RotationUtil {
         float pitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
         pitch = MathHelper.clamp(pitch, -90f, 90f);
 
-        // smoothness 1 = instant, lower = slower turn (more legit)
         float t = MathHelper.clamp(smoothness, 0.15f, 1f);
         float newYaw = MathUtil.lerp(mc.player.getYaw(), yaw, t);
         float newPitch = MathUtil.lerp(mc.player.getPitch(), pitch, t);

@@ -9,6 +9,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import com.jay.hackclient.config.ConfigManager;
@@ -23,12 +24,15 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.5.0";
+    public static final String VERSION = "1.5.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
     public static FriendManager friendManager;
     public static ConfigManager configManager;
+
+    public static final KeyBinding.Category CATEGORY =
+            KeyBinding.Category.create(Identifier.of("jayhackclient", "main"));
 
     private static KeyBinding menuKey;
     private static KeyBinding killAuraKey;
@@ -42,7 +46,6 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        // Combat
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
@@ -52,25 +55,17 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
         moduleManager.register(new Reach());
-
-        // Movement
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
-
-        // Render
         moduleManager.register(new ESP());
         moduleManager.register(new Nametags());
         moduleManager.register(new FullBright());
         moduleManager.register(new StorageESP());
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
-
-        // Player
         moduleManager.register(new AutoArmor());
-
-        // World
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
@@ -80,17 +75,25 @@ public class JayHackClient implements ClientModInitializer {
         if (hud != null) hud.setEnabled(true);
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_RIGHT_SHIFT, "category.jayhackclient"));
+                "key.jayhackclient.clickgui",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT,
+                CATEGORY));
         killAuraKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_killaura", InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_R, "category.jayhackclient"));
+                "key.jayhackclient.toggle_killaura",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_R,
+                CATEGORY));
         sprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_sprint", InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_G, "category.jayhackclient"));
+                "key.jayhackclient.toggle_sprint",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G,
+                CATEGORY));
         panicKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.panic", InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_DELETE, "category.jayhackclient"));
+                "key.jayhackclient.panic",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_DELETE,
+                CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;

@@ -2,9 +2,11 @@ package com.jay.hackclient.gui;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.input.CharInput;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -13,8 +15,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Responsive Vape-style GUI for PC + PoJav / Mojo (phones like Redmi A5).
- * Uses nearly full screen on small displays, search bar to filter modules.
+ * Responsive Vape-style GUI for PC + PoJav/Mojo.
+ * Compatible with Minecraft 1.21.11 input API (Click / KeyInput / CharInput).
  */
 public class ClickGuiScreen extends Screen {
 
@@ -33,32 +35,30 @@ public class ClickGuiScreen extends Screen {
 
     private Module.Category selected = Module.Category.COMBAT;
     private int scroll;
-    private TextFieldWidget searchField;
     private String search = "";
+    private boolean searchFocused = false;
 
-    // Layout computed each frame from screen size
     private int winX, winY, winW, winH;
     private int sidebarW;
     private int headerH = 28;
     private int searchH = 22;
-    private int rowH = 24; // larger for touch
+    private int rowH = 24;
 
     public ClickGuiScreen() {
         super(Text.literal("Jay"));
-        for (Module.Category c : Module.Category.values()) {
-            if (JayHackClient.moduleManager != null
-                    && !JayHackClient.moduleManager.getByCategory(c).isEmpty()) {
-                selected = c;
-                break;
+        if (JayHackClient.moduleManager != null) {
+            for (Module.Category c : Module.Category.values()) {
+                if (!JayHackClient.moduleManager.getByCategory(c).isEmpty()) {
+                    selected = c;
+                    break;
+                }
             }
         }
     }
 
     private void computeLayout() {
-        // Near full-screen on phones; slight margin on large PC screens
         boolean small = this.width < 500 || this.height < 320;
         if (small) {
-            // PoJav / Redmi-class: fill almost entire screen
             winW = Math.max(this.width - 8, 200);
             winH = Math.max(this.height - 8, 180);
             winX = (this.width - winW) / 2;
@@ -79,29 +79,9 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
-    @Override
-    protected void init() {
-        computeLayout();
-        int sx = winX + sidebarW + 8;
-        int sy = winY + headerH + 4;
-        int sw = winW - sidebarW - 16;
-
-        searchField = new TextFieldWidget(textRenderer, sx, sy, sw, searchH - 4, Text.literal("Search"));
-        searchField.setMaxLength(32);
-        searchField.setPlaceholder(Text.literal("Search modules..."));
-        searchField.setText(search);
-        searchField.setChangedListener(s -> {
-            search = s == null ? "" : s;
-            scroll = 0;
-        });
-        addSelectableChild(searchField);
-        setInitialFocus(searchField);
-    }
-
     private List<Module> filteredModules() {
-        List<Module> base;
+        List<Module> base = new ArrayList<>();
         if (search != null && !search.isBlank()) {
-            base = new ArrayList<>();
             String q = search.toLowerCase(Locale.ROOT);
             for (Module m : JayHackClient.moduleManager.getModules()) {
                 if (m.getName().toLowerCase(Locale.ROOT).contains(q)
@@ -111,7 +91,7 @@ public class ClickGuiScreen extends Screen {
                 }
             }
         } else {
-            base = new ArrayList<>(JayHackClient.moduleManager.getByCategory(selected));
+            base.addAll(JayHackClient.moduleManager.getByCategory(selected));
         }
         return base;
     }
@@ -119,23 +99,13 @@ public class ClickGuiScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         computeLayout();
-
-        // Keep search field positioned if window size changes (rotation etc.)
-        if (searchField != null) {
-            searchField.setX(winX + sidebarW + 8);
-            searchField.setY(winY + headerH + 4);
-            searchField.setWidth(winW - sidebarW - 16);
-        }
-
-        ctx.fill(0, 0, this.width, this.height, BG_OVERLAY);
-
         int x = winX;
         int y = winY;
 
+        ctx.fill(0, 0, this.width, this.height, BG_OVERLAY);
         ctx.fill(x + 3, y + 3, x + winW + 3, y + winH + 3, 0x55000000);
         ctx.fill(x, y, x + winW, y + winH, BG_WINDOW);
 
-        // Header
         ctx.fill(x, y, x + winW, y + headerH, BG_HEADER);
         ctx.fill(x, y + headerH - 1, x + winW, y + headerH, ACCENT_DIM);
         ctx.drawTextWithShadow(textRenderer, "§dJ§fay", x + 8, y + 10, TEXT);
@@ -144,14 +114,12 @@ public class ClickGuiScreen extends Screen {
         String status = JayHackClient.moduleManager.isFrozen() ? "§cFROZEN" : "§aREADY";
         ctx.drawTextWithShadow(textRenderer, status, x + winW - 78, y + 10, TEXT);
 
-        // Close
         int closeX = x + winW - 24;
         int closeY = y + 6;
         boolean hoverX = mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18;
         ctx.fill(closeX, closeY, closeX + 18, closeY + 18, hoverX ? 0xFFAA3333 : 0x22FFFFFF);
         ctx.drawCenteredTextWithShadow(textRenderer, "x", closeX + 9, closeY + 5, 0xFFFFFF);
 
-        // Sidebar
         ctx.fill(x, y + headerH, x + sidebarW, y + winH, BG_SIDEBAR);
         ctx.fill(x + sidebarW - 1, y + headerH, x + sidebarW, y + winH, 0x22FFFFFF);
 
@@ -160,38 +128,36 @@ public class ClickGuiScreen extends Screen {
             if (JayHackClient.moduleManager.getByCategory(cat).isEmpty()) continue;
             boolean sel = cat == selected && (search == null || search.isBlank());
             boolean hover = mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22;
-
             if (sel) {
                 ctx.fill(x, catY, x + sidebarW, catY + 22, 0x33B24BF3);
                 ctx.fill(x, catY, x + 3, catY + 22, ACCENT);
             } else if (hover) {
                 ctx.fill(x, catY, x + sidebarW, catY + 22, 0x15FFFFFF);
             }
-
             ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 8, catY + 7,
                     sel ? ACCENT : (hover ? TEXT : TEXT_DIM));
             catY += 24;
         }
 
-        // Search field
-        if (searchField != null) {
-            searchField.render(ctx, mouseX, mouseY, delta);
-        }
+        // Search box (custom — no TextFieldWidget API friction)
+        int sx = x + sidebarW + 8;
+        int sy = y + headerH + 4;
+        int sw = winW - sidebarW - 16;
+        ctx.fill(sx, sy, sx + sw, sy + searchH - 4, searchFocused ? 0xFF1A1A28 : 0xFF14141C);
+        ctx.fill(sx, sy + searchH - 5, sx + sw, sy + searchH - 4, searchFocused ? ACCENT : 0x33FFFFFF);
+        String shown = search.isEmpty() && !searchFocused ? "§8Search modules..." : "§f" + search + (searchFocused ? "§7_" : "");
+        ctx.drawTextWithShadow(textRenderer, shown, sx + 6, sy + 5, TEXT);
 
-        // Modules
         List<Module> modules = filteredModules();
         int listX = x + sidebarW;
         int rowTop = y + headerH + searchH + 8;
         int listBottom = y + winH - 16;
         int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
 
-        if (!(search == null || search.isBlank())) {
-            ctx.drawTextWithShadow(textRenderer, "Results",
-                    listX + 10, y + headerH + searchH + 2, TEXT_DIM);
-        } else {
-            ctx.drawTextWithShadow(textRenderer, selected.displayName.toUpperCase(Locale.ROOT),
-                    listX + 10, y + headerH + searchH + 2, TEXT_DIM);
-        }
+        String title = (search == null || search.isBlank())
+                ? selected.displayName.toUpperCase(Locale.ROOT)
+                : "Results";
+        ctx.drawTextWithShadow(textRenderer, title, listX + 10, y + headerH + searchH + 2, TEXT_DIM);
 
         for (int i = 0; i < modules.size(); i++) {
             if (i < scroll) continue;
@@ -202,18 +168,13 @@ public class ClickGuiScreen extends Screen {
             int ry = rowTop + di * rowH;
             boolean hover = mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH;
 
-            if (m.isEnabled()) {
-                ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_ON);
-            } else if (hover) {
-                ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_HOVER);
-            }
+            if (m.isEnabled()) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_ON);
+            else if (hover) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_HOVER);
 
             ctx.drawTextWithShadow(textRenderer, m.getName(), listX + 12, ry + (rowH / 2) - 4,
                     m.isEnabled() ? TEXT : TEXT_DIM);
 
-            // Larger pill for touch
-            int tw = 26;
-            int th = 14;
+            int tw = 26, th = 14;
             int tx = x + winW - 14 - tw;
             int ty = ry + (rowH - th) / 2;
             ctx.fill(tx, ty, tx + tw, ty + th, m.isEnabled() ? TOGGLE_ON : TOGGLE_OFF);
@@ -221,21 +182,24 @@ public class ClickGuiScreen extends Screen {
             ctx.fill(knob, ty + 2, knob + 11, ty + th - 2, 0xFFF0F0F8);
         }
 
-        ctx.drawTextWithShadow(textRenderer, "ESC / RShift close · type to search",
+        ctx.drawTextWithShadow(textRenderer, "ESC close · type to search",
                 x + 8, y + winH - 12, 0xFF555566);
 
         super.render(ctx, mouseX, mouseY, delta);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(Click click, boolean doubled) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
+
+        if (button != 0) return super.mouseClicked(click, doubled);
 
         computeLayout();
         int x = winX;
         int y = winY;
 
-        // Close
         int closeX = x + winW - 24;
         int closeY = y + 6;
         if (mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18) {
@@ -243,27 +207,29 @@ public class ClickGuiScreen extends Screen {
             return true;
         }
 
-        // Categories
+        // Search focus
+        int sx = x + sidebarW + 8;
+        int sy = y + headerH + 4;
+        int sw = winW - sidebarW - 16;
+        if (mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + searchH - 4) {
+            searchFocused = true;
+            return true;
+        } else {
+            searchFocused = false;
+        }
+
         int catY = y + headerH + 6;
         for (Module.Category cat : Module.Category.values()) {
             if (JayHackClient.moduleManager.getByCategory(cat).isEmpty()) continue;
             if (mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22) {
                 selected = cat;
                 search = "";
-                if (searchField != null) searchField.setText("");
                 scroll = 0;
                 return true;
             }
             catY += 24;
         }
 
-        // Search field click
-        if (searchField != null && searchField.mouseClicked(mouseX, mouseY, button)) {
-            setFocused(searchField);
-            return true;
-        }
-
-        // Modules
         List<Module> modules = filteredModules();
         int listX = x + sidebarW;
         int rowTop = y + headerH + searchH + 8;
@@ -287,7 +253,7 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, doubled);
     }
 
     @Override
@@ -304,28 +270,61 @@ public class ClickGuiScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyInput input) {
+        int keyCode = input.key();
+
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            if (searchFocused && !search.isEmpty()) {
+                search = "";
+                return true;
+            }
             close();
             return true;
         }
-        // Only close on RShift if search is not focused
-        if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT && (searchField == null || !searchField.isFocused())) {
+
+        if (searchFocused) {
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
+                search = search.substring(0, search.length() - 1);
+                scroll = 0;
+                return true;
+            }
+            if (keyCode == GLFW.GLFW_KEY_ENTER) {
+                searchFocused = false;
+                return true;
+            }
+        }
+
+        if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT && !searchFocused) {
             close();
             return true;
         }
-        if (searchField != null && searchField.keyPressed(keyCode, scanCode, modifiers)) {
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+
+        return super.keyPressed(input);
     }
 
     @Override
-    public boolean charTyped(char chr, int modifiers) {
-        if (searchField != null && searchField.charTyped(chr, modifiers)) {
+    public boolean charTyped(CharInput input) {
+        if (searchFocused) {
+            char chr = input.codepoint() > 0 ? (char) input.codepoint() : 0;
+            // CharInput API may expose different accessors — fallback via codepoint
+            try {
+                // Prefer printable characters
+                if (chr >= 32 && chr < 127 && search.length() < 32) {
+                    search += chr;
+                    scroll = 0;
+                    return true;
+                }
+            } catch (Exception ignored) {}
+            // Alternate: some mappings use input.asString() / codepoint only
+            int cp = input.codepoint();
+            if (cp >= 32 && cp < 127 && search.length() < 32) {
+                search += (char) cp;
+                scroll = 0;
+                return true;
+            }
             return true;
         }
-        return super.charTyped(chr, modifiers);
+        return super.charTyped(input);
     }
 
     @Override

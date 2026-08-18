@@ -2,17 +2,15 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.SwordItem;
-import net.minecraft.util.hit.HitResult;
 
-/** Soft aim — only pulls crosshair toward target, does not auto-click. */
 public class AimAssist extends Module {
 
     private final double range = 4.5;
-    private final float strength = 0.28f; // lower = more legit
+    private final float strength = 0.28f;
 
     public AimAssist() {
         super("AimAssist", "Smoothly aims toward nearest enemy", Category.COMBAT);
@@ -21,10 +19,9 @@ public class AimAssist extends Module {
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
-        if (!(mc.player.getMainHandStack().getItem() instanceof SwordItem)) return;
+        if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.currentScreen != null) return;
 
-        // Don't fight the player if they're already looking at something else closely
         PlayerEntity target = findTarget();
         if (target == null) return;
 

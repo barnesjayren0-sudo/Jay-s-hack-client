@@ -2,10 +2,10 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.MathUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -22,7 +22,7 @@ public class TriggerBot extends Module {
     @Override
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
-        if (!(mc.player.getMainHandStack().getItem() instanceof SwordItem)) return;
+        if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.currentScreen != null) return;
         if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
 

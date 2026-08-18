@@ -1,6 +1,7 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import net.minecraft.entity.effect.StatusEffects;
 
 public class AutoSprint extends Module {
 
@@ -14,7 +15,7 @@ public class AutoSprint extends Module {
         if (mc.player.forwardSpeed > 0
                 && !mc.player.isSprinting()
                 && !mc.player.isUsingItem()
-                && !mc.player.isBlind()
+                && !mc.player.hasStatusEffect(StatusEffects.BLINDNESS)
                 && mc.player.getHungerManager().getFoodLevel() > 6) {
             mc.player.setSprinting(true);
         }

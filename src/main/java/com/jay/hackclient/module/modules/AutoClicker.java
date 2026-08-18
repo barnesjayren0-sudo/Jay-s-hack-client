@@ -1,8 +1,8 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.MathUtil;
-import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
 
 public class AutoClicker extends Module {
@@ -17,7 +17,7 @@ public class AutoClicker extends Module {
     @Override
     public void onTick() {
         if (mc.player == null) return;
-        if (!(mc.player.getMainHandStack().getItem() instanceof SwordItem)) return;
+        if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.currentScreen != null) return;
 
         long now = System.currentTimeMillis();
@@ -25,7 +25,6 @@ public class AutoClicker extends Module {
 
         mc.player.swingHand(Hand.MAIN_HAND);
         lastClick = now;
-        // ~7–10 CPS with jitter
         nextDelay = MathUtil.randomDelay(100, 145);
     }
 }
