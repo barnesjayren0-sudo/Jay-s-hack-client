@@ -35,7 +35,8 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-    withSourcesJar()
+    // Skip sources jar — smaller output for phone users
+    // withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
@@ -45,4 +46,9 @@ jar {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Only produce the main jar for install
+tasks.named("remapJar").configure {
+    archiveClassifier.set("")
 }

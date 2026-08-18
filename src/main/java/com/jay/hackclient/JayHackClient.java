@@ -27,7 +27,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.8.0";
+    public static final String VERSION = "1.8.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -51,6 +51,7 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
+        // Combat
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
@@ -66,11 +67,13 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
 
+        // Movement
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
 
+        // Render (heavy ones stay off by default)
         moduleManager.register(new ESP());
         moduleManager.register(new Nametags());
         moduleManager.register(new FullBright());
@@ -78,6 +81,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
 
+        // Player
         moduleManager.register(new AutoArmor());
         moduleManager.register(new AutoTotem());
         moduleManager.register(new OffhandGap());
@@ -86,12 +90,14 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoHead());
         moduleManager.register(new PearlCatch());
 
+        // World (on-demand scans)
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
         moduleManager.register(new PathToBase());
 
+        // Phone-friendly defaults: HUD + AntiBot only
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
         Module ab = moduleManager.getModuleByName("AntiBot");
@@ -117,7 +123,7 @@ public class JayHackClient implements ClientModInitializer {
 
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
-                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off · §7.jay unpanic"), false);
+                client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
             }
 
             if (menuKey.wasPressed()) {
@@ -146,8 +152,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        String bari = BaritoneCompat.isPresent() ? "Baritone OK" : "Baritone not found (optional)";
-        System.out.println("[" + NAME + "] v" + VERSION + " | EventBus | " + bari);
+        System.out.println("[" + NAME + "] v" + VERSION + " phone build");
     }
 
     private void toggle(String name) {
@@ -164,14 +169,14 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui toggle profile kit path baritone panic friend config");
+            msg("§fgui profile kit panic path scan radar");
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "gui", "clickgui", "menu", "list", "help" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> {
-                if (args.length < 3) { msg("§c.jay toggle <module>"); return; }
+                if (args.length < 3) return;
                 toggle(args[2]);
             }
             case "off", "disableall", "disable" -> {
@@ -187,16 +192,15 @@ public class JayHackClient implements ClientModInitializer {
                 msg("§aUnfrozen");
             }
             case "profile" -> {
-                if (args.length < 3) { msg("§flegit|semi|kit|crystal|nethpot|uhc|rage|scout"); return; }
+                if (args.length < 3) return;
                 applyProfile(args[2].toLowerCase());
             }
-            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit/SMP"); }
+            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit"); }
             case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
             case "nethpot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
             case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
             case "baritone", "path" -> {
-                if (BaritoneCompat.isPresent()) msg("§aBaritone detected");
-                else msg("§cInstall Baritone jar in mods folder");
+                msg(BaritoneCompat.isPresent() ? "§aBaritone OK" : "§cNo Baritone");
                 toggle("PathToBase");
             }
             case "scan" -> {
@@ -209,7 +213,7 @@ public class JayHackClient implements ClientModInitializer {
             }
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
-            default -> msg("§cUnknown");
+            default -> msg("§c?");
         }
     }
 
@@ -221,14 +225,14 @@ public class JayHackClient implements ClientModInitializer {
             case "scout" -> { LegitProfile.applyScout(); msg("§bScout"); }
             case "nethpot", "pot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
             case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
-            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit/SMP"); }
+            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit"); }
             case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
-            default -> msg("§cUnknown profile");
+            default -> msg("§c?");
         }
     }
 
     private void handleFriend(String[] args) {
-        if (args.length < 3) { msg("§ffriend add|del|list"); return; }
+        if (args.length < 3) return;
         String a = args[2].toLowerCase();
         if (a.equals("list")) {
             msg("§f" + String.join(", ", friendManager.getFriends()));

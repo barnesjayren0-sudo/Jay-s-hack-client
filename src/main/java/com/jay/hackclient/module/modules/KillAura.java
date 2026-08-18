@@ -4,6 +4,7 @@ import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
+import com.jay.hackclient.util.Mobile;
 import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -17,7 +18,7 @@ public class KillAura extends Module {
     private final double range = 3.45;
 
     public KillAura() {
-        super("KillAura", "Quiet aura — humanized timing", Category.COMBAT);
+        super("KillAura", "Quiet aura — humanized", Category.COMBAT);
     }
 
     @Override
@@ -26,13 +27,14 @@ public class KillAura extends Module {
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Humanizer.shouldSkipTick(6)) return;
+        if (Mobile.shouldThrottle()) return;
 
         LivingEntity target = findTarget();
         if (target == null) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            if (Humanizer.chance(70)) RotationUtil.lookAt(target, 0.14f);
+            if (Humanizer.chance(60)) RotationUtil.lookAt(target, 0.14f);
             return;
         }
 
@@ -47,14 +49,12 @@ public class KillAura extends Module {
     private LivingEntity findTarget() {
         LivingEntity best = null;
         double closest = range;
-
-        for (Entity entity : mc.world.getEntities()) {
-            if (!(entity instanceof PlayerEntity player)) continue;
+        // Prefer player list over full entity stream — cheaper on phones
+        for (PlayerEntity player : mc.world.getPlayers()) {
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
             if (AntiBot.isBot(player)) continue;
             if (JayHackClient.friendManager != null
                     && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
-
             double dist = mc.player.distanceTo(player);
             if (dist <= closest) {
                 closest = dist;

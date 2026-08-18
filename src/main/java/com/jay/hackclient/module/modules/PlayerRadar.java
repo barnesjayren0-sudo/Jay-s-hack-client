@@ -1,51 +1,44 @@
 package com.jay.hackclient.module.modules;
 
-import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.Mobile;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 
 public class PlayerRadar extends Module {
 
-    private long lastReport = 0;
+    private long last;
 
     public PlayerRadar() {
-        super("PlayerRadar", "Lists nearby players with distance", Category.WORLD);
+        super("PlayerRadar", "Lists nearby players", Category.WORLD);
     }
 
     @Override
     public void onTick() {
-        // Passive — use .jay radar for manual dump; light auto every 8s
-        if (mc.world == null || mc.player == null) return;
-        long now = System.currentTimeMillis();
-        if (now - lastReport < 8000) return;
-        lastReport = now;
-        report(false);
+        // Manual report via .jay radar — don't spam every tick on phones
     }
 
     public void report(boolean force) {
-        if (mc.world == null || mc.player == null) return;
+        if (mc.player == null || mc.world == null) return;
+        long now = System.currentTimeMillis();
+        if (!force && now - last < 3000) return;
+        last = now;
 
         int count = 0;
         for (PlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive()) continue;
-            double d = mc.player.distanceTo(p);
-            if (d > 128) continue;
-
-            boolean friend = JayHackClient.friendManager != null
-                    && JayHackClient.friendManager.isFriend(p.getName().getString());
-            String tag = friend ? "§a[F] " : "§c";
-
-            mc.player.sendMessage(Text.literal(
-                    String.format("§8[§3Radar§8] %s%s §7- §f%.1fm",
-                            tag, p.getName().getString(), d)
-            ), false);
+            if (AntiBot.isBot(p)) continue;
             count++;
-            if (count >= 12) break;
+            double d = mc.player.distanceTo(p);
+            mc.player.sendMessage(Text.literal(
+                    String.format("§8[§bJay§8] §f%s §7%.0fm", p.getName().getString(), d)), false);
+            if (Mobile.isSmallScreen() && count >= 5) {
+                mc.player.sendMessage(Text.literal("§8[§bJay§8] §7…truncated"), false);
+                break;
+            }
         }
-
-        if (force && count == 0) {
-            mc.player.sendMessage(Text.literal("§8[§3Radar§8] §7No players in range"), false);
+        if (count == 0) {
+            mc.player.sendMessage(Text.literal("§8[§bJay§8] §7No players nearby"), false);
         }
     }
 }
