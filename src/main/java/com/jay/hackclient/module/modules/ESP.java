@@ -1,33 +1,34 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import org.lwjgl.glfw.GLFW;
 
 public class ESP extends Module {
 
     public ESP() {
-        super("ESP", "Glow outline on other players", Category.RENDER);
+        super("ESP", "Glow players", Category.RENDER);
+        setKeyBind(GLFW.GLFW_KEY_X);
     }
 
     @Override
     public void onTick() {
         if (mc.world == null || mc.player == null) return;
-
-        for (Entity entity : mc.world.getEntities()) {
-            if (entity instanceof PlayerEntity player && player != mc.player) {
-                player.setGlowing(true);
+        for (PlayerEntity p : mc.world.getPlayers()) {
+            if (p == mc.player) continue;
+            if (AntiBot.isBot(p)) {
+                p.setGlowing(false);
+                continue;
             }
+            p.setGlowing(true);
         }
     }
 
     @Override
     public void onDisable() {
-        if (mc.world == null || mc.player == null) return;
-        for (Entity entity : mc.world.getEntities()) {
-            if (entity instanceof PlayerEntity player && player != mc.player) {
-                player.setGlowing(false);
-            }
+        if (mc.world == null) return;
+        for (PlayerEntity p : mc.world.getPlayers()) {
+            if (p != mc.player) p.setGlowing(false);
         }
     }
 }

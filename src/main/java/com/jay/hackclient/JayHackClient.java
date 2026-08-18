@@ -27,7 +27,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.8.1";
+    public static final String VERSION = "1.8.2";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -39,8 +39,6 @@ public class JayHackClient implements ClientModInitializer {
             KeyBinding.Category.create(Identifier.of("jayhackclient", "main"));
 
     private static KeyBinding menuKey;
-    private static KeyBinding killAuraKey;
-    private static KeyBinding sprintKey;
     private static KeyBinding panicKey;
 
     @Override
@@ -51,10 +49,9 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        // Combat
-        moduleManager.register(new KillAura());
-        moduleManager.register(new AimAssist());
-        moduleManager.register(new TriggerBot());
+        moduleManager.register(new KillAura());      // R
+        moduleManager.register(new AimAssist());     // J  silent
+        moduleManager.register(new TriggerBot());    // T
         moduleManager.register(new AutoClicker());
         moduleManager.register(new AutoSword());
         moduleManager.register(new ShieldBreak());
@@ -67,21 +64,18 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
 
-        // Movement
-        moduleManager.register(new AutoSprint());
+        moduleManager.register(new AutoSprint());    // G
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
 
-        // Render (heavy ones stay off by default)
-        moduleManager.register(new ESP());
+        moduleManager.register(new ESP());           // X
         moduleManager.register(new Nametags());
-        moduleManager.register(new FullBright());
+        moduleManager.register(new FullBright());    // B
         moduleManager.register(new StorageESP());
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
 
-        // Player
         moduleManager.register(new AutoArmor());
         moduleManager.register(new AutoTotem());
         moduleManager.register(new OffhandGap());
@@ -90,14 +84,12 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoHead());
         moduleManager.register(new PearlCatch());
 
-        // World (on-demand scans)
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
         moduleManager.register(new PathToBase());
 
-        // Phone-friendly defaults: HUD + AntiBot only
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
         Module ab = moduleManager.getModuleByName("AntiBot");
@@ -106,12 +98,6 @@ public class JayHackClient implements ClientModInitializer {
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
-        killAuraKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_killaura", InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_R, CATEGORY));
-        sprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.jayhackclient.toggle_sprint", InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_G, CATEGORY));
         panicKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.panic", InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_DELETE, CATEGORY));
@@ -131,9 +117,6 @@ public class JayHackClient implements ClientModInitializer {
                 else if (client.currentScreen == null) client.setScreen(new ClickGuiScreen());
             }
 
-            if (killAuraKey.wasPressed()) toggle("KillAura");
-            if (sprintKey.wasPressed()) toggle("AutoSprint");
-
             moduleManager.onTick();
         });
 
@@ -152,7 +135,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " phone build");
+        System.out.println("[" + NAME + "] v" + VERSION + " silent aim + keybinds");
     }
 
     private void toggle(String name) {
@@ -169,7 +152,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui profile kit panic path scan radar");
+            msg("§fgui profile kit binds panic path scan");
             return;
         }
 
@@ -179,6 +162,7 @@ public class JayHackClient implements ClientModInitializer {
                 if (args.length < 3) return;
                 toggle(args[2]);
             }
+            case "binds", "keys", "keybinds" -> listBinds();
             case "off", "disableall", "disable" -> {
                 moduleManager.disableAll();
                 msg("§eAll off");
@@ -215,6 +199,17 @@ public class JayHackClient implements ClientModInitializer {
             case "config", "cfg" -> handleConfig(args);
             default -> msg("§c?");
         }
+    }
+
+    private void listBinds() {
+        msg("§fDefault binds:");
+        msg("§7J §fAimAssist (silent)");
+        msg("§7T §fTriggerBot");
+        msg("§7R §fKillAura");
+        msg("§7G §fAutoSprint");
+        msg("§7X §fESP");
+        msg("§7B §fFullBright");
+        msg("§7RShift §fGUI · §7Del §fPanic");
     }
 
     private void applyProfile(String name) {

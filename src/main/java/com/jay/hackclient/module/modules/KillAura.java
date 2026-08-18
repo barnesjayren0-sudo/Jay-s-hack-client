@@ -5,20 +5,21 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.Mobile;
-import com.jay.hackclient.util.RotationUtil;
-import net.minecraft.entity.Entity;
+import com.jay.hackclient.util.SilentRotations;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
+import org.lwjgl.glfw.GLFW;
 
 public class KillAura extends Module {
 
     private long lastAttack = 0;
     private int nextDelay = 560;
-    private final double range = 3.45;
+    private final double range = 3.4;
 
     public KillAura() {
-        super("KillAura", "Quiet aura — humanized", Category.COMBAT);
+        super("KillAura", "Silent-style aura (prefer TriggerBot)", Category.COMBAT);
+        setKeyBind(GLFW.GLFW_KEY_R);
     }
 
     @Override
@@ -33,14 +34,13 @@ public class KillAura extends Module {
         if (target == null) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastAttack < nextDelay) {
-            if (Humanizer.chance(60)) RotationUtil.lookAt(target, 0.14f);
-            return;
-        }
+        if (now - lastAttack < nextDelay) return;
 
-        RotationUtil.lookAt(target, 0.38f);
-        mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
+        // silent: no continuous camera track
+        SilentRotations.silentLookForHit(target, () -> {
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+        });
 
         lastAttack = now;
         nextDelay = Humanizer.combatDelay();
@@ -49,12 +49,13 @@ public class KillAura extends Module {
     private LivingEntity findTarget() {
         LivingEntity best = null;
         double closest = range;
-        // Prefer player list over full entity stream — cheaper on phones
+
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
             if (AntiBot.isBot(player)) continue;
             if (JayHackClient.friendManager != null
                     && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
+
             double dist = mc.player.distanceTo(player);
             if (dist <= closest) {
                 closest = dist;

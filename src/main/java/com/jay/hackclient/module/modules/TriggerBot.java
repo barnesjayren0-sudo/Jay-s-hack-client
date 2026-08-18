@@ -9,6 +9,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
+import org.lwjgl.glfw.GLFW;
 
 public class TriggerBot extends Module {
 
@@ -16,7 +17,8 @@ public class TriggerBot extends Module {
     private int nextDelay = 560;
 
     public TriggerBot() {
-        super("TriggerBot", "Hits only on crosshair — preferred over aura", Category.COMBAT);
+        super("TriggerBot", "Attack on crosshair only", Category.COMBAT);
+        setKeyBind(GLFW.GLFW_KEY_T);
     }
 
     @Override
