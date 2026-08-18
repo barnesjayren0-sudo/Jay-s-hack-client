@@ -6,16 +6,20 @@ public final class MathUtil {
 
     private MathUtil() {}
 
-    public static int randomDelay(int minMs, int maxMs) {
-        if (maxMs <= minMs) return minMs;
-        return ThreadLocalRandom.current().nextInt(minMs, maxMs + 1);
+    public static int randomDelay(int min, int max) {
+        if (max <= min) return min;
+        return ThreadLocalRandom.current().nextInt(min, max + 1);
+    }
+
+    public static float lerp(float from, float to, float t) {
+        // shortest-path yaw lerp for large deltas
+        float d = to - from;
+        while (d < -180f) d += 360f;
+        while (d > 180f) d -= 360f;
+        return from + d * t;
     }
 
     public static double randomDouble(double min, double max) {
         return ThreadLocalRandom.current().nextDouble(min, max);
-    }
-
-    public static float lerp(float a, float b, float t) {
-        return a + (b - a) * t;
     }
 }

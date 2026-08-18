@@ -2,8 +2,8 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
-import com.jay.hackclient.util.MathUtil;
 import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -13,11 +13,11 @@ import net.minecraft.util.Hand;
 public class KillAura extends Module {
 
     private long lastAttack = 0;
-    private int nextDelay = 550;
-    private final double range = 3.6; // quieter default than 4.2
+    private int nextDelay = 560;
+    private final double range = 3.45; // stay near vanilla feel
 
     public KillAura() {
-        super("KillAura", "Sword/axe aura (legit range + jitter)", Category.COMBAT);
+        super("KillAura", "Quiet aura — humanized timing", Category.COMBAT);
     }
 
     @Override
@@ -25,23 +25,26 @@ public class KillAura extends Module {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
+        if (Humanizer.shouldSkipTick(6)) return; // break perfect tick cadence
 
         LivingEntity target = findTarget();
         if (target == null) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            RotationUtil.lookAt(target, 0.18f); // very soft track
+            if (Humanizer.chance(70)) {
+                RotationUtil.lookAt(target, 0.14f);
+            }
             return;
         }
 
-        RotationUtil.lookAt(target, 0.45f);
+        // small reaction delay already baked into nextDelay
+        RotationUtil.lookAt(target, 0.38f);
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
         lastAttack = now;
-        // wider humanized window
-        nextDelay = MathUtil.randomDelay(480, 720);
+        nextDelay = Humanizer.combatDelay();
     }
 
     private LivingEntity findTarget() {

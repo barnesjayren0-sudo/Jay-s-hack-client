@@ -12,7 +12,7 @@ public final class LegitProfile {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.10);
+        Hitboxes.setExpand(0.08);
         enable("AutoSprint");
         enable("AimAssist");
         enable("HUD");
@@ -22,7 +22,7 @@ public final class LegitProfile {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.15);
+        Hitboxes.setExpand(0.12);
         enable("AutoSprint");
         enable("AutoSword");
         enable("TriggerBot");
@@ -37,14 +37,13 @@ public final class LegitProfile {
     public static void applyRage() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.35);
+        Hitboxes.setExpand(0.28);
         enable("KillAura");
         enable("AutoSword");
         enable("AutoSprint");
         enable("Velocity");
         enable("WTap");
         enable("Hitboxes");
-        enable("Speed");
         enable("ESP");
         enable("Nametags");
         enable("FullBright");
@@ -71,7 +70,7 @@ public final class LegitProfile {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.16);
+        Hitboxes.setExpand(0.12);
         enable("AimAssist");
         enable("TriggerBot");
         enable("AutoSword");
@@ -88,7 +87,7 @@ public final class LegitProfile {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.14);
+        Hitboxes.setExpand(0.11);
         enable("AimAssist");
         enable("TriggerBot");
         enable("AutoSword");
@@ -102,12 +101,11 @@ public final class LegitProfile {
         enable("TargetHUD");
     }
 
-    /** SMP / kit PvP stack */
     public static void applyKit() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.14);
+        Hitboxes.setExpand(0.12);
         enable("AimAssist");
         enable("TriggerBot");
         enable("AutoSword");
@@ -126,7 +124,7 @@ public final class LegitProfile {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.12);
+        Hitboxes.setExpand(0.10);
         enable("AimAssist");
         enable("AutoTotem");
         enable("OffhandGap");

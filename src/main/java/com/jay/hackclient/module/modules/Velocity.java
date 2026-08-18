@@ -1,24 +1,28 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
-import com.jay.hackclient.util.MathUtil;
-import net.minecraft.util.math.Vec3d;
+import com.jay.hackclient.util.Humanizer;
 
+/** Soft velocity — reduces knockback slightly, not full cancel. */
 public class Velocity extends Module {
 
     public Velocity() {
-        super("Velocity", "Soft knockback reduction (not zero)", Category.COMBAT);
+        super("Velocity", "Soft KB reduction (not 0%)", Category.COMBAT);
     }
 
     @Override
     public void onTick() {
         if (mc.player == null) return;
-        // Only shave a bit on hurt — zero KB is an easy flag
-        if (mc.player.hurtTime != 8 && mc.player.hurtTime != 9) return;
+        if (Humanizer.shouldSkipTick(15)) return;
 
-        double h = MathUtil.randomDouble(0.55, 0.75);
-        double v = MathUtil.randomDouble(0.9, 1.0);
-        Vec3d vel = mc.player.getVelocity();
-        mc.player.setVelocity(vel.x * h, vel.y * v, vel.z * h);
+        // Only trim horizontal when recently hurt — partial, not zero
+        if (mc.player.hurtTime > 0 && mc.player.hurtTime < 8) {
+            double factor = 0.72 + (Humanizer.chance(50) ? 0.05 : 0); // ~72–77%
+            mc.player.setVelocity(
+                    mc.player.getVelocity().x * factor,
+                    mc.player.getVelocity().y,
+                    mc.player.getVelocity().z * factor
+            );
+        }
     }
 }

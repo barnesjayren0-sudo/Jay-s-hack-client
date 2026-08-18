@@ -24,7 +24,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.7.0";
+    public static final String VERSION = "1.7.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -135,7 +135,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " — " + moduleManager.getModules().size() + " modules");
+        System.out.println("[" + NAME + "] v" + VERSION + " humanized — " + moduleManager.getModules().size() + " modules");
     }
 
     private void toggle(String name) {
@@ -178,8 +178,8 @@ public class JayHackClient implements ClientModInitializer {
                 if (args.length < 3) { msg("§flegit|semi|kit|crystal|nethpot|uhc|rage|scout"); return; }
                 applyProfile(args[2].toLowerCase());
             }
-            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit/SMP profile"); }
-            case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal profile"); }
+            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit/SMP"); }
+            case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
             case "nethpot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
             case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
             case "scan" -> {

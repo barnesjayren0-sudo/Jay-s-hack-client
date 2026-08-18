@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
@@ -9,11 +10,10 @@ import net.minecraft.entity.player.PlayerEntity;
 
 public class AimAssist extends Module {
 
-    private final double range = 4.5;
-    private final float strength = 0.28f;
+    private final double range = 4.2;
 
     public AimAssist() {
-        super("AimAssist", "Smoothly aims toward nearest enemy", Category.COMBAT);
+        super("AimAssist", "Soft aim with jitter", Category.COMBAT);
     }
 
     @Override
@@ -21,11 +21,13 @@ public class AimAssist extends Module {
         if (mc.player == null || mc.world == null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.currentScreen != null) return;
+        if (Humanizer.shouldSkipTick(10)) return;
 
         PlayerEntity target = findTarget();
         if (target == null) return;
 
-        RotationUtil.lookAt(target, strength);
+        // weak pull — looks more like assist than lock
+        RotationUtil.lookAt(target, Humanizer.aimSmooth(0.22f));
     }
 
     private PlayerEntity findTarget() {
