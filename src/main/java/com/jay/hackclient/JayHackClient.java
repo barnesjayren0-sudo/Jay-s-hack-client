@@ -24,7 +24,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.7.1";
+    public static final String VERSION = "1.7.2";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -59,6 +59,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Hitboxes());
         moduleManager.register(new AutoPot());
         moduleManager.register(new AnchorMacro());
+        moduleManager.register(new AntiBot());
 
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
@@ -87,6 +88,8 @@ public class JayHackClient implements ClientModInitializer {
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
+        Module ab = moduleManager.getModuleByName("AntiBot");
+        if (ab != null) ab.setEnabled(true);
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
@@ -135,7 +138,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " humanized — " + moduleManager.getModules().size() + " modules");
+        System.out.println("[" + NAME + "] v" + VERSION + " — " + moduleManager.getModules().size() + " modules");
     }
 
     private void toggle(String name) {

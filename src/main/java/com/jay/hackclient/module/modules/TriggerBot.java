@@ -31,13 +31,13 @@ public class TriggerBot extends Module {
         Entity entity = hit.getEntity();
         if (!(entity instanceof PlayerEntity player)) return;
         if (player == mc.player || !player.isAlive()) return;
+        if (AntiBot.isBot(player)) return;
         if (JayHackClient.friendManager != null
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
 
-        // miss chance — humans don't 100% connect
         if (Humanizer.chance(4)) {
             lastAttack = now;
             nextDelay = Humanizer.combatDelay();

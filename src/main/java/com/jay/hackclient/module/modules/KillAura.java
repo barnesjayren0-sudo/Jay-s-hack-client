@@ -14,7 +14,7 @@ public class KillAura extends Module {
 
     private long lastAttack = 0;
     private int nextDelay = 560;
-    private final double range = 3.45; // stay near vanilla feel
+    private final double range = 3.45;
 
     public KillAura() {
         super("KillAura", "Quiet aura — humanized timing", Category.COMBAT);
@@ -25,20 +25,17 @@ public class KillAura extends Module {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (Humanizer.shouldSkipTick(6)) return; // break perfect tick cadence
+        if (Humanizer.shouldSkipTick(6)) return;
 
         LivingEntity target = findTarget();
         if (target == null) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            if (Humanizer.chance(70)) {
-                RotationUtil.lookAt(target, 0.14f);
-            }
+            if (Humanizer.chance(70)) RotationUtil.lookAt(target, 0.14f);
             return;
         }
 
-        // small reaction delay already baked into nextDelay
         RotationUtil.lookAt(target, 0.38f);
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
@@ -54,6 +51,7 @@ public class KillAura extends Module {
         for (Entity entity : mc.world.getEntities()) {
             if (!(entity instanceof PlayerEntity player)) continue;
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
+            if (AntiBot.isBot(player)) continue;
             if (JayHackClient.friendManager != null
                     && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
 
