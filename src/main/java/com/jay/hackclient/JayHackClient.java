@@ -23,7 +23,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.4.1";
+    public static final String VERSION = "1.5.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -42,7 +42,9 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
+        // Combat
         moduleManager.register(new KillAura());
+        moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
         moduleManager.register(new AutoClicker());
         moduleManager.register(new AutoSword());
@@ -50,13 +52,25 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
         moduleManager.register(new Reach());
+
+        // Movement
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
+        moduleManager.register(new NoFall());
+
+        // Render
         moduleManager.register(new ESP());
+        moduleManager.register(new Nametags());
         moduleManager.register(new FullBright());
         moduleManager.register(new StorageESP());
+        moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
+
+        // Player
+        moduleManager.register(new AutoArmor());
+
+        // World
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
@@ -87,11 +101,8 @@ public class JayHackClient implements ClientModInitializer {
             }
 
             if (menuKey.wasPressed()) {
-                if (client.currentScreen instanceof ClickGuiScreen) {
-                    client.setScreen(null);
-                } else if (client.currentScreen == null) {
-                    client.setScreen(new ClickGuiScreen());
-                }
+                if (client.currentScreen instanceof ClickGuiScreen) client.setScreen(null);
+                else if (client.currentScreen == null) client.setScreen(new ClickGuiScreen());
             }
 
             if (killAuraKey.wasPressed()) toggle("KillAura");
@@ -115,7 +126,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " mobile GUI ready");
+        System.out.println("[" + NAME + "] v" + VERSION + " — " + moduleManager.getModules().size() + " modules");
     }
 
     private void toggle(String name) {
@@ -132,7 +143,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui | toggle | off | panic | unpanic | profile | scan | radar | friend | config");
+            msg("§fgui toggle off panic unpanic profile scan radar friend config");
             return;
         }
 

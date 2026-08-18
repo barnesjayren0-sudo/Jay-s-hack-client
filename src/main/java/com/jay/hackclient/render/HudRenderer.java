@@ -2,8 +2,10 @@ package com.jay.hackclient.render;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.modules.TargetHUD;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.player.PlayerEntity;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,30 +31,68 @@ public final class HudRenderer {
         enabled.sort(Comparator.comparingInt((Module m) -> -mc.textRenderer.getWidth(m.getName())));
 
         int screenW = mc.getWindow().getScaledWidth();
+        int screenH = mc.getWindow().getScaledHeight();
 
         // Watermark
-        String water = "Jay";
-        context.fill(4, 4, 8 + mc.textRenderer.getWidth(water + " " + JayHackClient.VERSION) + 6, 16, 0x990A0A10);
-        context.fill(4, 4, 6, 16, 0xFF000000 | ACCENT);
-        context.drawTextWithShadow(mc.textRenderer, "§dJ§fay §8" + JayHackClient.VERSION, 10, 6, 0xFFFFFF);
+        String ver = JayHackClient.VERSION;
+        int ww = mc.textRenderer.getWidth("Jay " + ver) + 14;
+        context.fill(4, 4, 4 + ww, 17, 0x990A0A10);
+        context.fill(4, 4, 6, 17, 0xFF000000 | ACCENT);
+        context.drawTextWithShadow(mc.textRenderer, "§dJ§fay §8" + ver, 10, 7, 0xFFFFFF);
 
         // ArrayList
-        int y = 20;
+        int y = 22;
         for (Module m : enabled) {
             String label = m.getName();
             int w = mc.textRenderer.getWidth(label);
             int x = screenW - w - 10;
-            context.fill(x - 4, y - 1, screenW - 2, y + 10, 0x990A0A10);
+            context.fill(x - 5, y - 1, screenW - 2, y + 10, 0x990A0A10);
             context.fill(screenW - 2, y - 1, screenW, y + 10, 0xFF000000 | ACCENT);
             context.drawTextWithShadow(mc.textRenderer, label, x, y, 0xE8E8F0);
             y += 11;
         }
 
-        String info = String.format("§7%d fps  §8|  §f%d §7%d §f%d",
+        // Target HUD
+        Module th = JayHackClient.moduleManager.getModuleByName("TargetHUD");
+        if (th != null && th.isEnabled() && TargetHUD.currentTarget != null) {
+            drawTargetHud(context, mc, TargetHUD.currentTarget, screenW, screenH);
+        }
+
+        // Footer
+        String info = String.format("§7%d fps §8| §f%d %d %d",
                 mc.getCurrentFps(),
                 (int) mc.player.getX(),
                 (int) mc.player.getY(),
                 (int) mc.player.getZ());
-        context.drawTextWithShadow(mc.textRenderer, info, 6, mc.getWindow().getScaledHeight() - 14, 0xFFFFFF);
+        context.drawTextWithShadow(mc.textRenderer, info, 6, screenH - 14, 0xFFFFFF);
+    }
+
+    private static void drawTargetHud(DrawContext context, MinecraftClient mc, PlayerEntity target, int sw, int sh) {
+        String name = target.getName().getString();
+        float hp = target.getHealth() + target.getAbsorptionAmount();
+        float max = Math.max(1f, target.getMaxHealth());
+        float pct = Math.min(1f, hp / max);
+
+        int boxW = 120;
+        int boxH = 28;
+        int bx = sw / 2 - boxW / 2;
+        int by = sh / 2 + 30;
+
+        context.fill(bx, by, bx + boxW, by + boxH, 0xCC0A0A10);
+        context.fill(bx, by, bx + 2, by + boxH, 0xFF000000 | ACCENT);
+
+        context.drawTextWithShadow(mc.textRenderer, name, bx + 8, by + 4, 0xFFFFFF);
+
+        int barX = bx + 8;
+        int barY = by + 16;
+        int barW = boxW - 16;
+        context.fill(barX, barY, barX + barW, barY + 6, 0xFF222228);
+        int fill = (int) (barW * pct);
+        int hpColor = pct > 0.5f ? 0xFF44CC66 : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
+        context.fill(barX, barY, barX + fill, barY + 6, hpColor);
+
+        context.drawTextWithShadow(mc.textRenderer,
+                String.format("§7%.0f§8/§7%.0f", hp, max),
+                bx + boxW - 40, by + 4, 0xAAAAAA);
     }
 }

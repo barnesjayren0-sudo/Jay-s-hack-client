@@ -1,34 +1,35 @@
-# Jay's Hack Client v1.4.1
+# Jay's Hack Client v1.5.0
 
-Fabric **1.21.11** · **PoJav / Mojo friendly** · Redmi A5-style small screens
-
----
-
-## Mobile GUI
-
-On small screens (width &lt; 500 or height &lt; 320) the ClickGUI goes **near full-screen** with:
-- Bigger touch rows (28px)
-- Wider sidebar hit targets
-- **Search bar** — type to filter any module
-- Close via **X**, **ESC**, or Right Shift
-
-| Control | Action |
-|---------|--------|
-| Right Shift | Open / close |
-| Search box | Filter modules by name |
-| Sidebar | Category (clears search) |
-| Row / pill | Toggle |
-
-Works on **PoJav Launcher** and **Mojo Launcher** as a normal Fabric client jar (same as PC). Use a Fabric 1.21.11 profile on the launcher.
+Fabric **1.21.11** · Sword PvP · Mobile GUI · Base Finders
 
 ---
 
-## Build
+## New in 1.5.0
+
+| Module | Category | Notes |
+|--------|----------|-------|
+| **AimAssist** | Combat | Soft pull toward target (no auto hit) |
+| **TargetHUD** | Render | Center HP bar for current target |
+| **Nametags** | Render | Glow on players |
+| **NoFall** | Movement | Soft fall assist |
+| **AutoArmor** | Player | Armor helper (stub for equip) |
+| **KillAura** | Combat | Now supports axes + tracking between hits |
+
+Profiles updated: legit uses AimAssist; semi adds TargetHUD; rage adds Nametags.
+
+---
+
+## Quick use
+
+- **Right Shift** — ClickGUI (full-screen on phones)
+- **Delete** — Panic
+- `.jay profile legit|semi|rage|scout`
+- Search bar inside GUI
 
 ```bash
 ./gradlew build
 ```
 
-Put `jays-hack-client-1.4.1.jar` + Fabric API into the launcher's `mods` folder.
+`build/libs/jays-hack-client-1.5.0.jar`
 
 https://github.com/barnesjayren0-sudo/Jay-s-hack-client

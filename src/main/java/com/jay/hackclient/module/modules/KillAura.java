@@ -7,38 +7,44 @@ import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.AxeItem;
 import net.minecraft.item.SwordItem;
 import net.minecraft.util.Hand;
 
 public class KillAura extends Module {
 
     private long lastAttack = 0;
-    private int nextDelay = 480;
-    private final double range = 4.15;
+    private int nextDelay = 500;
+    private final double range = 4.2;
 
     public KillAura() {
-        super("KillAura", "Legit-timed sword aura", Category.COMBAT);
+        super("KillAura", "Sword/axe aura with humanized timing", Category.COMBAT);
     }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        if (!(mc.player.getMainHandStack().getItem() instanceof SwordItem)) return;
+        if (mc.currentScreen != null) return;
+
+        var held = mc.player.getMainHandStack().getItem();
+        if (!(held instanceof SwordItem) && !(held instanceof AxeItem)) return;
 
         LivingEntity target = findTarget();
         if (target == null) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastAttack < nextDelay) return;
+        if (now - lastAttack < nextDelay) {
+            // keep soft tracking between hits
+            RotationUtil.lookAt(target, 0.25f);
+            return;
+        }
 
-        // Smooth look (harder to flag than instant snap)
-        RotationUtil.lookAt(target, 0.55f);
-
+        RotationUtil.lookAt(target, 0.6f);
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
         lastAttack = now;
-        nextDelay = MathUtil.randomDelay(420, 620); // humanized CPS
+        nextDelay = MathUtil.randomDelay(430, 640);
     }
 
     private LivingEntity findTarget() {
