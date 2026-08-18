@@ -12,7 +12,10 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
+import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.config.ConfigManager;
+import com.jay.hackclient.event.EventBus;
+import com.jay.hackclient.event.events.TickEvent;
 import com.jay.hackclient.friend.FriendManager;
 import com.jay.hackclient.gui.ClickGuiScreen;
 import com.jay.hackclient.module.Module;
@@ -24,12 +27,13 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.7.2";
+    public static final String VERSION = "1.8.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
     public static FriendManager friendManager;
     public static ConfigManager configManager;
+    public static EventBus EVENT_BUS;
 
     public static final KeyBinding.Category CATEGORY =
             KeyBinding.Category.create(Identifier.of("jayhackclient", "main"));
@@ -42,6 +46,7 @@ public class JayHackClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
+        EVENT_BUS = new EventBus();
         moduleManager = new ModuleManager();
         friendManager = new FriendManager();
         configManager = new ConfigManager();
@@ -85,6 +90,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
+        moduleManager.register(new PathToBase());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
@@ -106,6 +112,8 @@ public class JayHackClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
+
+            EVENT_BUS.post(TickEvent.INSTANCE);
 
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
@@ -138,7 +146,8 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " — " + moduleManager.getModules().size() + " modules");
+        String bari = BaritoneCompat.isPresent() ? "Baritone OK" : "Baritone not found (optional)";
+        System.out.println("[" + NAME + "] v" + VERSION + " | EventBus | " + bari);
     }
 
     private void toggle(String name) {
@@ -155,7 +164,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui toggle profile kit crystal nethpot uhc panic friend config");
+            msg("§fgui toggle profile kit path baritone panic friend config");
             return;
         }
 
@@ -185,6 +194,11 @@ public class JayHackClient implements ClientModInitializer {
             case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
             case "nethpot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
             case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
+            case "baritone", "path" -> {
+                if (BaritoneCompat.isPresent()) msg("§aBaritone detected");
+                else msg("§cInstall Baritone jar in mods folder");
+                toggle("PathToBase");
+            }
             case "scan" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);

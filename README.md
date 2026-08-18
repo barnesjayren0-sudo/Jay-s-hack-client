@@ -1,35 +1,38 @@
-# Jay's Hack Client v1.7.0
+# Jay's Hack Client v1.8.0
 
-Fabric **1.21.11** · SMP kits · UHC · Nethpot · Sword PvP
-
-Nice win — keep using **legit/semi/kit** profiles, not rage, if the server has AC.
+Fabric **1.21.11** · EventBus · Optional Baritone · Kit / UHC / Nethpot
 
 ---
 
-## New SMP kit modules
+## Architecture (Meteor-inspired, no hard Meteor dep)
 
-| Module | What it does |
-|--------|----------------|
-| **AutoTotem** | Restocks offhand totem |
-| **OffhandGap** | Gap in offhand when HP is safe |
-| **ShieldBreak** | Axe-swaps when enemy is blocking |
-| **Refill** | Pulls pots/pearls/gaps/crystals into empty hotbar |
-| **AnchorMacro** | Faster respawn-anchor charge clicks |
+| Meteor piece | What we do |
+|--------------|------------|
+| **Fabric API** | Required (same as Meteor) |
+| **Orbit** | Built-in `EventBus` (Orbit-style subscribe/post) |
+| **Baritone** | Optional — install separately, we detect at runtime |
+| **Sodium** | Optional — suggested for FPS |
+| **Starscript** | Not bundled (keeps Termux builds simple) |
+| **Full Meteor Client** | Not a dependency — would conflict as a second client |
 
-## Profiles
+Hard-depending on Meteor Client / ukulib breaks phone builds and double-loads clients. We mirror the useful patterns instead.
 
-```
-.jay profile kit       # SMP kit PvP
-.jay profile crystal   # totem + anchor + refill
-.jay profile semi
-.jay profile legit
-.jay profile nethpot
-.jay profile uhc
-```
-
-Or: `.jay kit` / `.jay crystal`
+### Optional installs
+1. Fabric API (required)
+2. Jay jar (this mod)
+3. **Baritone** Fabric jar → enables `.jay path` / PathToBase
+4. Sodium (FPS)
 
 ---
+
+## Commands
+
+```
+.jay profile kit|semi|legit|nethpot|uhc|crystal
+.jay path          # Baritone to last base scan
+.jay baritone      # check + path
+.jay panic
+```
 
 ## Build
 
