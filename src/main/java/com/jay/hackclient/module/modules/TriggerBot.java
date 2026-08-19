@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import net.minecraft.entity.Entity;
@@ -14,10 +15,10 @@ import org.lwjgl.glfw.GLFW;
 public class TriggerBot extends Module {
 
     private long lastAttack = 0;
-    private int nextDelay = 500;
+    private int nextDelay = 550;
 
     public TriggerBot() {
-        super("TriggerBot", "Attack when on target", Category.COMBAT);
+        super("TriggerBot", "Crosshair hits only", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_T);
     }
 
@@ -25,9 +26,8 @@ public class TriggerBot extends Module {
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (mc.currentScreen != null) return;
-        if (mc.player.isUsingItem()) return; // don't punch while blocking/eating
-        if (Humanizer.shouldSkipTick(3)) return;
+        if (mc.currentScreen != null || mc.player.isUsingItem()) return;
+        if (Humanizer.shouldSkipTick()) return;
         if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
 
         EntityHitResult hit = (EntityHitResult) mc.crosshairTarget;
@@ -38,11 +38,16 @@ public class TriggerBot extends Module {
         if (JayHackClient.friendManager != null
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
-        float cd = mc.player.getAttackCooldownProgress(0.5f);
-        if (cd < 0.9f) return;
+        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.9f) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
+
+        if (Humanizer.shouldMiss()) {
+            lastAttack = now;
+            nextDelay = Humanizer.combatDelay();
+            return;
+        }
 
         mc.interactionManager.attackEntity(mc.player, player);
         mc.player.swingHand(Hand.MAIN_HAND);

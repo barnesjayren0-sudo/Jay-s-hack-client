@@ -3,13 +3,11 @@
   "id": "jayhackclient",
   "version": "${version}",
   "name": "Jay's Hack Client",
-  "description": "v1.10.0 AimAssist overhaul · ShieldBreak · JumpReset · kit/UHC",
+  "description": "v1.11.0 settings · sword/nethpot configs · quiet combat",
   "authors": ["barnesjayren0-sudo"],
   "license": "All-Rights-Reserved",
   "environment": "client",
-  "entrypoints": {
-    "client": ["com.jay.hackclient.JayHackClient"]
-  },
+  "entrypoints": { "client": ["com.jay.hackclient.JayHackClient"] },
   "mixins": ["jayhackclient.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.0",

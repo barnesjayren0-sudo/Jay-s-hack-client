@@ -1,51 +1,51 @@
 package com.jay.hackclient.util;
 
+import com.jay.hackclient.settings.ClientSettings;
+
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * Timing + aim noise so actions look less robotic.
- * Not a bypass — just reduces obvious patterns.
- */
 public final class Humanizer {
 
     private Humanizer() {}
 
     private static final ThreadLocalRandom R = ThreadLocalRandom.current();
 
-    /** Gaussian-ish delay around mean with stddev, clamped. */
     public static int delay(int meanMs, int stdMs, int minMs, int maxMs) {
         double g = R.nextGaussian() * stdMs + meanMs;
         int v = (int) Math.round(g);
         if (v < minMs) v = minMs;
         if (v > maxMs) v = maxMs;
-        // occasional "hesitation"
-        if (R.nextInt(100) < 8) {
-            v += R.nextInt(40, 120);
-        }
+        if (R.nextInt(100) < 10) v += R.nextInt(50, 140);
         return v;
     }
 
     public static int combatDelay() {
-        return delay(560, 70, 450, 780);
+        int min = ClientSettings.combatDelayMin;
+        int max = ClientSettings.combatDelayMax;
+        int mean = (min + max) / 2;
+        int std = Math.max(20, (max - min) / 3);
+        return delay(mean, std, min, max);
     }
 
     public static int clickDelay() {
-        return delay(125, 18, 95, 165);
+        return delay(
+                (ClientSettings.clickDelayMin + ClientSettings.clickDelayMax) / 2,
+                18,
+                ClientSettings.clickDelayMin,
+                ClientSettings.clickDelayMax);
     }
 
     public static int swapDelay() {
-        return delay(90, 25, 50, 180);
+        return delay(100, 30, 55, 200);
     }
 
-    /** Small random yaw/pitch noise in degrees. */
     public static float aimJitter() {
-        return (float) (R.nextGaussian() * 0.35);
+        return (float) (R.nextGaussian() * 0.4);
     }
 
-    /** Soft lerp factor with noise. */
     public static float aimSmooth(float base) {
-        float n = base + (float) (R.nextGaussian() * 0.04);
-        if (n < 0.12f) n = 0.12f;
+        float n = base + (float) (R.nextGaussian() * 0.035);
+        if (n < 0.10f) n = 0.10f;
         if (n > 0.85f) n = 0.85f;
         return n;
     }
@@ -54,8 +54,15 @@ public final class Humanizer {
         return R.nextInt(100) < percent;
     }
 
-    /** Skip this tick sometimes to break perfect every-tick patterns. */
-    public static boolean shouldSkipTick(int skipPercent) {
-        return chance(skipPercent);
+    public static boolean shouldSkipTick() {
+        return chance(ClientSettings.tickSkipChance);
+    }
+
+    public static boolean shouldSkipTick(int percent) {
+        return chance(percent);
+    }
+
+    public static boolean shouldMiss() {
+        return chance(ClientSettings.missChance);
     }
 }

@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.Mobile;
@@ -15,10 +16,9 @@ public class KillAura extends Module {
 
     private long lastAttack = 0;
     private int nextDelay = 560;
-    private final double range = 3.5;
 
     public KillAura() {
-        super("KillAura", "Aura with soft track between hits", Category.COMBAT);
+        super("KillAura", "Quiet aura (use TriggerBot if possible)", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_R);
     }
 
@@ -27,7 +27,7 @@ public class KillAura extends Module {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (Humanizer.shouldSkipTick(5)) return;
+        if (Humanizer.shouldSkipTick()) return;
         if (Mobile.shouldThrottle()) return;
 
         LivingEntity target = findTarget();
@@ -35,15 +35,18 @@ public class KillAura extends Module {
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            // soft track like classic assist between hits
-            if (Humanizer.chance(65)) RotationUtil.lookAt(target, 0.2f);
+            if (Humanizer.chance(50)) RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.5f);
             return;
         }
 
-        float cd = mc.player.getAttackCooldownProgress(0.5f);
-        if (cd < 0.8f && Humanizer.chance(60)) return;
+        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.85f) return;
+        if (Humanizer.shouldMiss()) {
+            lastAttack = now;
+            nextDelay = Humanizer.combatDelay();
+            return;
+        }
 
-        RotationUtil.lookAt(target, 0.5f);
+        RotationUtil.lookAt(target, ClientSettings.aimSmooth * 1.2f);
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -53,7 +56,7 @@ public class KillAura extends Module {
 
     private LivingEntity findTarget() {
         LivingEntity best = null;
-        double closest = range;
+        double closest = ClientSettings.auraRange;
 
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
