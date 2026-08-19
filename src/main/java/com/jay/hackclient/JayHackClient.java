@@ -27,7 +27,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.9.0";
+    public static final String VERSION = "1.10.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -55,6 +55,8 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoClicker());
         moduleManager.register(new AutoSword());
         moduleManager.register(new ShieldBreak());
+        moduleManager.register(new AutoBlock());
+        moduleManager.register(new JumpReset());
         moduleManager.register(new Criticals());
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
@@ -105,7 +107,6 @@ public class JayHackClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
             EVENT_BUS.post(TickEvent.INSTANCE);
-
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
                 client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
@@ -132,14 +133,11 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " classic AimAssist");
+        System.out.println("[" + NAME + "] v" + VERSION + " modules=" + moduleManager.getModules().size());
     }
 
     private void toggle(String name) {
-        if (moduleManager.isFrozen()) {
-            msg("§cUnpanic first");
-            return;
-        }
+        if (moduleManager.isFrozen()) { msg("§cUnpanic first"); return; }
         Module m = moduleManager.getModuleByName(name);
         if (m != null) m.toggle();
     }
@@ -148,24 +146,25 @@ public class JayHackClient implements ClientModInitializer {
         var client = MinecraftClient.getInstance();
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
-        if (args.length < 2) {
-            msg("§fgui profile kit binds panic path scan");
-            return;
-        }
+        if (args.length < 2) { msg("§fgui profile kit binds panic"); return; }
+
         switch (args[1].toLowerCase()) {
             case "gui", "menu", "list", "help" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
-            case "binds", "keys" -> listBinds();
-            case "off", "disableall" -> { moduleManager.disableAll(); msg("§eAll off"); }
+            case "binds", "keys" -> {
+                msg("§7J AimAssist §7T Trigger §7R Aura §7V ShieldBreak");
+                msg("§7G Sprint §7X ESP §7B Bright §7RShift GUI §7Del Panic");
+            }
+            case "off", "disableall" -> { moduleManager.disableAll(); msg("§eOff"); }
             case "panic" -> { moduleManager.panic(); msg("§cPANIC"); }
-            case "unpanic", "unfreeze" -> { moduleManager.unfreeze(); msg("§aUnfrozen"); }
+            case "unpanic", "unfreeze" -> { moduleManager.unfreeze(); msg("§aOK"); }
             case "profile" -> { if (args.length >= 3) applyProfile(args[2].toLowerCase()); }
             case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit"); }
             case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
             case "nethpot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
             case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
             case "path", "baritone" -> {
-                msg(BaritoneCompat.isPresent() ? "§aBaritone OK" : "§cNo Baritone");
+                msg(BaritoneCompat.isPresent() ? "§aBaritone" : "§cNo Baritone");
                 toggle("PathToBase");
             }
             case "scan" -> {
@@ -180,12 +179,6 @@ public class JayHackClient implements ClientModInitializer {
             case "config", "cfg" -> handleConfig(args);
             default -> msg("§c?");
         }
-    }
-
-    private void listBinds() {
-        msg("§7J §fAimAssist  §7T §fTriggerBot  §7R §fKillAura");
-        msg("§7G §fSprint  §7X §fESP  §7B §fFullBright");
-        msg("§7RShift §fGUI  §7Del §fPanic");
     }
 
     private void applyProfile(String name) {

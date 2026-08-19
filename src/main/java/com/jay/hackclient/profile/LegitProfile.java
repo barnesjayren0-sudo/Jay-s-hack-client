@@ -9,144 +9,78 @@ public final class LegitProfile {
     private LegitProfile() {}
 
     public static void applyLegit() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.disableAll();
-        JayHackClient.moduleManager.unfreeze();
+        disableAll();
         Hitboxes.setExpand(0.08);
-        enable("AutoSprint");
-        enable("AimAssist");
-        enable("HUD");
-        enable("AntiBot");
+        on("AutoSprint"); on("AimAssist"); on("HUD"); on("AntiBot");
     }
 
     public static void applySemi() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.disableAll();
-        JayHackClient.moduleManager.unfreeze();
+        disableAll();
         Hitboxes.setExpand(0.14);
-        enable("AutoSprint");
-        enable("AutoSword");
-        enable("TriggerBot");
-        enable("AimAssist");
-        enable("Velocity");
-        enable("Hitboxes");
-        enable("WTap");
-        enable("AutoTotem");
-        enable("HUD");
-        enable("TargetHUD");
-        enable("AntiBot");
+        on("AutoSprint"); on("AutoSword"); on("TriggerBot"); on("AimAssist");
+        on("Velocity"); on("Hitboxes"); on("WTap"); on("JumpReset");
+        on("ShieldBreak"); on("AutoTotem"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyRage() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.unfreeze();
+        unfreeze();
         Hitboxes.setExpand(0.3);
-        enable("KillAura");
-        enable("AutoSword");
-        enable("AutoSprint");
-        enable("Velocity");
-        enable("WTap");
-        enable("Hitboxes");
-        enable("ESP");
-        enable("Nametags");
-        enable("FullBright");
-        enable("AutoTotem");
-        enable("HUD");
-        enable("TargetHUD");
-        enable("AntiBot");
+        on("KillAura"); on("AutoSword"); on("AutoSprint"); on("Velocity");
+        on("WTap"); on("JumpReset"); on("Hitboxes"); on("ShieldBreak");
+        on("ESP"); on("Nametags"); on("FullBright"); on("AutoTotem");
+        on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyScout() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.disableAll();
-        JayHackClient.moduleManager.unfreeze();
-        enable("BaseFinder");
-        enable("SpawnerFinder");
-        enable("PlayerRadar");
-        enable("PortalFinder");
-        enable("ESP");
-        enable("Nametags");
-        enable("FullBright");
-        enable("HUD");
-        enable("AntiBot");
+        disableAll();
+        on("BaseFinder"); on("SpawnerFinder"); on("PlayerRadar"); on("PortalFinder");
+        on("ESP"); on("Nametags"); on("FullBright"); on("HUD"); on("AntiBot");
     }
 
     public static void applyNethpot() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.disableAll();
-        JayHackClient.moduleManager.unfreeze();
+        disableAll();
         Hitboxes.setExpand(0.14);
-        enable("AimAssist");
-        enable("TriggerBot");
-        enable("AutoSword");
-        enable("AutoSprint");
-        enable("Velocity");
-        enable("Hitboxes");
-        enable("AutoPot");
-        enable("AutoTotem");
-        enable("HUD");
-        enable("TargetHUD");
-        enable("AntiBot");
+        on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
+        on("Velocity"); on("Hitboxes"); on("AutoPot"); on("AutoTotem");
+        on("JumpReset"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyUhc() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.disableAll();
-        JayHackClient.moduleManager.unfreeze();
+        disableAll();
         Hitboxes.setExpand(0.12);
-        enable("AimAssist");
-        enable("TriggerBot");
-        enable("AutoSword");
-        enable("AutoSprint");
-        enable("Velocity");
-        enable("Hitboxes");
-        enable("AutoGap");
-        enable("AutoHead");
-        enable("PearlCatch");
-        enable("HUD");
-        enable("TargetHUD");
-        enable("AntiBot");
+        on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
+        on("Velocity"); on("Hitboxes"); on("AutoGap"); on("AutoHead");
+        on("PearlCatch"); on("JumpReset"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyKit() {
-        if (JayHackClient.moduleManager == null) return;
-        JayHackClient.moduleManager.disableAll();
-        JayHackClient.moduleManager.unfreeze();
+        disableAll();
         Hitboxes.setExpand(0.14);
-        enable("AimAssist");
-        enable("TriggerBot");
-        enable("AutoSword");
-        enable("ShieldBreak");
-        enable("AutoSprint");
-        enable("Velocity");
-        enable("WTap");
-        enable("Hitboxes");
-        enable("AutoTotem");
-        enable("OffhandGap");
-        enable("Refill");
-        enable("HUD");
-        enable("TargetHUD");
-        enable("AntiBot");
+        on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
+        on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
+        on("Hitboxes"); on("AutoTotem"); on("OffhandGap"); on("Refill");
+        on("AutoBlock"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyCrystal() {
+        disableAll();
+        Hitboxes.setExpand(0.1);
+        on("AimAssist"); on("AutoTotem"); on("OffhandGap"); on("Refill");
+        on("AnchorMacro"); on("AutoSprint"); on("Velocity"); on("HUD");
+        on("TargetHUD"); on("AntiBot");
+    }
+
+    private static void disableAll() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.1);
-        enable("AimAssist");
-        enable("AutoTotem");
-        enable("OffhandGap");
-        enable("Refill");
-        enable("AnchorMacro");
-        enable("AutoSprint");
-        enable("Velocity");
-        enable("HUD");
-        enable("TargetHUD");
-        enable("AntiBot");
     }
 
-    private static void enable(String name) {
+    private static void unfreeze() {
+        if (JayHackClient.moduleManager != null) JayHackClient.moduleManager.unfreeze();
+    }
+
+    private static void on(String name) {
         Module m = JayHackClient.moduleManager.getModuleByName(name);
         if (m != null) m.setEnabled(true);
     }

@@ -14,10 +14,10 @@ import org.lwjgl.glfw.GLFW;
 public class TriggerBot extends Module {
 
     private long lastAttack = 0;
-    private int nextDelay = 520;
+    private int nextDelay = 500;
 
     public TriggerBot() {
-        super("TriggerBot", "Hits when crosshair is on enemy", Category.COMBAT);
+        super("TriggerBot", "Attack when on target", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_T);
     }
 
@@ -26,7 +26,8 @@ public class TriggerBot extends Module {
         if (mc.player == null || mc.interactionManager == null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.currentScreen != null) return;
-        if (Humanizer.shouldSkipTick(4)) return;
+        if (mc.player.isUsingItem()) return; // don't punch while blocking/eating
+        if (Humanizer.shouldSkipTick(3)) return;
         if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
 
         EntityHitResult hit = (EntityHitResult) mc.crosshairTarget;
@@ -37,18 +38,11 @@ public class TriggerBot extends Module {
         if (JayHackClient.friendManager != null
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
-        // Wait for attack cooldown progress when possible
         float cd = mc.player.getAttackCooldownProgress(0.5f);
-        if (cd < 0.85f && Humanizer.chance(70)) return;
+        if (cd < 0.9f) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
-
-        if (Humanizer.chance(3)) {
-            lastAttack = now;
-            nextDelay = Humanizer.combatDelay();
-            return;
-        }
 
         mc.interactionManager.attackEntity(mc.player, player);
         mc.player.swingHand(Hand.MAIN_HAND);
