@@ -12,29 +12,54 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * One-shot horizontal scale when hurt packet applies.
- * No cancel, no Y change, no every-tick follow-up.
- */
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
 
-    @Inject(method = "onEntityVelocityUpdate", at = @At("TAIL"))
-    private void jay$softVelocity(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
-        if (JayHackClient.moduleManager == null) return;
+    @Inject(
+        method = "onEntityVelocityUpdate",
+        at = @At("TAIL")
+    )
+    private void jay$applyVelocity(
+        EntityVelocityUpdateS2CPacket packet,
+        CallbackInfo ci
+    ) {
+        if (JayHackClient.moduleManager == null) {
+            return;
+        }
+
         Module mod = JayHackClient.moduleManager.getModuleByName("Velocity");
-        if (mod == null || !mod.isEnabled()) return;
+
+        if (mod == null || !mod.isEnabled()) {
+            return;
+        }
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
-        if (packet.getEntityId() != mc.player.getId()) return;
-        if (mc.player.hurtTime <= 0) return;
 
-        double hx = Velocity.horizontalFactor();
+        if (mc.player == null) {
+            return;
+        }
 
-        Vec3d v = mc.player.getVelocity();
-        // Only X/Z once — never touch Y
-        mc.player.setVelocity(v.x * hx, v.y, v.z * hx);
+        // Only modify velocity packets belonging to the local player
+        if (packet.getEntityId() != mc.player.getId()) {
+            return;
+        }
+
+        // Prefer only during hurt — avoids scaling random movement velocity packets
+        if (mc.player.hurtTime <= 0) {
+            return;
+        }
+
+        double horizontal = Velocity.horizontalFactor();
+        // Y never reduced (verticalFactor is 1.0)
+        double vertical = Velocity.verticalFactor();
+
+        Vec3d velocity = mc.player.getVelocity();
+
+        mc.player.setVelocity(
+            velocity.x * horizontal,
+            velocity.y * vertical,
+            velocity.z * horizontal
+        );
 
         Velocity.lastPacketMs = System.currentTimeMillis();
     }
