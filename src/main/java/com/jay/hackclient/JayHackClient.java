@@ -27,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.12.1";
+    public static final String VERSION = "1.12.2";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -136,7 +136,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " velocity overhaul");
+        System.out.println("[" + NAME + "] v" + VERSION + " " + ClientSettings.summarize());
     }
 
     private void toggle(String name) {
@@ -150,28 +150,35 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui sword nethpot velmode settings set aimmode priority");
+            msg("§fsword swordaggro nethpot velmode settings set aimmode");
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
-            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
+            case "sword" -> {
+                LegitProfile.applySword();
+                configManager.save();
+                msg("§aSword config · " + ClientSettings.summarize());
+            }
+            case "swordaggro", "sword2", "aggro" -> {
+                LegitProfile.applySwordAggressive();
+                configManager.save();
+                msg("§6Sword AGGRO · " + ClientSettings.summarize());
+            }
             case "nethpot", "pot" -> { LegitProfile.applyNethpot(); configManager.save(); msg("§dNethpot"); }
             case "kit" -> { LegitProfile.applyKit(); configManager.save(); msg("§aKit"); }
             case "profile" -> { if (args.length >= 3) { applyProfile(args[2]); configManager.save(); } }
             case "settings" -> msg("§f" + ClientSettings.summarize());
             case "velmode", "velocity" -> {
                 if (args.length < 3) {
-                    msg("§fvelmode soft|medium|strong (now " + ClientSettings.velocityMode + ")");
+                    msg("§fvelmode soft|medium|strong (" + ClientSettings.velocityMode + ")");
                     return;
                 }
                 ClientSettings.applyVelocityMode(args[2]);
                 configManager.save();
-                msg("§aVelocity " + ClientSettings.velocityMode
-                        + " h=" + ClientSettings.velocityHorizontal
-                        + " v=" + ClientSettings.velocityVertical);
+                msg("§aVel " + ClientSettings.velocityMode + " h=" + ClientSettings.velocityHorizontal);
                 Module vel = moduleManager.getModuleByName("Velocity");
                 if (vel != null && !vel.isEnabled()) vel.setEnabled(true);
             }
@@ -198,14 +205,14 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7J Aim §7T Trigger §7V Shield §7N Velocity §7R Aura");
+            case "binds" -> msg("§7J Aim §7T Trigger §7V Shield §7N Vel §7R Aura");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set velh|velv|aimrange|aimfov|hitbox <n>");
+            msg("§f.set velh|velv|aimrange|aimfov|aimsmooth|hitbox <n>");
             return;
         }
         try {
@@ -231,6 +238,7 @@ public class JayHackClient implements ClientModInitializer {
             case "legit" -> LegitProfile.applyLegit();
             case "semi" -> LegitProfile.applySemi();
             case "sword" -> LegitProfile.applySword();
+            case "swordaggro", "aggro" -> LegitProfile.applySwordAggressive();
             case "rage" -> LegitProfile.applyRage();
             case "nethpot" -> LegitProfile.applyNethpot();
             case "uhc" -> LegitProfile.applyUhc();
