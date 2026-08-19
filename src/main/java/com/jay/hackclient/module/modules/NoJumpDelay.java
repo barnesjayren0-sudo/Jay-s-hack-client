@@ -1,8 +1,9 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.mixin.LivingEntityAccessor;
 import com.jay.hackclient.module.Module;
 
-/** Removes client jump cooldown for faster jump-resets in sword. */
+/** Clears jump cooldown via accessor mixin. */
 public class NoJumpDelay extends Module {
 
     public NoJumpDelay() {
@@ -12,11 +13,9 @@ public class NoJumpDelay extends Module {
     @Override
     public void onTick() {
         if (mc.player == null) return;
-        // jumpingCooldown field — try reset each tick while on ground readiness
         try {
-            mc.player.jumpingCooldown = 0;
+            ((LivingEntityAccessor) (Object) mc.player).jay$setJumpingCooldown(0);
         } catch (Throwable ignored) {
-            // field name may differ; ignore if inaccessible
         }
     }
 }

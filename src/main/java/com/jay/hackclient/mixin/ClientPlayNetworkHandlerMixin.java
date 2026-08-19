@@ -5,7 +5,6 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Velocity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,8 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Cancel vanilla KB application, then set reduced velocity immediately.
- * Fixes the "full knockback flash then reduce" delay.
+ * Cancel vanilla KB, apply reduced velocity same frame (1.21.11 uses getVelocity()).
  */
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
@@ -30,18 +28,17 @@ public class ClientPlayNetworkHandlerMixin {
         if (mc.player == null || mc.world == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
 
-        // Prevent vanilla from applying full knockback this tick
         ci.cancel();
 
         double hx = Velocity.horizontalFactor();
         double hy = Velocity.verticalFactor();
 
-        // Packet stores velocity in 1/8000 units on modern versions
-        double vx = packet.getVelocityX();
-        double vy = packet.getVelocityY();
-        double vz = packet.getVelocityZ();
+        Vec3d raw = packet.getVelocity();
+        double vx = raw.x;
+        double vy = raw.y;
+        double vz = raw.z;
 
-        // If values look like raw shorts (large ints), scale down
+        // Safety: if values look like unscaled shorts, divide
         if (Math.abs(vx) > 20 || Math.abs(vy) > 20 || Math.abs(vz) > 20) {
             vx /= 8000.0;
             vy /= 8000.0;
