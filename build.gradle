@@ -1,6 +1,7 @@
 plugins {
     id 'fabric-loom' version '1.14.10'
     id 'maven-publish'
+    id 'org.jetbrains.kotlin.jvm' version '2.1.0'
 }
 
 version = project.mod_version
@@ -20,6 +21,9 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Fabric Language Kotlin — runtime + stdlib for Kotlin modules
+    modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
 }
 
 processResources {
@@ -34,11 +38,20 @@ tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
 }
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = "21"
+        freeCompilerArgs += ["-Xjvm-default=all"]
+    }
+}
+
 java {
-    // Skip sources jar — smaller output for phone users
-    // withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 jar {
@@ -48,7 +61,6 @@ jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-// Only produce the main jar for install
 tasks.named("remapJar").configure {
     archiveClassifier.set("")
 }

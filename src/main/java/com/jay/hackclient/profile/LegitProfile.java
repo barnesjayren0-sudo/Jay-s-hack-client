@@ -22,7 +22,7 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AutoSprint"); on("AutoSword"); on("TriggerBot"); on("AimAssist");
         on("Velocity"); on("WTap"); on("JumpReset"); on("ShieldBreak");
-        on("NoJumpDelay"); on("HUD"); on("TargetHUD"); on("AntiBot");
+        on("NoJumpDelay"); on("ComboAssist"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applySword() {
@@ -31,7 +31,8 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
         on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
-        on("NoJumpDelay"); on("Hitboxes"); on("HUD"); on("TargetHUD"); on("AntiBot");
+        on("NoJumpDelay"); on("ComboAssist"); on("Hitboxes");
+        on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applySwordAggressive() {
@@ -40,7 +41,8 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
         on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
-        on("NoJumpDelay"); on("Hitboxes"); on("HUD"); on("TargetHUD"); on("AntiBot");
+        on("NoJumpDelay"); on("ComboAssist"); on("Hitboxes");
+        on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyRage() {

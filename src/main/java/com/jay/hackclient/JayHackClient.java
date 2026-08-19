@@ -27,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.13.0";
+    public static final String VERSION = "1.14.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -69,6 +69,8 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PotRefill());
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
+        // Kotlin module
+        moduleManager.register(new ComboAssist());
 
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
@@ -137,7 +139,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " instant velocity");
+        System.out.println("[" + NAME + "] v" + VERSION + " Kotlin+Java hybrid");
     }
 
     private void toggle(String name) {
@@ -151,7 +153,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fsword swordaggro velmode settings set aimmode");
+            msg("§fsword velmode settings set aimmode");
             return;
         }
 

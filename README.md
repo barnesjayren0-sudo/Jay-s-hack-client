@@ -1,22 +1,14 @@
-# Jay's Hack Client v1.8.1 — Phone build
+# Jay's Hack Client v1.14.0
 
-Optimized for **PoJav / Mojo / Termux** (Redmi-class devices).
+Fabric **1.21.11** · **Java + Kotlin** hybrid · instant velocity · sword PvP
 
-## Phone optimizations
-- No sources jar (smaller download)
-- Gradle uses less RAM
-- Full-screen GUI on small displays
-- BaseFinder uses smaller radius on phones
-- HUD arraylist capped on small screens
-- World scans on-demand only (`.jay scan`)
-- Defaults: only HUD + AntiBot on
+## Dependencies
+- Fabric Loader + Fabric API
+- **fabric-language-kotlin** (pulled by Gradle; also needed in `mods` if not nested)
 
-## Install
-1. Fabric 1.21.11 + Fabric API
-2. `jays-hack-client-1.8.1.jar` in `mods`
-3. Optional: Sodium (FPS), Baritone (pathing)
+Loom nests FLK into the jar in most setups; if the game says missing `fabric-language-kotlin`, download it from [Fabric Meta](https://meta.fabricmc.net/) into `mods`.
 
-## Build on Termux
+## Build (Termux)
 ```bash
 cd ~/Jay-s-hack-client
 git fetch origin && git reset --hard origin/main
@@ -25,4 +17,12 @@ export GRADLE_OPTS="-Xmx1536m"
 cp build/libs/jays-hack-client-*.jar /sdcard/Download/
 ```
 
-Use **`.jay profile semi`** or **`kit`** for duels.
+First Kotlin build downloads the compiler — may take longer on phone.
+
+## Commands
+```
+.jay sword
+.jay swordaggro
+.jay velmode medium
+.jay settings
+```
