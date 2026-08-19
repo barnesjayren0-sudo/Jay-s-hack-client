@@ -9,37 +9,42 @@ public final class RotationUtil {
 
     private RotationUtil() {}
 
+    /**
+     * Smooth classic aim without per-tick jitter (that caused the wiggle).
+     * Deadzone: if already close enough to target angles, do nothing.
+     */
     public static void lookAt(Entity target, float smoothness) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || target == null) return;
 
         Vec3d eyes = mc.player.getEyePos();
-        // Chest/upper body aim point — classic sword PvP feel
-        double body = 0.72 + MathUtil.randomDouble(-0.04, 0.06);
-        Vec3d pos = target.getEntityPos().add(
-                Humanizer.aimJitter() * 0.012,
-                target.getHeight() * body,
-                Humanizer.aimJitter() * 0.012
-        );
+        // Stable body aim — no random offset each tick
+        Vec3d pos = target.getEntityPos().add(0.0, target.getHeight() * 0.75, 0.0);
 
         double dx = pos.x - eyes.x;
         double dy = pos.y - eyes.y;
         double dz = pos.z - eyes.z;
         double horiz = Math.sqrt(dx * dx + dz * dz);
+        if (horiz < 1.0E-4) return;
 
-        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
-        float pitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
-        pitch = MathHelper.clamp(pitch, -90f, 90f);
+        float targetYaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
+        float targetPitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
+        targetPitch = MathHelper.clamp(targetPitch, -89f, 89f);
 
-        // Light jitter so it isn't a perfect laser
-        yaw += Humanizer.aimJitter() * 0.4f;
-        pitch += Humanizer.aimJitter() * 0.25f;
+        float yawDiff = MathHelper.wrapDegrees(targetYaw - mc.player.getYaw());
+        float pitchDiff = targetPitch - mc.player.getPitch();
 
-        float t = MathHelper.clamp(smoothness, 0.08f, 0.95f);
-        float newYaw = MathUtil.lerp(mc.player.getYaw(), yaw, t);
-        float newPitch = MathUtil.lerp(mc.player.getPitch(), pitch, t);
+        // Deadzone — stop micro-correcting (main stutter source)
+        if (Math.abs(yawDiff) < 1.8f && Math.abs(pitchDiff) < 1.5f) return;
 
-        mc.player.setYaw(newYaw);
-        mc.player.setPitch(newPitch);
+        // Cap how much we can turn per tick so it never snaps/fights hard
+        float maxStep = 4.5f;
+        yawDiff = MathHelper.clamp(yawDiff, -maxStep, maxStep);
+        pitchDiff = MathHelper.clamp(pitchDiff, -maxStep * 0.7f, maxStep * 0.7f);
+
+        float t = MathHelper.clamp(smoothness, 0.08f, 0.45f); // hard cap — never aggressive
+
+        mc.player.setYaw(mc.player.getYaw() + yawDiff * t);
+        mc.player.setPitch(MathHelper.clamp(mc.player.getPitch() + pitchDiff * t, -90f, 90f));
     }
 }

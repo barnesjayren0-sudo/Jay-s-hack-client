@@ -17,9 +17,10 @@ public class AimAssist extends Module {
 
     private long lastSilentHit = 0;
     private int silentDelay = 550;
+    private int tickCounter = 0;
 
     public AimAssist() {
-        super("AimAssist", "classic/silent aim — key J", Category.COMBAT);
+        super("AimAssist", "smooth assist — key J", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_J);
     }
 
@@ -28,8 +29,11 @@ public class AimAssist extends Module {
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (Humanizer.shouldSkipTick()) return;
         if (Mobile.shouldThrottle()) return;
+
+        // Run assist every other tick — halves fight with your camera
+        tickCounter++;
+        if ((tickCounter & 1) != 0) return;
 
         PlayerEntity target = TargetUtil.findCombatTarget(ClientSettings.aimRange, ClientSettings.aimFov);
         if (target == null) return;
@@ -42,16 +46,29 @@ public class AimAssist extends Module {
     }
 
     private void classicTick(PlayerEntity target) {
-        float dyaw = Math.abs(MathHelper.wrapDegrees(
-                (SilentRotations.anglesTo(target) != null ? SilentRotations.anglesTo(target)[0] : mc.player.getYaw())
-                        - mc.player.getYaw()));
+        float[] ang = SilentRotations.anglesTo(target);
+        if (ang == null) return;
+
+        float dyaw = Math.abs(MathHelper.wrapDegrees(ang[0] - mc.player.getYaw()));
         if (dyaw > ClientSettings.aimFov) return;
 
-        float strength = ClientSettings.aimSmooth;
-        if (ClientSettings.requireAttackKey) {
-            strength *= mc.options.attackKey.isPressed() ? 1.3f : 0.65f;
+        // Only pull hard while actually attacking; idle = very light or skip
+        boolean attacking = mc.options.attackKey.isPressed();
+        if (ClientSettings.requireAttackKey && !attacking) {
+            // Gentle float toward target only if already close
+            if (dyaw > 25f) return;
+            RotationUtil.lookAt(target, 0.12f);
+            return;
         }
-        RotationUtil.lookAt(target, Humanizer.aimSmooth(strength));
+
+        // Soft strength — old 0.34 * 1.3 was too sticky
+        float strength = Math.min(0.28f, ClientSettings.aimSmooth * 0.7f);
+        if (attacking) strength = Math.min(0.32f, strength + 0.06f);
+
+        // Skip some frames randomly so it doesn't feel robotic
+        if (Humanizer.chance(12)) return;
+
+        RotationUtil.lookAt(target, strength);
     }
 
     private void silentTick(PlayerEntity target) {

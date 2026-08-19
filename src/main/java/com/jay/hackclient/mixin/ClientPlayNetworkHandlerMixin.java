@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Only soft-scale HORIZONTAL knockback while hurt.
- * Never touch Y — that made falling feel slow.
+ * One-shot horizontal scale when hurt packet applies.
+ * No cancel, no Y change, no every-tick follow-up.
  */
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
@@ -28,19 +28,14 @@ public class ClientPlayNetworkHandlerMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
-
-        // Only when actually taking knockback from a hit
         if (mc.player.hurtTime <= 0) return;
 
         double hx = Velocity.horizontalFactor();
-        if (hx < 0.40) hx = 0.40;
-        if (hx > 0.95) hx = 0.95;
 
         Vec3d v = mc.player.getVelocity();
-        // Keep Y 100% — fall / jump physics stay vanilla
+        // Only X/Z once — never touch Y
         mc.player.setVelocity(v.x * hx, v.y, v.z * hx);
 
-        Velocity.packetHandledThisTick = true;
         Velocity.lastPacketMs = System.currentTimeMillis();
     }
 }

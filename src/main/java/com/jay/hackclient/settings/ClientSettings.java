@@ -7,25 +7,24 @@ public final class ClientSettings {
     public static String aimMode = "classic";
     public static String targetPriority = "crosshair";
 
-    public static double aimRange = 4.5;
+    public static double aimRange = 4.25;
     public static float aimFov = 70f;
-    public static float aimSmooth = 0.28f;
-    public static double auraRange = 3.3;
+    public static float aimSmooth = 0.22f; // softer default
+    public static double auraRange = 3.2;
     public static double hitboxExpand = 0.10;
 
-    public static int combatDelayMin = 500;
-    public static int combatDelayMax = 760;
-    public static int clickDelayMin = 100;
-    public static int clickDelayMax = 160;
+    public static int combatDelayMin = 540;
+    public static int combatDelayMax = 700;
+    public static int clickDelayMin = 105;
+    public static int clickDelayMax = 155;
 
     public static boolean requireAttackKey = true;
     public static boolean cooldownCheck = true;
-    public static int missChance = 5;
-    public static int tickSkipChance = 7;
+    public static int missChance = 4;
+    public static int tickSkipChance = 6;
 
-    // Safer defaults — keep more KB
     public static double velocityHorizontal = 0.55;
-    public static double velocityVertical = 0.95;
+    public static double velocityVertical = 1.0;
     public static String velocityMode = "soft";
 
     public static boolean pingScaleDelays = true;
@@ -37,21 +36,14 @@ public final class ClientSettings {
     public static void applyVelocityMode(String m) {
         velocityMode = m == null ? "soft" : m.toLowerCase();
         switch (velocityMode) {
-            case "strong" -> {
-                // Still not 0 — 0 freezes / flags hard
-                velocityHorizontal = 0.38;
-                velocityVertical = 0.88;
-            }
-            case "medium" -> {
-                velocityHorizontal = 0.48;
-                velocityVertical = 0.92;
-            }
+            case "strong" -> velocityHorizontal = 0.42;
+            case "medium" -> velocityHorizontal = 0.50;
             default -> {
                 velocityMode = "soft";
                 velocityHorizontal = 0.55;
-                velocityVertical = 0.95;
             }
         }
+        velocityVertical = 1.0;
     }
 
     public static void applySwordConfig() {
@@ -59,32 +51,27 @@ public final class ClientSettings {
         aimMode = "classic";
         targetPriority = "crosshair";
         aimRange = 4.25;
-        aimFov = 72f;
-        aimSmooth = 0.34f;
+        aimFov = 68f;
+        aimSmooth = 0.22f;
         auraRange = 3.2;
-        hitboxExpand = 0.11;
+        hitboxExpand = 0.10;
         combatDelayMin = 540;
         combatDelayMax = 700;
-        clickDelayMin = 105;
-        clickDelayMax = 155;
         requireAttackKey = true;
         cooldownCheck = true;
         missChance = 4;
         tickSkipChance = 6;
-        applyVelocityMode("soft"); // safer default after detections
+        applyVelocityMode("soft");
         pingScaleDelays = true;
     }
 
     public static void applySwordAggressiveConfig() {
         applySwordConfig();
         mode = "sword-aggro";
-        aimSmooth = 0.40f;
-        aimFov = 80f;
+        aimSmooth = 0.28f;
+        aimFov = 75f;
         aimRange = 4.5;
-        hitboxExpand = 0.14;
-        combatDelayMin = 500;
-        combatDelayMax = 660;
-        missChance = 2;
+        hitboxExpand = 0.12;
         applyVelocityMode("medium");
     }
 
@@ -93,10 +80,10 @@ public final class ClientSettings {
         aimMode = "classic";
         targetPriority = "lowest_hp";
         aimRange = 4.2;
-        aimFov = 75f;
-        aimSmooth = 0.26f;
+        aimFov = 72f;
+        aimSmooth = 0.20f;
         auraRange = 3.2;
-        hitboxExpand = 0.12;
+        hitboxExpand = 0.11;
         combatDelayMin = 480;
         combatDelayMax = 700;
         requireAttackKey = false;
@@ -112,7 +99,7 @@ public final class ClientSettings {
         targetPriority = "crosshair";
         aimRange = 4.0;
         aimFov = 55f;
-        aimSmooth = 0.20f;
+        aimSmooth = 0.16f;
         auraRange = 3.1;
         hitboxExpand = 0.06;
         combatDelayMin = 560;
@@ -130,7 +117,7 @@ public final class ClientSettings {
         targetPriority = "closest";
         aimRange = 5.5;
         aimFov = 120f;
-        aimSmooth = 0.55f;
+        aimSmooth = 0.40f;
         auraRange = 4.0;
         hitboxExpand = 0.28;
         combatDelayMin = 400;
@@ -144,8 +131,7 @@ public final class ClientSettings {
 
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%s vel=%s h=%.2f delay=%d-%d",
-                mode, aimMode, velocityMode, velocityHorizontal,
-                combatDelayMin, combatDelayMax);
+                "mode=%s aim=%.2f vel=%s h=%.2f",
+                mode, aimSmooth, velocityMode, velocityHorizontal);
     }
 }
