@@ -22,57 +22,25 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AutoSprint"); on("AutoSword"); on("TriggerBot"); on("AimAssist");
         on("Velocity"); on("WTap"); on("JumpReset"); on("ShieldBreak");
-        on("HUD"); on("TargetHUD"); on("AntiBot");
+        on("NoJumpDelay"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
-    /**
-     * Full sword stack — no KillAura, no Speed, no ESP.
-     * Core: AimAssist + TriggerBot + movement resets + shield tools.
-     */
     public static void applySword() {
         off();
         ClientSettings.applySwordConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
-
-        // Core combat
-        on("AimAssist");
-        on("TriggerBot");
-        on("AutoSword");
-        on("ShieldBreak");
-
-        // Movement / KB
-        on("AutoSprint");
-        on("Velocity");
-        on("WTap");
-        on("JumpReset");
-
-        // Small hitbox help
-        on("Hitboxes");
-
-        // UI / filter
-        on("HUD");
-        on("TargetHUD");
-        on("AntiBot");
+        on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
+        on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
+        on("NoJumpDelay"); on("Hitboxes"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
-    /** Sword with stronger aim/vel numbers */
     public static void applySwordAggressive() {
         off();
         ClientSettings.applySwordAggressiveConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
-
-        on("AimAssist");
-        on("TriggerBot");
-        on("AutoSword");
-        on("ShieldBreak");
-        on("AutoSprint");
-        on("Velocity");
-        on("WTap");
-        on("JumpReset");
-        on("Hitboxes");
-        on("HUD");
-        on("TargetHUD");
-        on("AntiBot");
+        on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
+        on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
+        on("NoJumpDelay"); on("Hitboxes"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyRage() {
@@ -80,7 +48,7 @@ public final class LegitProfile {
         ClientSettings.applyRageConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("KillAura"); on("AutoSword"); on("AutoSprint"); on("Velocity");
-        on("WTap"); on("JumpReset"); on("Hitboxes"); on("ShieldBreak");
+        on("WTap"); on("JumpReset"); on("NoJumpDelay"); on("Hitboxes"); on("ShieldBreak");
         on("ESP"); on("Nametags"); on("FullBright"); on("AutoTotem");
         on("HUD"); on("TargetHUD"); on("AntiBot");
     }
@@ -97,7 +65,7 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
         on("Velocity"); on("Hitboxes"); on("AutoPot"); on("PotRefill"); on("AutoTotem");
-        on("JumpReset"); on("HUD"); on("TargetHUD"); on("AntiBot");
+        on("JumpReset"); on("NoJumpDelay"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyUhc() {
@@ -114,7 +82,7 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
         on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
-        on("AutoTotem"); on("OffhandGap"); on("Refill"); on("AutoBlock");
+        on("NoJumpDelay"); on("AutoTotem"); on("OffhandGap"); on("Refill"); on("AutoBlock");
         on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 

@@ -23,8 +23,8 @@ public final class ClientSettings {
     public static int missChance = 5;
     public static int tickSkipChance = 7;
 
-    public static double velocityHorizontal = 0.45;
-    public static double velocityVertical = 0.90;
+    public static double velocityHorizontal = 0.40;
+    public static double velocityVertical = 0.92;
     public static String velocityMode = "medium";
 
     public static boolean pingScaleDelays = true;
@@ -36,59 +36,39 @@ public final class ClientSettings {
     public static void applyVelocityMode(String m) {
         velocityMode = m == null ? "medium" : m.toLowerCase();
         switch (velocityMode) {
-            case "soft" -> { velocityHorizontal = 0.70; velocityVertical = 0.95; }
-            case "strong" -> { velocityHorizontal = 0.32; velocityVertical = 0.85; }
+            case "soft" -> { velocityHorizontal = 0.65; velocityVertical = 0.95; }
+            case "strong" -> { velocityHorizontal = 0.28; velocityVertical = 0.85; }
             default -> {
                 velocityMode = "medium";
-                velocityHorizontal = 0.45;
-                velocityVertical = 0.90;
+                velocityHorizontal = 0.40;
+                velocityVertical = 0.92;
             }
         }
     }
 
-    /**
-     * Sword PvP 1.9+ tuned config.
-     * - Delays sit around full sword cooldown (~560–700ms)
-     * - Classic aim, crosshair priority (no 360 aura feel)
-     * - Medium velocity + small hitbox
-     * - No KillAura in sword profile modules
-     */
     public static void applySwordConfig() {
         mode = "sword";
-
-        // Aim — controllable classic assist
         aimMode = "classic";
         targetPriority = "crosshair";
         aimRange = 4.25;
         aimFov = 72f;
-        aimSmooth = 0.34f;          // stronger pull than before for sword trades
-
-        // Never use KillAura range high in sword mode
+        aimSmooth = 0.34f;
         auraRange = 3.2;
-
-        // Tiny expand — helps trades without blatant boxes
         hitboxExpand = 0.11;
-
-        // Sword cooldown-ish window (1.9 combat)
         combatDelayMin = 540;
         combatDelayMax = 700;
         clickDelayMin = 105;
         clickDelayMax = 155;
-
-        requireAttackKey = true;    // assist stronger when clicking
-        cooldownCheck = true;       // TriggerBot waits for cooldown
+        requireAttackKey = true;
+        cooldownCheck = true;
         missChance = 4;
         tickSkipChance = 6;
-
-        // Stick in trades without 0% KB flag
         applyVelocityMode("medium");
-        velocityHorizontal = 0.42;
+        velocityHorizontal = 0.40;
         velocityVertical = 0.92;
-
         pingScaleDelays = true;
     }
 
-    /** Aggressive sword — still no full rage */
     public static void applySwordAggressiveConfig() {
         applySwordConfig();
         mode = "sword-aggro";
@@ -99,9 +79,9 @@ public final class ClientSettings {
         combatDelayMin = 500;
         combatDelayMax = 660;
         missChance = 2;
-        velocityHorizontal = 0.36;
+        applyVelocityMode("strong");
+        velocityHorizontal = 0.30;
         velocityVertical = 0.88;
-        velocityMode = "strong";
     }
 
     public static void applyNethpotConfig() {
@@ -160,8 +140,8 @@ public final class ClientSettings {
 
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%s/%.0f/%.2f vel=%s h=%.2f delay=%d-%d",
-                mode, aimMode, aimFov, aimSmooth, velocityMode,
-                velocityHorizontal, combatDelayMin, combatDelayMax);
+                "mode=%s aim=%s vel=%s h=%.2f delay=%d-%d",
+                mode, aimMode, velocityMode, velocityHorizontal,
+                combatDelayMin, combatDelayMax);
     }
 }
