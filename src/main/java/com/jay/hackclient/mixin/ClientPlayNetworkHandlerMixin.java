@@ -3,7 +3,6 @@ package com.jay.hackclient.mixin;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Velocity;
-import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
@@ -14,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Do NOT cancel velocity packets — that freezes movement.
- * After vanilla applies, if we were just hurt, soft-scale horizontal KB only.
+ * Only soft-scale HORIZONTAL knockback while hurt.
+ * Never touch Y — that made falling feel slow.
  */
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
@@ -30,18 +29,17 @@ public class ClientPlayNetworkHandlerMixin {
         if (mc.player == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
 
-        // Only touch knockback-like updates: player must be in hurt state
+        // Only when actually taking knockback from a hit
         if (mc.player.hurtTime <= 0) return;
 
         double hx = Velocity.horizontalFactor();
-        double hy = Velocity.verticalFactor();
-
-        // Never go too low — looks like 0-vel to AC
-        if (hx < 0.35) hx = 0.35;
-        if (hy < 0.80) hy = 0.80;
+        if (hx < 0.40) hx = 0.40;
+        if (hx > 0.95) hx = 0.95;
 
         Vec3d v = mc.player.getVelocity();
-        mc.player.setVelocity(v.x * hx, v.y * hy, v.z * hx);
+        // Keep Y 100% — fall / jump physics stay vanilla
+        mc.player.setVelocity(v.x * hx, v.y, v.z * hx);
+
         Velocity.packetHandledThisTick = true;
         Velocity.lastPacketMs = System.currentTimeMillis();
     }
