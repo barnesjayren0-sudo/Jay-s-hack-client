@@ -10,35 +10,27 @@ public final class LegitProfile {
     private LegitProfile() {}
 
     public static void applyLegit() {
-        disableAll();
-        ClientSettings.applyLegitConfig();
-        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+        off(); ClientSettings.applyLegitConfig(); Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AutoSprint"); on("AimAssist"); on("HUD"); on("AntiBot");
     }
 
     public static void applySemi() {
-        disableAll();
-        ClientSettings.applySwordConfig();
-        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+        off(); ClientSettings.applySwordConfig(); Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AutoSprint"); on("AutoSword"); on("TriggerBot"); on("AimAssist");
         on("Velocity"); on("WTap"); on("JumpReset"); on("ShieldBreak");
         on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
-    /** Sword PvP config — quiet */
     public static void applySword() {
-        disableAll();
-        ClientSettings.applySwordConfig();
-        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+        off(); ClientSettings.applySwordConfig(); Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
         on("Velocity"); on("WTap"); on("JumpReset"); on("ShieldBreak");
         on("Hitboxes"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyRage() {
-        unfreeze();
-        ClientSettings.applyRageConfig();
-        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+        if (JayHackClient.moduleManager != null) JayHackClient.moduleManager.unfreeze();
+        ClientSettings.applyRageConfig(); Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("KillAura"); on("AutoSword"); on("AutoSprint"); on("Velocity");
         on("WTap"); on("JumpReset"); on("Hitboxes"); on("ShieldBreak");
         on("ESP"); on("Nametags"); on("FullBright"); on("AutoTotem");
@@ -46,33 +38,27 @@ public final class LegitProfile {
     }
 
     public static void applyScout() {
-        disableAll();
+        off();
         on("BaseFinder"); on("SpawnerFinder"); on("PlayerRadar"); on("PortalFinder");
         on("ESP"); on("Nametags"); on("FullBright"); on("HUD"); on("AntiBot");
     }
 
     public static void applyNethpot() {
-        disableAll();
-        ClientSettings.applyNethpotConfig();
-        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+        off(); ClientSettings.applyNethpotConfig(); Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
-        on("Velocity"); on("Hitboxes"); on("AutoPot"); on("AutoTotem");
+        on("Velocity"); on("Hitboxes"); on("AutoPot"); on("PotRefill"); on("AutoTotem");
         on("JumpReset"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyUhc() {
-        disableAll();
-        ClientSettings.applySwordConfig();
-        Hitboxes.setExpand(0.10);
+        off(); ClientSettings.applySwordConfig();
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
         on("Velocity"); on("AutoGap"); on("AutoHead"); on("PearlCatch");
         on("JumpReset"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applyKit() {
-        disableAll();
-        ClientSettings.applySwordConfig();
-        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+        off(); ClientSettings.applySwordConfig(); Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
         on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
         on("AutoTotem"); on("OffhandGap"); on("Refill"); on("AutoBlock");
@@ -80,21 +66,16 @@ public final class LegitProfile {
     }
 
     public static void applyCrystal() {
-        disableAll();
-        ClientSettings.applyLegitConfig();
+        off(); ClientSettings.applyLegitConfig();
         on("AimAssist"); on("AutoTotem"); on("OffhandGap"); on("Refill");
         on("AnchorMacro"); on("AutoSprint"); on("Velocity"); on("HUD");
         on("TargetHUD"); on("AntiBot");
     }
 
-    private static void disableAll() {
+    private static void off() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-    }
-
-    private static void unfreeze() {
-        if (JayHackClient.moduleManager != null) JayHackClient.moduleManager.unfreeze();
     }
 
     private static void on(String name) {

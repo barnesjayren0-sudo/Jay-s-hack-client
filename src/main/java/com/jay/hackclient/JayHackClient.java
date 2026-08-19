@@ -28,7 +28,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.11.0";
+    public static final String VERSION = "1.12.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -50,7 +50,7 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        ClientSettings.applySwordConfig(); // quiet default
+        ClientSettings.applySwordConfig();
 
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
@@ -66,6 +66,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Reach());
         moduleManager.register(new Hitboxes());
         moduleManager.register(new AutoPot());
+        moduleManager.register(new PotRefill());
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
 
@@ -140,7 +141,7 @@ public class JayHackClient implements ClientModInitializer {
     }
 
     private void toggle(String name) {
-        if (moduleManager.isFrozen()) { msg("§cUnpanic first"); return; }
+        if (moduleManager.isFrozen()) { msg("§cUnpanic"); return; }
         Module m = moduleManager.getModuleByName(name);
         if (m != null) m.toggle();
     }
@@ -150,99 +151,101 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui profile sword nethpot settings set panic");
+            msg("§fgui sword nethpot settings set aimmode priority friend config");
             return;
         }
 
         switch (args[1].toLowerCase()) {
-            case "gui", "menu", "list", "help" -> client.setScreen(new ClickGuiScreen());
+            case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
-            case "binds", "keys" -> {
-                msg("§7J Aim §7T Trigger §7R Aura §7V ShieldBreak");
-                msg("§7G Sprint §7RShift GUI §7Del Panic");
+            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
+            case "nethpot", "pot" -> { LegitProfile.applyNethpot(); configManager.save(); msg("§dNethpot"); }
+            case "kit" -> { LegitProfile.applyKit(); configManager.save(); msg("§aKit"); }
+            case "profile" -> { if (args.length >= 3) { applyProfile(args[2]); configManager.save(); } }
+            case "settings" -> msg("§f" + ClientSettings.summarize());
+            case "aimmode" -> {
+                if (args.length < 3) { msg("§fclassic|silent (now " + ClientSettings.aimMode + ")"); return; }
+                ClientSettings.aimMode = args[2].equalsIgnoreCase("silent") ? "silent" : "classic";
+                configManager.save();
+                msg("§aaimMode=" + ClientSettings.aimMode);
             }
-            case "off", "disableall" -> { moduleManager.disableAll(); msg("§eOff"); }
-            case "panic" -> { moduleManager.panic(); msg("§cPANIC"); }
-            case "unpanic", "unfreeze" -> { moduleManager.unfreeze(); msg("§aOK"); }
-            case "profile" -> { if (args.length >= 3) applyProfile(args[2].toLowerCase()); }
-            case "sword" -> { LegitProfile.applySword(); msg("§aSword config"); }
-            case "nethpot", "pot" -> { LegitProfile.applyNethpot(); msg("§dNethpot config"); }
-            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit"); }
-            case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
-            case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
-            case "settings", "cfginfo", "configinfo" -> msg("§f" + ClientSettings.summarize());
+            case "priority", "prio" -> {
+                if (args.length < 3) { msg("§fcrosshair|closest|lowest_hp"); return; }
+                ClientSettings.targetPriority = args[2].toLowerCase();
+                configManager.save();
+                msg("§apriority=" + ClientSettings.targetPriority);
+            }
             case "set" -> handleSet(args);
-            case "path", "baritone" -> {
-                msg(BaritoneCompat.isPresent() ? "§aBaritone" : "§cNo Baritone");
-                toggle("PathToBase");
-            }
+            case "friend", "friends" -> handleFriend(args);
+            case "config", "cfg" -> handleConfig(args);
+            case "off" -> { moduleManager.disableAll(); msg("§eOff"); }
+            case "panic" -> { moduleManager.panic(); msg("§cPANIC"); }
+            case "unpanic" -> { moduleManager.unfreeze(); msg("§aOK"); }
+            case "path" -> toggle("PathToBase");
             case "scan" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "radar" -> {
-                Module pr = moduleManager.getModuleByName("PlayerRadar");
-                if (pr instanceof PlayerRadar r) r.report(true);
-            }
-            case "friend", "friends" -> handleFriend(args);
-            case "config", "cfg" -> handleConfig(args);
+            case "binds" -> msg("§7J Aim §7T Trigger §7V Shield §7R Aura §7RShift GUI");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set aimrange|aimfov|aimsmooth|aurarange|hitbox|vel <n>");
+            msg("§f.set aimrange|aimfov|aimsmooth|aurarange|hitbox|vel|miss <n>");
             return;
         }
-        String key = args[2].toLowerCase();
         try {
             double v = Double.parseDouble(args[3]);
-            switch (key) {
-                case "aimrange" -> ClientSettings.aimRange = clamp(v, 2, 6);
-                case "aimfov" -> ClientSettings.aimFov = (float) clamp(v, 30, 180);
-                case "aimsmooth" -> ClientSettings.aimSmooth = (float) clamp(v, 0.1, 0.8);
-                case "aurarange" -> ClientSettings.auraRange = clamp(v, 2.5, 4.5);
-                case "hitbox", "hb" -> {
-                    ClientSettings.hitboxExpand = clamp(v, 0, 0.4);
-                    Hitboxes.setExpand(ClientSettings.hitboxExpand);
-                }
-                case "vel", "velocity" -> ClientSettings.velocityFactor = clamp(v, 0.4, 0.95);
-                case "miss" -> ClientSettings.missChance = (int) clamp(v, 0, 20);
-                default -> { msg("§cUnknown setting"); return; }
+            switch (args[2].toLowerCase()) {
+                case "aimrange" -> ClientSettings.aimRange = v;
+                case "aimfov" -> ClientSettings.aimFov = (float) v;
+                case "aimsmooth" -> ClientSettings.aimSmooth = (float) v;
+                case "aurarange" -> ClientSettings.auraRange = v;
+                case "hitbox", "hb" -> { ClientSettings.hitboxExpand = v; Hitboxes.setExpand(v); }
+                case "vel" -> ClientSettings.velocityFactor = v;
+                case "miss" -> ClientSettings.missChance = (int) v;
+                default -> { msg("§cUnknown"); return; }
             }
-            msg("§a" + key + " = " + v);
-        } catch (NumberFormatException e) {
-            msg("§cNumber required");
-        }
-    }
-
-    private double clamp(double v, double min, double max) {
-        return Math.max(min, Math.min(max, v));
+            configManager.save();
+            msg("§a" + args[2] + "=" + v);
+        } catch (Exception e) { msg("§cNumber?"); }
     }
 
     private void applyProfile(String name) {
-        switch (name) {
-            case "legit" -> { LegitProfile.applyLegit(); msg("§aLegit"); }
-            case "semi" -> { LegitProfile.applySemi(); msg("§eSemi"); }
-            case "sword" -> { LegitProfile.applySword(); msg("§aSword"); }
-            case "rage" -> { LegitProfile.applyRage(); msg("§cRage"); }
-            case "scout" -> { LegitProfile.applyScout(); msg("§bScout"); }
-            case "nethpot", "pot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
-            case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
-            case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit"); }
-            case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
-            default -> msg("§c?");
+        switch (name.toLowerCase()) {
+            case "legit" -> LegitProfile.applyLegit();
+            case "semi" -> LegitProfile.applySemi();
+            case "sword" -> LegitProfile.applySword();
+            case "rage" -> LegitProfile.applyRage();
+            case "nethpot" -> LegitProfile.applyNethpot();
+            case "uhc" -> LegitProfile.applyUhc();
+            case "kit" -> LegitProfile.applyKit();
+            case "crystal" -> LegitProfile.applyCrystal();
+            case "scout" -> LegitProfile.applyScout();
+            default -> { msg("§c?"); return; }
         }
+        msg("§a" + name);
     }
 
     private void handleFriend(String[] args) {
-        if (args.length < 3) return;
+        if (args.length < 3) { msg("§ffriend add|del|list <name>"); return; }
         String a = args[2].toLowerCase();
-        if (a.equals("list")) { msg("§f" + String.join(", ", friendManager.getFriends())); return; }
+        if (a.equals("list")) {
+            msg("§fFriends: " + String.join(", ", friendManager.getFriends()));
+            return;
+        }
         if (args.length < 4) return;
-        if (a.equals("add")) { friendManager.add(args[3]); configManager.save(); msg("§a+ " + args[3]); }
-        else if (a.equals("del") || a.equals("remove")) { friendManager.remove(args[3]); configManager.save(); msg("§c- " + args[3]); }
+        if (a.equals("add")) {
+            friendManager.add(args[3]);
+            configManager.save();
+            msg("§a+ " + args[3]);
+        } else if (a.equals("del") || a.equals("remove")) {
+            friendManager.remove(args[3]);
+            configManager.save();
+            msg("§c- " + args[3]);
+        }
     }
 
     private void handleConfig(String[] args) {

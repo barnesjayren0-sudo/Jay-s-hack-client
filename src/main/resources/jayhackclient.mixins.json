@@ -3,7 +3,8 @@
   "package": "com.jay.hackclient.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "EntityMixin"
+    "EntityMixin",
+    "ClientPlayNetworkHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

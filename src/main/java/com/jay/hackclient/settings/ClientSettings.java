@@ -1,38 +1,39 @@
 package com.jay.hackclient.settings;
 
-/**
- * Global tunable settings — quieter defaults for anti-detect.
- * Change via .jay set <name> <value>
- */
 public final class ClientSettings {
 
     private ClientSettings() {}
 
-    // Combat feel
+    public static String aimMode = "classic"; // classic | silent
+    public static String targetPriority = "crosshair"; // crosshair | closest | lowest_hp
+
     public static double aimRange = 4.5;
     public static float aimFov = 70f;
     public static float aimSmooth = 0.28f;
     public static double auraRange = 3.3;
     public static double hitboxExpand = 0.10;
 
-    // Timing (ms) — wider = more human
     public static int combatDelayMin = 500;
     public static int combatDelayMax = 760;
     public static int clickDelayMin = 100;
     public static int clickDelayMax = 160;
 
-    // Legit flags
-    public static boolean requireAttackKey = true;  // AimAssist stronger only when clicking
-    public static boolean cooldownCheck = true;     // wait for weapon cooldown
-    public static int missChance = 5;               // % intentional miss
-    public static int tickSkipChance = 7;           // % skip tick
-    public static double velocityFactor = 0.75;     // not 0
+    public static boolean requireAttackKey = true;
+    public static boolean cooldownCheck = true;
+    public static int missChance = 5;
+    public static int tickSkipChance = 7;
+    public static double velocityFactor = 0.72;
 
-    // Mode labels
-    public static String mode = "sword"; // sword | nethpot | legit | rage
+    public static boolean pingScaleDelays = true;
+    public static boolean hideHudOnScreenshot = true;
+    public static boolean hideHudInDebug = true; // F3
+
+    public static String mode = "sword";
 
     public static void applySwordConfig() {
         mode = "sword";
+        aimMode = "classic";
+        targetPriority = "crosshair";
         aimRange = 4.5;
         aimFov = 68f;
         aimSmooth = 0.30f;
@@ -49,6 +50,8 @@ public final class ClientSettings {
 
     public static void applyNethpotConfig() {
         mode = "nethpot";
+        aimMode = "classic";
+        targetPriority = "lowest_hp";
         aimRange = 4.2;
         aimFov = 75f;
         aimSmooth = 0.26f;
@@ -65,6 +68,8 @@ public final class ClientSettings {
 
     public static void applyLegitConfig() {
         mode = "legit";
+        aimMode = "classic";
+        targetPriority = "crosshair";
         aimRange = 4.0;
         aimFov = 55f;
         aimSmooth = 0.20f;
@@ -81,6 +86,8 @@ public final class ClientSettings {
 
     public static void applyRageConfig() {
         mode = "rage";
+        aimMode = "silent";
+        targetPriority = "closest";
         aimRange = 5.5;
         aimFov = 120f;
         aimSmooth = 0.55f;
@@ -97,8 +104,7 @@ public final class ClientSettings {
 
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%.1f fov=%.0f smooth=%.2f aura=%.1f hb=%.2f delay=%d-%d vel=%.2f",
-                mode, aimRange, aimFov, aimSmooth, auraRange, hitboxExpand,
-                combatDelayMin, combatDelayMax, velocityFactor);
+                "mode=%s aim=%s prio=%s range=%.1f fov=%.0f smooth=%.2f vel=%.2f",
+                mode, aimMode, targetPriority, aimRange, aimFov, aimSmooth, velocityFactor);
     }
 }

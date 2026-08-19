@@ -2,71 +2,104 @@ package com.jay.hackclient.config;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
-import net.fabricmc.loader.api.FabricLoader;
+import com.jay.hackclient.module.modules.Hitboxes;
+import com.jay.hackclient.settings.ClientSettings;
+import net.minecraft.client.MinecraftClient;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public class ConfigManager {
 
-    private final Path file;
-
-    public ConfigManager() {
-        Path dir = FabricLoader.getInstance().getConfigDir().resolve("jayhackclient");
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException ignored) {}
-        this.file = dir.resolve("config.txt");
+    private Path path() {
+        return MinecraftClient.getInstance().runDirectory.toPath()
+                .resolve("config").resolve("jayhackclient.txt");
     }
 
     public void save() {
-        if (JayHackClient.moduleManager == null) return;
-        StringBuilder sb = new StringBuilder();
-        sb.append("# Jay's Hack Client config\n");
-        for (Module m : JayHackClient.moduleManager.getModules()) {
-            sb.append("module:").append(m.getName()).append("=").append(m.isEnabled()).append("\n");
-        }
-        if (JayHackClient.friendManager != null) {
-            for (String f : JayHackClient.friendManager.getFriends()) {
-                sb.append("friend:").append(f).append("\n");
-            }
-        }
         try {
-            Files.writeString(file, sb.toString());
+            Path p = path();
+            Files.createDirectories(p.getParent());
+            StringBuilder sb = new StringBuilder();
+            sb.append("# Jay Hack Client config\n");
+            sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
+            sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
+            sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
+            sb.append("aimFov=").append(ClientSettings.aimFov).append('\n');
+            sb.append("aimSmooth=").append(ClientSettings.aimSmooth).append('\n');
+            sb.append("auraRange=").append(ClientSettings.auraRange).append('\n');
+            sb.append("hitboxExpand=").append(ClientSettings.hitboxExpand).append('\n');
+            sb.append("velocityFactor=").append(ClientSettings.velocityFactor).append('\n');
+            sb.append("combatDelayMin=").append(ClientSettings.combatDelayMin).append('\n');
+            sb.append("combatDelayMax=").append(ClientSettings.combatDelayMax).append('\n');
+            sb.append("missChance=").append(ClientSettings.missChance).append('\n');
+            sb.append("pingScaleDelays=").append(ClientSettings.pingScaleDelays).append('\n');
+            sb.append("hideHudOnScreenshot=").append(ClientSettings.hideHudOnScreenshot).append('\n');
+            sb.append("hideHudInDebug=").append(ClientSettings.hideHudInDebug).append('\n');
+            sb.append("mode=").append(ClientSettings.mode).append('\n');
+
+            if (JayHackClient.moduleManager != null) {
+                for (Module m : JayHackClient.moduleManager.getModules()) {
+                    sb.append("mod.").append(m.getName()).append('=').append(m.isEnabled()).append('\n');
+                }
+            }
+            if (JayHackClient.friendManager != null) {
+                for (String f : JayHackClient.friendManager.getFriends()) {
+                    sb.append("friend.").append(f).append("=true\n");
+                }
+            }
+            Files.writeString(p, sb.toString());
         } catch (IOException e) {
-            System.err.println("[JayHack] Config save failed: " + e.getMessage());
+            System.err.println("[Jay] config save failed: " + e.getMessage());
         }
     }
 
     public void load() {
-        if (!Files.exists(file) || JayHackClient.moduleManager == null) return;
         try {
-            List<String> lines = Files.readAllLines(file);
-            Set<String> friends = new HashSet<>();
-            for (String line : lines) {
+            Path p = path();
+            if (!Files.exists(p)) return;
+            for (String line : Files.readAllLines(p)) {
                 line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) continue;
-                if (line.startsWith("module:")) {
-                    String body = line.substring(7);
-                    int eq = body.lastIndexOf('=');
-                    if (eq <= 0) continue;
-                    String name = body.substring(0, eq);
-                    boolean on = Boolean.parseBoolean(body.substring(eq + 1));
-                    Module m = JayHackClient.moduleManager.getModuleByName(name);
-                    if (m != null) m.setEnabled(on);
-                } else if (line.startsWith("friend:")) {
-                    friends.add(line.substring(7).trim());
+                if (line.isEmpty() || line.startsWith("#") || !line.contains("=")) continue;
+                String[] kv = line.split("=", 2);
+                String k = kv[0].trim();
+                String v = kv[1].trim();
+                switch (k) {
+                    case "aimMode" -> ClientSettings.aimMode = v;
+                    case "targetPriority" -> ClientSettings.targetPriority = v;
+                    case "aimRange" -> ClientSettings.aimRange = dbl(v, ClientSettings.aimRange);
+                    case "aimFov" -> ClientSettings.aimFov = (float) dbl(v, ClientSettings.aimFov);
+                    case "aimSmooth" -> ClientSettings.aimSmooth = (float) dbl(v, ClientSettings.aimSmooth);
+                    case "auraRange" -> ClientSettings.auraRange = dbl(v, ClientSettings.auraRange);
+                    case "hitboxExpand" -> {
+                        ClientSettings.hitboxExpand = dbl(v, ClientSettings.hitboxExpand);
+                        Hitboxes.setExpand(ClientSettings.hitboxExpand);
+                    }
+                    case "velocityFactor" -> ClientSettings.velocityFactor = dbl(v, ClientSettings.velocityFactor);
+                    case "combatDelayMin" -> ClientSettings.combatDelayMin = (int) dbl(v, ClientSettings.combatDelayMin);
+                    case "combatDelayMax" -> ClientSettings.combatDelayMax = (int) dbl(v, ClientSettings.combatDelayMax);
+                    case "missChance" -> ClientSettings.missChance = (int) dbl(v, ClientSettings.missChance);
+                    case "pingScaleDelays" -> ClientSettings.pingScaleDelays = Boolean.parseBoolean(v);
+                    case "hideHudOnScreenshot" -> ClientSettings.hideHudOnScreenshot = Boolean.parseBoolean(v);
+                    case "hideHudInDebug" -> ClientSettings.hideHudInDebug = Boolean.parseBoolean(v);
+                    case "mode" -> ClientSettings.mode = v;
+                    default -> {
+                        if (k.startsWith("mod.") && JayHackClient.moduleManager != null) {
+                            Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
+                            if (m != null) m.setEnabled(Boolean.parseBoolean(v));
+                        } else if (k.startsWith("friend.") && JayHackClient.friendManager != null) {
+                            JayHackClient.friendManager.add(k.substring(7));
+                        }
+                    }
                 }
             }
-            if (JayHackClient.friendManager != null) {
-                JayHackClient.friendManager.setAll(friends);
-            }
-        } catch (IOException e) {
-            System.err.println("[JayHack] Config load failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("[Jay] config load failed: " + e.getMessage());
         }
+    }
+
+    private double dbl(String s, double def) {
+        try { return Double.parseDouble(s); } catch (Exception e) { return def; }
     }
 }

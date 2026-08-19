@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.ItemUtil;
+import com.jay.hackclient.util.SlotLock;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 
@@ -10,26 +11,16 @@ public class AutoSword extends Module {
     private long last;
 
     public AutoSword() {
-        super("AutoSword", "Select best hotbar sword", Category.COMBAT);
+        super("AutoSword", "Best hotbar sword", Category.COMBAT);
     }
 
     @Override
     public void onTick() {
         if (mc.player == null) return;
-        // Don't fight ShieldBreak axe swaps
-        Module sb = com.jay.hackclient.JayHackClient.moduleManager != null
-                ? com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("ShieldBreak")
-                : null;
-        if (sb != null && sb.isEnabled()) {
-            // allow axe if target blocking — ShieldBreak owns slot
-            for (PlayerEntityProxy ignored : new PlayerEntityProxy[0]) {}
-        }
+        if (SlotLock.isLockedByOther("AutoSword")) return;
 
         long now = System.currentTimeMillis();
         if (now - last < 150) return;
-
-        // If currently holding axe and ShieldBreak on, skip
-        if (sb != null && sb.isEnabled() && ItemUtil.isAxe(mc.player.getMainHandStack())) return;
 
         PlayerInventory inv = mc.player.getInventory();
         int bestSlot = -1;
@@ -46,10 +37,10 @@ public class AutoSword extends Module {
         }
 
         if (bestSlot >= 0 && inv.getSelectedSlot() != bestSlot) {
-            inv.setSelectedSlot(bestSlot);
-            last = now;
+            if (SlotLock.tryAcquire("AutoSword", 200)) {
+                inv.setSelectedSlot(bestSlot);
+                last = now;
+            }
         }
     }
-
-    private static class PlayerEntityProxy {}
 }

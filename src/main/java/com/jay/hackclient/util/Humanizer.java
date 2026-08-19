@@ -1,6 +1,7 @@
 package com.jay.hackclient.util;
 
 import com.jay.hackclient.settings.ClientSettings;
+import net.minecraft.client.MinecraftClient;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -16,7 +17,27 @@ public final class Humanizer {
         if (v < minMs) v = minMs;
         if (v > maxMs) v = maxMs;
         if (R.nextInt(100) < 10) v += R.nextInt(50, 140);
-        return v;
+        return scaleByPing(v);
+    }
+
+    private static int scaleByPing(int ms) {
+        if (!ClientSettings.pingScaleDelays) return ms;
+        int ping = getPing();
+        if (ping <= 50) return ms;
+        // add ~15% of ping above 50
+        int extra = (int) ((ping - 50) * 0.15);
+        return ms + Math.min(extra, 120);
+    }
+
+    public static int getPing() {
+        try {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.player == null || mc.getNetworkHandler() == null) return 0;
+            var entry = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
+            return entry != null ? entry.getLatency() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     public static int combatDelay() {
@@ -30,9 +51,7 @@ public final class Humanizer {
     public static int clickDelay() {
         return delay(
                 (ClientSettings.clickDelayMin + ClientSettings.clickDelayMax) / 2,
-                18,
-                ClientSettings.clickDelayMin,
-                ClientSettings.clickDelayMax);
+                18, ClientSettings.clickDelayMin, ClientSettings.clickDelayMax);
     }
 
     public static int swapDelay() {
