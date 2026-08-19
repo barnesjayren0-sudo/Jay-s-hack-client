@@ -14,6 +14,7 @@ public final class LegitProfile {
         ClientSettings.applyLegitConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AutoSprint"); on("AimAssist"); on("HUD"); on("AntiBot");
+        // Velocity OFF by default on pure legit
     }
 
     public static void applySemi() {
@@ -30,9 +31,11 @@ public final class LegitProfile {
         ClientSettings.applySwordConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
-        on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
+        on("AutoSprint"); on("WTap"); on("JumpReset");
         on("NoJumpDelay"); on("ComboAssist"); on("Hitboxes");
         on("HUD"); on("TargetHUD"); on("AntiBot");
+        // Velocity optional — enable with N if you want it
+        // on("Velocity");
     }
 
     public static void applySwordAggressive() {
@@ -66,7 +69,7 @@ public final class LegitProfile {
         ClientSettings.applyNethpotConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
-        on("Velocity"); on("Hitboxes"); on("AutoPot"); on("PotRefill"); on("AutoTotem");
+        on("Hitboxes"); on("AutoPot"); on("PotRefill"); on("AutoTotem");
         on("JumpReset"); on("NoJumpDelay"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
@@ -74,7 +77,7 @@ public final class LegitProfile {
         off();
         ClientSettings.applySwordConfig();
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("AutoSprint");
-        on("Velocity"); on("AutoGap"); on("AutoHead"); on("PearlCatch");
+        on("AutoGap"); on("AutoHead"); on("PearlCatch");
         on("JumpReset"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
@@ -83,7 +86,7 @@ public final class LegitProfile {
         ClientSettings.applySwordConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
-        on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
+        on("AutoSprint"); on("WTap"); on("JumpReset");
         on("NoJumpDelay"); on("AutoTotem"); on("OffhandGap"); on("Refill"); on("AutoBlock");
         on("HUD"); on("TargetHUD"); on("AntiBot");
     }
@@ -92,8 +95,7 @@ public final class LegitProfile {
         off();
         ClientSettings.applyLegitConfig();
         on("AimAssist"); on("AutoTotem"); on("OffhandGap"); on("Refill");
-        on("AnchorMacro"); on("AutoSprint"); on("Velocity"); on("HUD");
-        on("TargetHUD"); on("AntiBot");
+        on("AnchorMacro"); on("AutoSprint"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     private static void off() {

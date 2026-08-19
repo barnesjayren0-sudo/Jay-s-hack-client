@@ -23,9 +23,10 @@ public final class ClientSettings {
     public static int missChance = 5;
     public static int tickSkipChance = 7;
 
-    public static double velocityHorizontal = 0.40;
-    public static double velocityVertical = 0.92;
-    public static String velocityMode = "medium";
+    // Safer defaults — keep more KB
+    public static double velocityHorizontal = 0.55;
+    public static double velocityVertical = 0.95;
+    public static String velocityMode = "soft";
 
     public static boolean pingScaleDelays = true;
     public static boolean hideHudOnScreenshot = true;
@@ -34,14 +35,21 @@ public final class ClientSettings {
     public static String mode = "sword";
 
     public static void applyVelocityMode(String m) {
-        velocityMode = m == null ? "medium" : m.toLowerCase();
+        velocityMode = m == null ? "soft" : m.toLowerCase();
         switch (velocityMode) {
-            case "soft" -> { velocityHorizontal = 0.65; velocityVertical = 0.95; }
-            case "strong" -> { velocityHorizontal = 0.28; velocityVertical = 0.85; }
-            default -> {
-                velocityMode = "medium";
-                velocityHorizontal = 0.40;
+            case "strong" -> {
+                // Still not 0 — 0 freezes / flags hard
+                velocityHorizontal = 0.38;
+                velocityVertical = 0.88;
+            }
+            case "medium" -> {
+                velocityHorizontal = 0.48;
                 velocityVertical = 0.92;
+            }
+            default -> {
+                velocityMode = "soft";
+                velocityHorizontal = 0.55;
+                velocityVertical = 0.95;
             }
         }
     }
@@ -63,9 +71,7 @@ public final class ClientSettings {
         cooldownCheck = true;
         missChance = 4;
         tickSkipChance = 6;
-        applyVelocityMode("medium");
-        velocityHorizontal = 0.40;
-        velocityVertical = 0.92;
+        applyVelocityMode("soft"); // safer default after detections
         pingScaleDelays = true;
     }
 
@@ -79,9 +85,7 @@ public final class ClientSettings {
         combatDelayMin = 500;
         combatDelayMax = 660;
         missChance = 2;
-        applyVelocityMode("strong");
-        velocityHorizontal = 0.30;
-        velocityVertical = 0.88;
+        applyVelocityMode("medium");
     }
 
     public static void applyNethpotConfig() {
@@ -99,7 +103,7 @@ public final class ClientSettings {
         cooldownCheck = true;
         missChance = 4;
         tickSkipChance = 6;
-        applyVelocityMode("medium");
+        applyVelocityMode("soft");
     }
 
     public static void applyLegitConfig() {
@@ -135,7 +139,7 @@ public final class ClientSettings {
         cooldownCheck = false;
         missChance = 1;
         tickSkipChance = 2;
-        applyVelocityMode("strong");
+        applyVelocityMode("medium");
     }
 
     public static String summarize() {

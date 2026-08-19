@@ -3,6 +3,7 @@ package com.jay.hackclient.mixin;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Velocity;
+import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
@@ -13,39 +14,34 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Cancel vanilla KB, apply reduced velocity same frame (1.21.11 uses getVelocity()).
+ * Do NOT cancel velocity packets — that freezes movement.
+ * After vanilla applies, if we were just hurt, soft-scale horizontal KB only.
  */
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
 
-    @Inject(method = "onEntityVelocityUpdate", at = @At("HEAD"), cancellable = true)
-    private void jay$instantVelocity(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
+    @Inject(method = "onEntityVelocityUpdate", at = @At("TAIL"))
+    private void jay$softVelocity(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
         if (JayHackClient.moduleManager == null) return;
         Module mod = JayHackClient.moduleManager.getModuleByName("Velocity");
         if (mod == null || !mod.isEnabled()) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null) return;
+        if (mc.player == null) return;
         if (packet.getEntityId() != mc.player.getId()) return;
 
-        ci.cancel();
+        // Only touch knockback-like updates: player must be in hurt state
+        if (mc.player.hurtTime <= 0) return;
 
         double hx = Velocity.horizontalFactor();
         double hy = Velocity.verticalFactor();
 
-        Vec3d raw = packet.getVelocity();
-        double vx = raw.x;
-        double vy = raw.y;
-        double vz = raw.z;
+        // Never go too low — looks like 0-vel to AC
+        if (hx < 0.35) hx = 0.35;
+        if (hy < 0.80) hy = 0.80;
 
-        // Safety: if values look like unscaled shorts, divide
-        if (Math.abs(vx) > 20 || Math.abs(vy) > 20 || Math.abs(vz) > 20) {
-            vx /= 8000.0;
-            vy /= 8000.0;
-            vz /= 8000.0;
-        }
-
-        mc.player.setVelocity(vx * hx, vy * hy, vz * hx);
+        Vec3d v = mc.player.getVelocity();
+        mc.player.setVelocity(v.x * hx, v.y * hy, v.z * hx);
         Velocity.packetHandledThisTick = true;
         Velocity.lastPacketMs = System.currentTimeMillis();
     }
