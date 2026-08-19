@@ -30,7 +30,9 @@ public class ConfigManager {
             sb.append("aimSmooth=").append(ClientSettings.aimSmooth).append('\n');
             sb.append("auraRange=").append(ClientSettings.auraRange).append('\n');
             sb.append("hitboxExpand=").append(ClientSettings.hitboxExpand).append('\n');
-            sb.append("velocityFactor=").append(ClientSettings.velocityFactor).append('\n');
+            sb.append("velocityMode=").append(ClientSettings.velocityMode).append('\n');
+            sb.append("velocityHorizontal=").append(ClientSettings.velocityHorizontal).append('\n');
+            sb.append("velocityVertical=").append(ClientSettings.velocityVertical).append('\n');
             sb.append("combatDelayMin=").append(ClientSettings.combatDelayMin).append('\n');
             sb.append("combatDelayMax=").append(ClientSettings.combatDelayMax).append('\n');
             sb.append("missChance=").append(ClientSettings.missChance).append('\n');
@@ -76,7 +78,14 @@ public class ConfigManager {
                         ClientSettings.hitboxExpand = dbl(v, ClientSettings.hitboxExpand);
                         Hitboxes.setExpand(ClientSettings.hitboxExpand);
                     }
-                    case "velocityFactor" -> ClientSettings.velocityFactor = dbl(v, ClientSettings.velocityFactor);
+                    case "velocityMode" -> ClientSettings.applyVelocityMode(v);
+                    case "velocityHorizontal" -> ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
+                    case "velocityVertical" -> ClientSettings.velocityVertical = dbl(v, ClientSettings.velocityVertical);
+                    // legacy key from older configs
+                    case "velocityFactor" -> {
+                        ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
+                        ClientSettings.velocityVertical = Math.max(ClientSettings.velocityVertical, 0.85);
+                    }
                     case "combatDelayMin" -> ClientSettings.combatDelayMin = (int) dbl(v, ClientSettings.combatDelayMin);
                     case "combatDelayMax" -> ClientSettings.combatDelayMax = (int) dbl(v, ClientSettings.combatDelayMax);
                     case "missChance" -> ClientSettings.missChance = (int) dbl(v, ClientSettings.missChance);
