@@ -27,7 +27,7 @@ import com.jay.hackclient.render.HudRenderer;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.8.2";
+    public static final String VERSION = "1.9.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -49,9 +49,9 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        moduleManager.register(new KillAura());      // R
-        moduleManager.register(new AimAssist());     // J  silent
-        moduleManager.register(new TriggerBot());    // T
+        moduleManager.register(new KillAura());
+        moduleManager.register(new AimAssist());
+        moduleManager.register(new TriggerBot());
         moduleManager.register(new AutoClicker());
         moduleManager.register(new AutoSword());
         moduleManager.register(new ShieldBreak());
@@ -64,14 +64,14 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
 
-        moduleManager.register(new AutoSprint());    // G
+        moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
 
-        moduleManager.register(new ESP());           // X
+        moduleManager.register(new ESP());
         moduleManager.register(new Nametags());
-        moduleManager.register(new FullBright());    // B
+        moduleManager.register(new FullBright());
         moduleManager.register(new StorageESP());
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
@@ -104,19 +104,16 @@ public class JayHackClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) return;
-
             EVENT_BUS.post(TickEvent.INSTANCE);
 
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
                 client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
             }
-
             if (menuKey.wasPressed()) {
                 if (client.currentScreen instanceof ClickGuiScreen) client.setScreen(null);
                 else if (client.currentScreen == null) client.setScreen(new ClickGuiScreen());
             }
-
             moduleManager.onTick();
         });
 
@@ -135,7 +132,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " silent aim + keybinds");
+        System.out.println("[" + NAME + "] v" + VERSION + " classic AimAssist");
     }
 
     private void toggle(String name) {
@@ -155,35 +152,19 @@ public class JayHackClient implements ClientModInitializer {
             msg("§fgui profile kit binds panic path scan");
             return;
         }
-
         switch (args[1].toLowerCase()) {
-            case "gui", "clickgui", "menu", "list", "help" -> client.setScreen(new ClickGuiScreen());
-            case "toggle" -> {
-                if (args.length < 3) return;
-                toggle(args[2]);
-            }
-            case "binds", "keys", "keybinds" -> listBinds();
-            case "off", "disableall", "disable" -> {
-                moduleManager.disableAll();
-                msg("§eAll off");
-            }
-            case "panic" -> {
-                moduleManager.panic();
-                msg("§cPANIC");
-            }
-            case "unpanic", "unfreeze" -> {
-                moduleManager.unfreeze();
-                msg("§aUnfrozen");
-            }
-            case "profile" -> {
-                if (args.length < 3) return;
-                applyProfile(args[2].toLowerCase());
-            }
+            case "gui", "menu", "list", "help" -> client.setScreen(new ClickGuiScreen());
+            case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
+            case "binds", "keys" -> listBinds();
+            case "off", "disableall" -> { moduleManager.disableAll(); msg("§eAll off"); }
+            case "panic" -> { moduleManager.panic(); msg("§cPANIC"); }
+            case "unpanic", "unfreeze" -> { moduleManager.unfreeze(); msg("§aUnfrozen"); }
+            case "profile" -> { if (args.length >= 3) applyProfile(args[2].toLowerCase()); }
             case "kit", "smp" -> { LegitProfile.applyKit(); msg("§aKit"); }
             case "crystal" -> { LegitProfile.applyCrystal(); msg("§bCrystal"); }
             case "nethpot" -> { LegitProfile.applyNethpot(); msg("§dNethpot"); }
             case "uhc" -> { LegitProfile.applyUhc(); msg("§6UHC"); }
-            case "baritone", "path" -> {
+            case "path", "baritone" -> {
                 msg(BaritoneCompat.isPresent() ? "§aBaritone OK" : "§cNo Baritone");
                 toggle("PathToBase");
             }
@@ -202,14 +183,9 @@ public class JayHackClient implements ClientModInitializer {
     }
 
     private void listBinds() {
-        msg("§fDefault binds:");
-        msg("§7J §fAimAssist (silent)");
-        msg("§7T §fTriggerBot");
-        msg("§7R §fKillAura");
-        msg("§7G §fAutoSprint");
-        msg("§7X §fESP");
-        msg("§7B §fFullBright");
-        msg("§7RShift §fGUI · §7Del §fPanic");
+        msg("§7J §fAimAssist  §7T §fTriggerBot  §7R §fKillAura");
+        msg("§7G §fSprint  §7X §fESP  §7B §fFullBright");
+        msg("§7RShift §fGUI  §7Del §fPanic");
     }
 
     private void applyProfile(String name) {
@@ -229,31 +205,16 @@ public class JayHackClient implements ClientModInitializer {
     private void handleFriend(String[] args) {
         if (args.length < 3) return;
         String a = args[2].toLowerCase();
-        if (a.equals("list")) {
-            msg("§f" + String.join(", ", friendManager.getFriends()));
-            return;
-        }
+        if (a.equals("list")) { msg("§f" + String.join(", ", friendManager.getFriends())); return; }
         if (args.length < 4) return;
-        if (a.equals("add")) {
-            friendManager.add(args[3]);
-            configManager.save();
-            msg("§a+ " + args[3]);
-        } else if (a.equals("del") || a.equals("remove")) {
-            friendManager.remove(args[3]);
-            configManager.save();
-            msg("§c- " + args[3]);
-        }
+        if (a.equals("add")) { friendManager.add(args[3]); configManager.save(); msg("§a+ " + args[3]); }
+        else if (a.equals("del") || a.equals("remove")) { friendManager.remove(args[3]); configManager.save(); msg("§c- " + args[3]); }
     }
 
     private void handleConfig(String[] args) {
         if (args.length < 3) return;
-        if (args[2].equalsIgnoreCase("save")) {
-            configManager.save();
-            msg("§aSaved");
-        } else if (args[2].equalsIgnoreCase("load")) {
-            configManager.load();
-            msg("§aLoaded");
-        }
+        if (args[2].equalsIgnoreCase("save")) { configManager.save(); msg("§aSaved"); }
+        else if (args[2].equalsIgnoreCase("load")) { configManager.load(); msg("§aLoaded"); }
     }
 
     private void msg(String s) {

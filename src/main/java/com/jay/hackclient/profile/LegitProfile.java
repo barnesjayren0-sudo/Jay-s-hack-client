@@ -16,28 +16,31 @@ public final class LegitProfile {
         enable("AutoSprint");
         enable("AimAssist");
         enable("HUD");
+        enable("AntiBot");
     }
 
     public static void applySemi() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.12);
+        Hitboxes.setExpand(0.14);
         enable("AutoSprint");
         enable("AutoSword");
         enable("TriggerBot");
         enable("AimAssist");
         enable("Velocity");
         enable("Hitboxes");
+        enable("WTap");
         enable("AutoTotem");
         enable("HUD");
         enable("TargetHUD");
+        enable("AntiBot");
     }
 
     public static void applyRage() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.28);
+        Hitboxes.setExpand(0.3);
         enable("KillAura");
         enable("AutoSword");
         enable("AutoSprint");
@@ -50,6 +53,7 @@ public final class LegitProfile {
         enable("AutoTotem");
         enable("HUD");
         enable("TargetHUD");
+        enable("AntiBot");
     }
 
     public static void applyScout() {
@@ -64,13 +68,14 @@ public final class LegitProfile {
         enable("Nametags");
         enable("FullBright");
         enable("HUD");
+        enable("AntiBot");
     }
 
     public static void applyNethpot() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.12);
+        Hitboxes.setExpand(0.14);
         enable("AimAssist");
         enable("TriggerBot");
         enable("AutoSword");
@@ -81,13 +86,14 @@ public final class LegitProfile {
         enable("AutoTotem");
         enable("HUD");
         enable("TargetHUD");
+        enable("AntiBot");
     }
 
     public static void applyUhc() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.11);
+        Hitboxes.setExpand(0.12);
         enable("AimAssist");
         enable("TriggerBot");
         enable("AutoSword");
@@ -99,32 +105,35 @@ public final class LegitProfile {
         enable("PearlCatch");
         enable("HUD");
         enable("TargetHUD");
+        enable("AntiBot");
     }
 
     public static void applyKit() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.12);
+        Hitboxes.setExpand(0.14);
         enable("AimAssist");
         enable("TriggerBot");
         enable("AutoSword");
         enable("ShieldBreak");
         enable("AutoSprint");
         enable("Velocity");
+        enable("WTap");
         enable("Hitboxes");
         enable("AutoTotem");
         enable("OffhandGap");
         enable("Refill");
         enable("HUD");
         enable("TargetHUD");
+        enable("AntiBot");
     }
 
     public static void applyCrystal() {
         if (JayHackClient.moduleManager == null) return;
         JayHackClient.moduleManager.disableAll();
         JayHackClient.moduleManager.unfreeze();
-        Hitboxes.setExpand(0.10);
+        Hitboxes.setExpand(0.1);
         enable("AimAssist");
         enable("AutoTotem");
         enable("OffhandGap");
@@ -134,6 +143,7 @@ public final class LegitProfile {
         enable("Velocity");
         enable("HUD");
         enable("TargetHUD");
+        enable("AntiBot");
     }
 
     private static void enable(String name) {

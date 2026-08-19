@@ -14,12 +14,12 @@ public final class RotationUtil {
         if (mc.player == null || target == null) return;
 
         Vec3d eyes = mc.player.getEyePos();
-        // aim slightly off center (chest/head mix) + jitter
-        double body = 0.75 + MathUtil.randomDouble(-0.08, 0.08);
+        // Chest/upper body aim point — classic sword PvP feel
+        double body = 0.72 + MathUtil.randomDouble(-0.04, 0.06);
         Vec3d pos = target.getEntityPos().add(
-                Humanizer.aimJitter() * 0.02,
+                Humanizer.aimJitter() * 0.012,
                 target.getHeight() * body,
-                Humanizer.aimJitter() * 0.02
+                Humanizer.aimJitter() * 0.012
         );
 
         double dx = pos.x - eyes.x;
@@ -29,10 +29,13 @@ public final class RotationUtil {
 
         float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
         float pitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
-        pitch = MathHelper.clamp(pitch + Humanizer.aimJitter() * 0.5f, -90f, 90f);
-        yaw += Humanizer.aimJitter();
+        pitch = MathHelper.clamp(pitch, -90f, 90f);
 
-        float t = Humanizer.aimSmooth(smoothness);
+        // Light jitter so it isn't a perfect laser
+        yaw += Humanizer.aimJitter() * 0.4f;
+        pitch += Humanizer.aimJitter() * 0.25f;
+
+        float t = MathHelper.clamp(smoothness, 0.08f, 0.95f);
         float newYaw = MathUtil.lerp(mc.player.getYaw(), yaw, t);
         float newPitch = MathUtil.lerp(mc.player.getPitch(), pitch, t);
 

@@ -3,27 +3,18 @@
   "id": "jayhackclient",
   "version": "${version}",
   "name": "Jay's Hack Client",
-  "description": "v1.8.1 phone-optimized · PoJav/Mojo · Kit/UHC/Nethpot",
+  "description": "v1.9.0 classic AimAssist + upgraded modules",
   "authors": ["barnesjayren0-sudo"],
-  "contact": {
-    "sources": "https://github.com/barnesjayren0-sudo/Jay-s-hack-client"
-  },
   "license": "All-Rights-Reserved",
   "environment": "client",
   "entrypoints": {
     "client": ["com.jay.hackclient.JayHackClient"]
   },
-  "mixins": [
-    "jayhackclient.mixins.json"
-  ],
+  "mixins": ["jayhackclient.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~1.21.11",
     "java": ">=21",
     "fabric-api": "*"
-  },
-  "suggests": {
-    "baritone": "*",
-    "sodium": "*"
   }
 }
