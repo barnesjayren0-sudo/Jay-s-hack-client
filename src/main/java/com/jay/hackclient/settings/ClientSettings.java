@@ -4,8 +4,8 @@ public final class ClientSettings {
 
     private ClientSettings() {}
 
-    public static String aimMode = "classic"; // classic | silent
-    public static String targetPriority = "crosshair"; // crosshair | closest | lowest_hp
+    public static String aimMode = "classic";
+    public static String targetPriority = "crosshair";
 
     public static double aimRange = 4.5;
     public static float aimFov = 70f;
@@ -22,13 +22,32 @@ public final class ClientSettings {
     public static boolean cooldownCheck = true;
     public static int missChance = 5;
     public static int tickSkipChance = 7;
-    public static double velocityFactor = 0.72;
+
+    /** Horizontal velocity kept (0.35 = keep 35% = strong reduce). Never use 0. */
+    public static double velocityHorizontal = 0.45;
+    /** Vertical velocity kept — leave higher so you don't look fly-hacky */
+    public static double velocityVertical = 0.90;
+    /** soft | medium | strong */
+    public static String velocityMode = "medium";
 
     public static boolean pingScaleDelays = true;
     public static boolean hideHudOnScreenshot = true;
-    public static boolean hideHudInDebug = true; // F3
+    public static boolean hideHudInDebug = true;
 
     public static String mode = "sword";
+
+    public static void applyVelocityMode(String m) {
+        velocityMode = m == null ? "medium" : m.toLowerCase();
+        switch (velocityMode) {
+            case "soft" -> { velocityHorizontal = 0.70; velocityVertical = 0.95; }
+            case "strong" -> { velocityHorizontal = 0.32; velocityVertical = 0.85; }
+            default -> { // medium
+                velocityMode = "medium";
+                velocityHorizontal = 0.45;
+                velocityVertical = 0.90;
+            }
+        }
+    }
 
     public static void applySwordConfig() {
         mode = "sword";
@@ -45,7 +64,7 @@ public final class ClientSettings {
         cooldownCheck = true;
         missChance = 5;
         tickSkipChance = 8;
-        velocityFactor = 0.74;
+        applyVelocityMode("medium");
     }
 
     public static void applyNethpotConfig() {
@@ -63,7 +82,7 @@ public final class ClientSettings {
         cooldownCheck = true;
         missChance = 4;
         tickSkipChance = 6;
-        velocityFactor = 0.70;
+        applyVelocityMode("medium");
     }
 
     public static void applyLegitConfig() {
@@ -81,7 +100,7 @@ public final class ClientSettings {
         cooldownCheck = true;
         missChance = 8;
         tickSkipChance = 12;
-        velocityFactor = 0.82;
+        applyVelocityMode("soft");
     }
 
     public static void applyRageConfig() {
@@ -99,12 +118,12 @@ public final class ClientSettings {
         cooldownCheck = false;
         missChance = 1;
         tickSkipChance = 2;
-        velocityFactor = 0.55;
+        applyVelocityMode("strong");
     }
 
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%s prio=%s range=%.1f fov=%.0f smooth=%.2f vel=%.2f",
-                mode, aimMode, targetPriority, aimRange, aimFov, aimSmooth, velocityFactor);
+                "mode=%s aim=%s vel=%s h=%.2f v=%.2f",
+                mode, aimMode, velocityMode, velocityHorizontal, velocityVertical);
     }
 }

@@ -12,7 +12,6 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
-import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.config.ConfigManager;
 import com.jay.hackclient.event.EventBus;
 import com.jay.hackclient.event.events.TickEvent;
@@ -28,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.12.0";
+    public static final String VERSION = "1.12.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -137,7 +136,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " " + ClientSettings.summarize());
+        System.out.println("[" + NAME + "] v" + VERSION + " velocity overhaul");
     }
 
     private void toggle(String name) {
@@ -151,7 +150,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fgui sword nethpot settings set aimmode priority friend config");
+            msg("§fgui sword nethpot velmode settings set aimmode priority");
             return;
         }
 
@@ -163,8 +162,21 @@ public class JayHackClient implements ClientModInitializer {
             case "kit" -> { LegitProfile.applyKit(); configManager.save(); msg("§aKit"); }
             case "profile" -> { if (args.length >= 3) { applyProfile(args[2]); configManager.save(); } }
             case "settings" -> msg("§f" + ClientSettings.summarize());
+            case "velmode", "velocity" -> {
+                if (args.length < 3) {
+                    msg("§fvelmode soft|medium|strong (now " + ClientSettings.velocityMode + ")");
+                    return;
+                }
+                ClientSettings.applyVelocityMode(args[2]);
+                configManager.save();
+                msg("§aVelocity " + ClientSettings.velocityMode
+                        + " h=" + ClientSettings.velocityHorizontal
+                        + " v=" + ClientSettings.velocityVertical);
+                Module vel = moduleManager.getModuleByName("Velocity");
+                if (vel != null && !vel.isEnabled()) vel.setEnabled(true);
+            }
             case "aimmode" -> {
-                if (args.length < 3) { msg("§fclassic|silent (now " + ClientSettings.aimMode + ")"); return; }
+                if (args.length < 3) { msg("§fclassic|silent"); return; }
                 ClientSettings.aimMode = args[2].equalsIgnoreCase("silent") ? "silent" : "classic";
                 configManager.save();
                 msg("§aaimMode=" + ClientSettings.aimMode);
@@ -186,25 +198,26 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7J Aim §7T Trigger §7V Shield §7R Aura §7RShift GUI");
+            case "binds" -> msg("§7J Aim §7T Trigger §7V Shield §7N Velocity §7R Aura");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set aimrange|aimfov|aimsmooth|aurarange|hitbox|vel|miss <n>");
+            msg("§f.set velh|velv|aimrange|aimfov|hitbox <n>");
             return;
         }
         try {
             double v = Double.parseDouble(args[3]);
             switch (args[2].toLowerCase()) {
+                case "velh", "vel" -> ClientSettings.velocityHorizontal = Math.max(0.25, Math.min(0.95, v));
+                case "velv" -> ClientSettings.velocityVertical = Math.max(0.7, Math.min(1.0, v));
                 case "aimrange" -> ClientSettings.aimRange = v;
                 case "aimfov" -> ClientSettings.aimFov = (float) v;
                 case "aimsmooth" -> ClientSettings.aimSmooth = (float) v;
                 case "aurarange" -> ClientSettings.auraRange = v;
                 case "hitbox", "hb" -> { ClientSettings.hitboxExpand = v; Hitboxes.setExpand(v); }
-                case "vel" -> ClientSettings.velocityFactor = v;
                 case "miss" -> ClientSettings.missChance = (int) v;
                 default -> { msg("§cUnknown"); return; }
             }
@@ -230,22 +243,12 @@ public class JayHackClient implements ClientModInitializer {
     }
 
     private void handleFriend(String[] args) {
-        if (args.length < 3) { msg("§ffriend add|del|list <name>"); return; }
+        if (args.length < 3) return;
         String a = args[2].toLowerCase();
-        if (a.equals("list")) {
-            msg("§fFriends: " + String.join(", ", friendManager.getFriends()));
-            return;
-        }
+        if (a.equals("list")) { msg("§f" + String.join(", ", friendManager.getFriends())); return; }
         if (args.length < 4) return;
-        if (a.equals("add")) {
-            friendManager.add(args[3]);
-            configManager.save();
-            msg("§a+ " + args[3]);
-        } else if (a.equals("del") || a.equals("remove")) {
-            friendManager.remove(args[3]);
-            configManager.save();
-            msg("§c- " + args[3]);
-        }
+        if (a.equals("add")) { friendManager.add(args[3]); configManager.save(); msg("§a+ " + args[3]); }
+        else if (a.equals("del") || a.equals("remove")) { friendManager.remove(args[3]); configManager.save(); msg("§c- " + args[3]); }
     }
 
     private void handleConfig(String[] args) {
