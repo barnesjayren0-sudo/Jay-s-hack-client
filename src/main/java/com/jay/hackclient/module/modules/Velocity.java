@@ -5,18 +5,14 @@ import com.jay.hackclient.settings.ClientSettings;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Horizontal knockback reduction.
- * Does not modify Y velocity.
- * Handled only on velocity packet (mixin) — no per-tick setVelocity.
+ * Horizontal knockback reduction via EntityVelocityUpdateS2CPacketMixin.
+ * Y is never modified.
  */
 public class Velocity extends Module {
 
     public static long lastPacketMs = 0;
 
-    // Default: keep 55% of horizontal knockback
     public static double velocityHorizontal = 0.55;
-
-    // Y is never modified
     public static double velocityVertical = 1.0;
 
     public Velocity() {
@@ -25,21 +21,14 @@ public class Velocity extends Module {
             "Reduces horizontal knockback",
             Category.COMBAT
         );
-
         setKeyBind(GLFW.GLFW_KEY_N);
     }
 
     @Override
     public void onTick() {
-        // Intentionally empty.
-        // Velocity is handled when the knockback packet arrives.
+        // empty — packet mixin only
     }
 
-    /**
-     * soft   = 0.55
-     * medium = 0.50
-     * strong = 0.42
-     */
     public static void applyVelocityMode(String mode) {
         if (mode == null) {
             velocityHorizontal = 0.55;
@@ -75,6 +64,6 @@ public class Velocity extends Module {
     }
 
     public static double verticalFactor() {
-        return velocityVertical; // always 1.0
+        return 1.0;
     }
 }
