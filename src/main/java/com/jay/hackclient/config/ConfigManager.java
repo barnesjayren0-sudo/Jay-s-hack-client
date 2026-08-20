@@ -28,14 +28,20 @@ public class ConfigManager {
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
             sb.append("aimFov=").append(ClientSettings.aimFov).append('\n');
             sb.append("aimSmooth=").append(ClientSettings.aimSmooth).append('\n');
+            sb.append("aimDeadzone=").append(ClientSettings.aimDeadzone).append('\n');
+            sb.append("aimMaxStep=").append(ClientSettings.aimMaxStep).append('\n');
             sb.append("auraRange=").append(ClientSettings.auraRange).append('\n');
             sb.append("hitboxExpand=").append(ClientSettings.hitboxExpand).append('\n');
             sb.append("velocityMode=").append(ClientSettings.velocityMode).append('\n');
             sb.append("velocityHorizontal=").append(ClientSettings.velocityHorizontal).append('\n');
             sb.append("velocityVertical=").append(ClientSettings.velocityVertical).append('\n');
+            sb.append("velocityOnlyWhenHurt=").append(ClientSettings.velocityOnlyWhenHurt).append('\n');
             sb.append("combatDelayMin=").append(ClientSettings.combatDelayMin).append('\n');
             sb.append("combatDelayMax=").append(ClientSettings.combatDelayMax).append('\n');
             sb.append("missChance=").append(ClientSettings.missChance).append('\n');
+            sb.append("tickSkipChance=").append(ClientSettings.tickSkipChance).append('\n');
+            sb.append("requireAttackKey=").append(ClientSettings.requireAttackKey).append('\n');
+            sb.append("cooldownCheck=").append(ClientSettings.cooldownCheck).append('\n');
             sb.append("pingScaleDelays=").append(ClientSettings.pingScaleDelays).append('\n');
             sb.append("hideHudOnScreenshot=").append(ClientSettings.hideHudOnScreenshot).append('\n');
             sb.append("hideHudInDebug=").append(ClientSettings.hideHudInDebug).append('\n');
@@ -73,6 +79,8 @@ public class ConfigManager {
                     case "aimRange" -> ClientSettings.aimRange = dbl(v, ClientSettings.aimRange);
                     case "aimFov" -> ClientSettings.aimFov = (float) dbl(v, ClientSettings.aimFov);
                     case "aimSmooth" -> ClientSettings.aimSmooth = (float) dbl(v, ClientSettings.aimSmooth);
+                    case "aimDeadzone" -> ClientSettings.aimDeadzone = (float) dbl(v, ClientSettings.aimDeadzone);
+                    case "aimMaxStep" -> ClientSettings.aimMaxStep = (float) dbl(v, ClientSettings.aimMaxStep);
                     case "auraRange" -> ClientSettings.auraRange = dbl(v, ClientSettings.auraRange);
                     case "hitboxExpand" -> {
                         ClientSettings.hitboxExpand = dbl(v, ClientSettings.hitboxExpand);
@@ -81,6 +89,7 @@ public class ConfigManager {
                     case "velocityMode" -> ClientSettings.applyVelocityMode(v);
                     case "velocityHorizontal" -> ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
                     case "velocityVertical" -> ClientSettings.velocityVertical = dbl(v, ClientSettings.velocityVertical);
+                    case "velocityOnlyWhenHurt" -> ClientSettings.velocityOnlyWhenHurt = Boolean.parseBoolean(v);
                     // legacy key from older configs
                     case "velocityFactor" -> {
                         ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
@@ -89,6 +98,9 @@ public class ConfigManager {
                     case "combatDelayMin" -> ClientSettings.combatDelayMin = (int) dbl(v, ClientSettings.combatDelayMin);
                     case "combatDelayMax" -> ClientSettings.combatDelayMax = (int) dbl(v, ClientSettings.combatDelayMax);
                     case "missChance" -> ClientSettings.missChance = (int) dbl(v, ClientSettings.missChance);
+                    case "tickSkipChance" -> ClientSettings.tickSkipChance = (int) dbl(v, ClientSettings.tickSkipChance);
+                    case "requireAttackKey" -> ClientSettings.requireAttackKey = Boolean.parseBoolean(v);
+                    case "cooldownCheck" -> ClientSettings.cooldownCheck = Boolean.parseBoolean(v);
                     case "pingScaleDelays" -> ClientSettings.pingScaleDelays = Boolean.parseBoolean(v);
                     case "hideHudOnScreenshot" -> ClientSettings.hideHudOnScreenshot = Boolean.parseBoolean(v);
                     case "hideHudInDebug" -> ClientSettings.hideHudInDebug = Boolean.parseBoolean(v);

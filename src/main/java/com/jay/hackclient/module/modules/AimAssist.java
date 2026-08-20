@@ -25,6 +25,13 @@ public class AimAssist extends Module {
     }
 
     @Override
+    public void onEnable() {
+        // Avoid a fixed first interval just like subsequent combat actions.
+        silentDelay = Humanizer.combatDelay();
+        lastSilentHit = 0;
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
@@ -66,7 +73,7 @@ public class AimAssist extends Module {
         if (attacking) strength = Math.min(0.32f, strength + 0.06f);
 
         // Skip some frames randomly so it doesn't feel robotic
-        if (Humanizer.chance(12)) return;
+        if (Humanizer.shouldSkipTick()) return;
 
         RotationUtil.lookAt(target, strength);
     }

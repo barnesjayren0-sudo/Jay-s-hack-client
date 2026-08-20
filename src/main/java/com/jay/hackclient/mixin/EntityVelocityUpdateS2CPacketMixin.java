@@ -3,6 +3,7 @@ package com.jay.hackclient.mixin;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Velocity;
+import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,6 +43,12 @@ public class EntityVelocityUpdateS2CPacketMixin {
         }
 
         if (packet.getEntityId() != mc.player.getId()) {
+            return;
+        }
+
+        // The packet is already scoped to the local player; avoid changing
+        // routine velocity updates outside the hurt window.
+        if (ClientSettings.velocityOnlyWhenHurt && mc.player.hurtTime <= 0) {
             return;
         }
 

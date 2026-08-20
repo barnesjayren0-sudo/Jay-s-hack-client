@@ -23,6 +23,12 @@ public class TriggerBot extends Module {
     }
 
     @Override
+    public void onEnable() {
+        nextDelay = Humanizer.combatDelay();
+        lastAttack = 0;
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;

@@ -4,6 +4,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import com.jay.hackclient.settings.ClientSettings;
 
 public final class RotationUtil {
 
@@ -35,10 +36,11 @@ public final class RotationUtil {
         float pitchDiff = targetPitch - mc.player.getPitch();
 
         // Deadzone — stop micro-correcting (main stutter source)
-        if (Math.abs(yawDiff) < 1.8f && Math.abs(pitchDiff) < 1.5f) return;
+        if (Math.abs(yawDiff) < ClientSettings.aimDeadzone
+                && Math.abs(pitchDiff) < ClientSettings.aimDeadzone * 0.85f) return;
 
         // Cap how much we can turn per tick so it never snaps/fights hard
-        float maxStep = 4.5f;
+        float maxStep = MathHelper.clamp(ClientSettings.aimMaxStep, 2.0f, 6.0f);
         yawDiff = MathHelper.clamp(yawDiff, -maxStep, maxStep);
         pitchDiff = MathHelper.clamp(pitchDiff, -maxStep * 0.7f, maxStep * 0.7f);
 

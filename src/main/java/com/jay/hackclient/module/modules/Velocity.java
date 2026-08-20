@@ -60,7 +60,7 @@ public class Velocity extends Module {
     }
 
     public static double horizontalFactor() {
-        return velocityHorizontal;
+        return Math.max(0.40, Math.min(0.95, velocityHorizontal));
     }
 
     public static double verticalFactor() {

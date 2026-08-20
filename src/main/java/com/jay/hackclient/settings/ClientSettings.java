@@ -10,6 +10,8 @@ public final class ClientSettings {
     public static double aimRange = 4.25;
     public static float aimFov = 70f;
     public static float aimSmooth = 0.22f; // softer default
+    public static float aimDeadzone = 1.8f;
+    public static float aimMaxStep = 4.5f;
     public static double auraRange = 3.2;
     public static double hitboxExpand = 0.10;
 
@@ -26,6 +28,7 @@ public final class ClientSettings {
     public static double velocityHorizontal = 0.55;
     public static double velocityVertical = 1.0;
     public static String velocityMode = "soft";
+    public static boolean velocityOnlyWhenHurt = true;
 
     public static boolean pingScaleDelays = true;
     public static boolean hideHudOnScreenshot = true;
@@ -53,6 +56,8 @@ public final class ClientSettings {
         aimRange = 4.25;
         aimFov = 68f;
         aimSmooth = 0.22f;
+        aimDeadzone = 1.8f;
+        aimMaxStep = 4.5f;
         auraRange = 3.2;
         hitboxExpand = 0.10;
         combatDelayMin = 540;
@@ -62,6 +67,7 @@ public final class ClientSettings {
         missChance = 4;
         tickSkipChance = 6;
         applyVelocityMode("soft");
+        velocityOnlyWhenHurt = true;
         pingScaleDelays = true;
     }
 

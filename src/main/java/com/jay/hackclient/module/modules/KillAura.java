@@ -23,6 +23,12 @@ public class KillAura extends Module {
     }
 
     @Override
+    public void onEnable() {
+        nextDelay = Humanizer.combatDelay();
+        lastAttack = 0;
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
