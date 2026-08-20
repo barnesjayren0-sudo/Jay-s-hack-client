@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "jayhackclient",
+  "version": "1.14.1",
+  "name": "Jay's Hack Client",
+  "description": "v1.14.0 Kotlin + Java hybrid · instant velocity · sword PvP",
+  "authors": ["barnesjayren0-sudo"],
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.jay.hackclient.JayHackClient"]
+  },
+  "mixins": ["jayhackclient.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.jay.hackclient.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "EntityMixin",
+    "EntityVelocityUpdateS2CPacketMixin",
+    "LivingEntityAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
