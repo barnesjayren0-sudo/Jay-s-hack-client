@@ -10,12 +10,15 @@ import com.jay.hackclient.util.RotationUtil;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 public class KillAura extends Module {
 
     private long lastAttack = 0;
     private int nextDelay = 560;
+    private int lockedTargetId = -1;
+    private long targetLockedUntil = 0;
 
     public KillAura() {
         super("KillAura", "Quiet aura (use TriggerBot if possible)", Category.COMBAT);
@@ -63,6 +66,7 @@ public class KillAura extends Module {
     private LivingEntity findTarget() {
         LivingEntity best = null;
         double closest = ClientSettings.auraRange;
+        long now = System.currentTimeMillis();
 
         for (PlayerEntity player : mc.world.getPlayers()) {
             if (player == mc.player || !player.isAlive() || player.isSpectator()) continue;
@@ -71,11 +75,28 @@ public class KillAura extends Module {
                     && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
 
             double dist = mc.player.distanceTo(player);
-            if (dist <= closest) {
+            float yaw = (float) (Math.atan2(player.getZ() - mc.player.getZ(),
+                    player.getX() - mc.player.getX()) * (180.0 / Math.PI)) - 90f;
+            float yawDiff = Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
+            if (dist <= closest && yawDiff <= ClientSettings.auraFov) {
+                if (!ClientSettings.auraMultiTarget && lockedTargetId != -1
+                        && now < targetLockedUntil && player.getId() != lockedTargetId) {
+                    continue;
+                }
                 closest = dist;
                 best = player;
             }
         }
+        if (best != null && best.getId() != lockedTargetId) {
+            lockedTargetId = best.getId();
+            targetLockedUntil = now + Humanizer.combatDelay();
+        }
         return best;
+    }
+
+    @Override
+    public void onDisable() {
+        lockedTargetId = -1;
+        targetLockedUntil = 0;
     }
 }

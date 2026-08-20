@@ -3,15 +3,23 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.SlotLock;
+import com.jay.hackclient.util.Humanizer;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 
 public class AutoSword extends Module {
 
     private long last;
+    private int nextDelay = 150;
 
     public AutoSword() {
         super("AutoSword", "Best hotbar sword", Category.COMBAT);
+    }
+
+    @Override
+    public void onEnable() {
+        nextDelay = Humanizer.delay(150, 28, 90, 240);
+        last = 0;
     }
 
     @Override
@@ -20,7 +28,7 @@ public class AutoSword extends Module {
         if (SlotLock.isLockedByOther("AutoSword")) return;
 
         long now = System.currentTimeMillis();
-        if (now - last < 150) return;
+        if (now - last < nextDelay) return;
 
         PlayerInventory inv = mc.player.getInventory();
         int bestSlot = -1;
@@ -40,6 +48,7 @@ public class AutoSword extends Module {
             if (SlotLock.tryAcquire("AutoSword", 200)) {
                 inv.setSelectedSlot(bestSlot);
                 last = now;
+                nextDelay = Humanizer.delay(150, 28, 90, 240);
             }
         }
     }

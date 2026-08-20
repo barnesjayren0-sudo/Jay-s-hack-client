@@ -54,6 +54,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
+        moduleManager.register(new CritAssist());
         moduleManager.register(new AutoClicker());
         moduleManager.register(new AutoSword());
         moduleManager.register(new ShieldBreak());

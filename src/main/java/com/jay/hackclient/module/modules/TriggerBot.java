@@ -45,6 +45,7 @@ public class TriggerBot extends Module {
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
         if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.9f) return;
+        if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;

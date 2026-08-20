@@ -13,6 +13,8 @@ public final class ClientSettings {
     public static float aimDeadzone = 1.8f;
     public static float aimMaxStep = 4.5f;
     public static double auraRange = 3.2;
+    public static float auraFov = 70f;
+    public static boolean auraMultiTarget = false;
     public static double hitboxExpand = 0.10;
 
     public static int combatDelayMin = 540;
@@ -22,6 +24,7 @@ public final class ClientSettings {
 
     public static boolean requireAttackKey = true;
     public static boolean cooldownCheck = true;
+    public static boolean critTiming = false;
     public static int missChance = 4;
     public static int tickSkipChance = 6;
 
@@ -59,11 +62,14 @@ public final class ClientSettings {
         aimDeadzone = 1.8f;
         aimMaxStep = 4.5f;
         auraRange = 3.2;
+        auraFov = 70f;
+        auraMultiTarget = false;
         hitboxExpand = 0.10;
         combatDelayMin = 540;
         combatDelayMax = 700;
         requireAttackKey = true;
         cooldownCheck = true;
+        critTiming = false;
         missChance = 4;
         tickSkipChance = 6;
         applyVelocityMode("soft");

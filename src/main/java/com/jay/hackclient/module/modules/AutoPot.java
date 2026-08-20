@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.MathUtil;
+import com.jay.hackclient.util.SlotLock;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -21,6 +22,7 @@ public class AutoPot extends Module {
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
+        if (SlotLock.isLockedByOther("AutoPot")) return;
         if (mc.player.getHealth() + mc.player.getAbsorptionAmount() > healthThreshold) return;
         if (mc.player.hasStatusEffect(StatusEffects.REGENERATION)
                 && mc.player.getHealth() > 8) return;
@@ -32,6 +34,7 @@ public class AutoPot extends Module {
         if (slot == -1) return;
 
         int prev = mc.player.getInventory().getSelectedSlot();
+        if (!SlotLock.tryAcquire("AutoPot", 450)) return;
         mc.player.getInventory().setSelectedSlot(slot);
 
         // Look down slightly for self-pot
@@ -43,6 +46,7 @@ public class AutoPot extends Module {
 
         mc.player.setPitch(pitch);
         mc.player.getInventory().setSelectedSlot(prev);
+        SlotLock.release("AutoPot");
         lastPot = now;
     }
 

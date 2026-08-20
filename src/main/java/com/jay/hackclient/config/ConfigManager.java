@@ -31,6 +31,8 @@ public class ConfigManager {
             sb.append("aimDeadzone=").append(ClientSettings.aimDeadzone).append('\n');
             sb.append("aimMaxStep=").append(ClientSettings.aimMaxStep).append('\n');
             sb.append("auraRange=").append(ClientSettings.auraRange).append('\n');
+            sb.append("auraFov=").append(ClientSettings.auraFov).append('\n');
+            sb.append("auraMultiTarget=").append(ClientSettings.auraMultiTarget).append('\n');
             sb.append("hitboxExpand=").append(ClientSettings.hitboxExpand).append('\n');
             sb.append("velocityMode=").append(ClientSettings.velocityMode).append('\n');
             sb.append("velocityHorizontal=").append(ClientSettings.velocityHorizontal).append('\n');
@@ -42,6 +44,7 @@ public class ConfigManager {
             sb.append("tickSkipChance=").append(ClientSettings.tickSkipChance).append('\n');
             sb.append("requireAttackKey=").append(ClientSettings.requireAttackKey).append('\n');
             sb.append("cooldownCheck=").append(ClientSettings.cooldownCheck).append('\n');
+            sb.append("critTiming=").append(ClientSettings.critTiming).append('\n');
             sb.append("pingScaleDelays=").append(ClientSettings.pingScaleDelays).append('\n');
             sb.append("hideHudOnScreenshot=").append(ClientSettings.hideHudOnScreenshot).append('\n');
             sb.append("hideHudInDebug=").append(ClientSettings.hideHudInDebug).append('\n');
@@ -82,6 +85,8 @@ public class ConfigManager {
                     case "aimDeadzone" -> ClientSettings.aimDeadzone = (float) dbl(v, ClientSettings.aimDeadzone);
                     case "aimMaxStep" -> ClientSettings.aimMaxStep = (float) dbl(v, ClientSettings.aimMaxStep);
                     case "auraRange" -> ClientSettings.auraRange = dbl(v, ClientSettings.auraRange);
+                    case "auraFov" -> ClientSettings.auraFov = (float) dbl(v, ClientSettings.auraFov);
+                    case "auraMultiTarget" -> ClientSettings.auraMultiTarget = Boolean.parseBoolean(v);
                     case "hitboxExpand" -> {
                         ClientSettings.hitboxExpand = dbl(v, ClientSettings.hitboxExpand);
                         Hitboxes.setExpand(ClientSettings.hitboxExpand);
@@ -101,6 +106,7 @@ public class ConfigManager {
                     case "tickSkipChance" -> ClientSettings.tickSkipChance = (int) dbl(v, ClientSettings.tickSkipChance);
                     case "requireAttackKey" -> ClientSettings.requireAttackKey = Boolean.parseBoolean(v);
                     case "cooldownCheck" -> ClientSettings.cooldownCheck = Boolean.parseBoolean(v);
+                    case "critTiming" -> ClientSettings.critTiming = Boolean.parseBoolean(v);
                     case "pingScaleDelays" -> ClientSettings.pingScaleDelays = Boolean.parseBoolean(v);
                     case "hideHudOnScreenshot" -> ClientSettings.hideHudOnScreenshot = Boolean.parseBoolean(v);
                     case "hideHudInDebug" -> ClientSettings.hideHudInDebug = Boolean.parseBoolean(v);

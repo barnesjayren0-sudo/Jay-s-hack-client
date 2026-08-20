@@ -2,6 +2,7 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.Humanizer;
+import com.jay.hackclient.util.SlotLock;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -19,6 +20,7 @@ public class AutoTotem extends Module {
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
+        if (SlotLock.isLockedByOther("AutoTotem")) return;
 
         ItemStack off = mc.player.getOffHandStack();
         if (off.isOf(Items.TOTEM_OF_UNDYING)) return;
@@ -28,6 +30,7 @@ public class AutoTotem extends Module {
 
         int slot = findTotemSlot();
         if (slot == -1) return;
+        if (!SlotLock.tryAcquire("AutoTotem", 350)) return;
 
         try {
             int syncId = mc.player.playerScreenHandler.syncId;
@@ -38,6 +41,8 @@ public class AutoTotem extends Module {
             }
             lastSwap = now;
         } catch (Exception ignored) {
+        } finally {
+            SlotLock.release("AutoTotem");
         }
     }
 

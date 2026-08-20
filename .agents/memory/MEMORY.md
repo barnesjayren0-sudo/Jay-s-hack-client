@@ -1,0 +1,1 @@
+- [Fabric build toolchain](fabric-build-toolchain.md) — This Loom 1.14.10 project needs Gradle 9.2.0 and Java 21 to build successfully.

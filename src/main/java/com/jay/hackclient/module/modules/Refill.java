@@ -2,6 +2,8 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.MathUtil;
+import com.jay.hackclient.util.Humanizer;
+import com.jay.hackclient.util.SlotLock;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -11,6 +13,7 @@ import net.minecraft.screen.slot.SlotActionType;
 public class Refill extends Module {
 
     private long last = 0;
+    private int nextDelay = 300;
 
     public Refill() {
         super("Refill", "Refills hotbar pots/pearls/gaps", Category.PLAYER);
@@ -20,9 +23,10 @@ public class Refill extends Module {
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
+        if (SlotLock.isLockedByOther("Refill")) return;
 
         long now = System.currentTimeMillis();
-        if (now - last < MathUtil.randomDelay(200, 400)) return;
+        if (now - last < nextDelay) return;
 
         // Find empty hotbar slot and item in inv to pull
         for (int hotbar = 0; hotbar < 9; hotbar++) {
@@ -33,12 +37,15 @@ public class Refill extends Module {
             if (invSlot == -1) return;
 
             try {
+                if (!SlotLock.tryAcquire("Refill", 350)) return;
                 int sync = mc.player.playerScreenHandler.syncId;
-                int hbScreen = 36 + hotbar;
                 mc.interactionManager.clickSlot(sync, invSlot, 0, SlotActionType.QUICK_MOVE, mc.player);
                 last = now;
+                nextDelay = Humanizer.delay(300, 60, 180, 500);
+                SlotLock.release("Refill");
                 return;
             } catch (Exception ignored) {
+                SlotLock.release("Refill");
             }
         }
     }

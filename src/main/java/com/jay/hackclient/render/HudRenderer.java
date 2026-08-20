@@ -3,6 +3,7 @@ package com.jay.hackclient.render;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.TargetHUD;
+import com.jay.hackclient.module.modules.ComboAssist;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Mobile;
 import net.minecraft.client.MinecraftClient;
@@ -81,11 +82,14 @@ public final class HudRenderer {
         int by = sh / 2 + (phone ? 24 : 30);
         context.fill(bx, by, bx + boxW, by + 28, 0xCC0A0A10);
         context.fill(bx, by, bx + 2, by + 28, 0xFF000000 | ACCENT);
-        context.drawTextWithShadow(mc.textRenderer, name, bx + 8, by + 4, 0xFFFFFF);
+         String info = String.format("%s  %.1fm", name, TargetHUD.currentDistance);
+         context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 4, 0xFFFFFF);
         int barW = boxW - 16;
         context.fill(bx + 8, by + 16, bx + 8 + barW, by + 22, 0xFF222228);
         int fill = (int) (barW * pct);
         int col = pct > 0.5f ? 0xFF44CC66 : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
         context.fill(bx + 8, by + 16, bx + 8 + fill, by + 22, col);
+         String hpText = String.format("%.1f HP  C%d", hp, ComboAssist.currentCombo);
+         context.drawTextWithShadow(mc.textRenderer, hpText, bx + 8, by + 24, 0xFFD0D0D8);
     }
 }
