@@ -1,12 +1,14 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Humanizer;
+import com.jay.hackclient.util.SlotLock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 
-/** Keeps splash pots on hotbar slots 1-3 for nethpot. */
+/** Refills splash pots into configured hotbar slot range. */
 public class PotRefill extends Module {
 
     private long last;
@@ -19,16 +21,23 @@ public class PotRefill extends Module {
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
+        if (SlotLock.isLockedByOther("PotRefill")) return;
+
         long now = System.currentTimeMillis();
         if (now - last < Humanizer.swapDelay() + 100) return;
 
-        for (int hotbar = 0; hotbar <= 2; hotbar++) {
+        int min = Math.max(0, Math.min(8, ClientSettings.potSlotMin));
+        int max = Math.max(min, Math.min(8, ClientSettings.potSlotMax));
+
+        for (int hotbar = min; hotbar <= max; hotbar++) {
             ItemStack hb = mc.player.getInventory().getStack(hotbar);
             if (!hb.isEmpty() && (hb.isOf(Items.SPLASH_POTION) || hb.isOf(Items.LINGERING_POTION))) continue;
             if (!hb.isEmpty()) continue;
 
             int inv = findPotInInv();
             if (inv < 0) return;
+
+            if (!SlotLock.tryAcquire("PotRefill", 200)) return;
 
             try {
                 int sync = mc.player.playerScreenHandler.syncId;
@@ -39,7 +48,10 @@ public class PotRefill extends Module {
                 }
                 last = now;
                 return;
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            } finally {
+                SlotLock.release("PotRefill");
+            }
         }
     }
 

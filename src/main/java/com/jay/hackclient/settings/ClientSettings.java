@@ -1,5 +1,9 @@
 package com.jay.hackclient.settings;
 
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+
 public final class ClientSettings {
 
     private ClientSettings() {}
@@ -9,7 +13,7 @@ public final class ClientSettings {
 
     public static double aimRange = 4.25;
     public static float aimFov = 70f;
-    public static float aimSmooth = 0.22f; // softer default
+    public static float aimSmooth = 0.22f;
     public static float aimDeadzone = 1.8f;
     public static float aimMaxStep = 4.5f;
     public static double auraRange = 3.2;
@@ -37,7 +41,43 @@ public final class ClientSettings {
     public static boolean hideHudOnScreenshot = true;
     public static boolean hideHudInDebug = true;
 
+    /** Hotbar slots 0-8 for pot refill (default 0,1,2). */
+    public static int potSlotMin = 0;
+    public static int potSlotMax = 2;
+
+    /** ArrayList color ARGB without alpha in low bytes — use with 0xFF */
+    public static int arrayListColor = 0xB24BF3;
+
+    public static boolean arrayListRainbow = false;
+
+    /** Favorites module names (lowercase). */
+    public static final Set<String> favorites = new HashSet<>();
+
     public static String mode = "sword";
+    public static String lastProfile = "sword";
+
+    /** Cycle order for profile keybind */
+    public static final String[] PROFILE_CYCLE = {
+            "sword", "swordaggro", "nethpot", "uhc", "kit", "legit"
+    };
+    public static int profileCycleIndex = 0;
+
+    public static void addFavorite(String name) {
+        if (name != null) favorites.add(name.toLowerCase(Locale.ROOT));
+    }
+
+    public static void removeFavorite(String name) {
+        if (name != null) favorites.remove(name.toLowerCase(Locale.ROOT));
+    }
+
+    public static boolean isFavorite(String name) {
+        return name != null && favorites.contains(name.toLowerCase(Locale.ROOT));
+    }
+
+    public static void toggleFavorite(String name) {
+        if (isFavorite(name)) removeFavorite(name);
+        else addFavorite(name);
+    }
 
     public static void applyVelocityMode(String m) {
         velocityMode = m == null ? "soft" : m.toLowerCase();
@@ -54,6 +94,7 @@ public final class ClientSettings {
 
     public static void applySwordConfig() {
         mode = "sword";
+        lastProfile = "sword";
         aimMode = "classic";
         targetPriority = "crosshair";
         aimRange = 4.25;
@@ -75,11 +116,14 @@ public final class ClientSettings {
         applyVelocityMode("soft");
         velocityOnlyWhenHurt = true;
         pingScaleDelays = true;
+        potSlotMin = 0;
+        potSlotMax = 2;
     }
 
     public static void applySwordAggressiveConfig() {
         applySwordConfig();
         mode = "sword-aggro";
+        lastProfile = "swordaggro";
         aimSmooth = 0.28f;
         aimFov = 75f;
         aimRange = 4.5;
@@ -89,6 +133,7 @@ public final class ClientSettings {
 
     public static void applyNethpotConfig() {
         mode = "nethpot";
+        lastProfile = "nethpot";
         aimMode = "classic";
         targetPriority = "lowest_hp";
         aimRange = 4.2;
@@ -103,10 +148,13 @@ public final class ClientSettings {
         missChance = 4;
         tickSkipChance = 6;
         applyVelocityMode("soft");
+        potSlotMin = 0;
+        potSlotMax = 3;
     }
 
     public static void applyLegitConfig() {
         mode = "legit";
+        lastProfile = "legit";
         aimMode = "classic";
         targetPriority = "crosshair";
         aimRange = 4.0;
@@ -125,6 +173,7 @@ public final class ClientSettings {
 
     public static void applyRageConfig() {
         mode = "rage";
+        lastProfile = "rage";
         aimMode = "silent";
         targetPriority = "closest";
         aimRange = 5.5;
@@ -141,9 +190,20 @@ public final class ClientSettings {
         applyVelocityMode("medium");
     }
 
+    public static void applyKitConfig() {
+        applySwordConfig();
+        mode = "kit";
+        lastProfile = "kit";
+        // soup/gap heavy
+        missChance = 5;
+        potSlotMin = 1;
+        potSlotMax = 3;
+    }
+
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%.2f vel=%s h=%.2f",
-                mode, aimSmooth, velocityMode, velocityHorizontal);
+                "mode=%s aim=%s prio=%s vel=%s h=%.2f pots=%d-%d",
+                mode, aimMode, targetPriority, velocityMode, velocityHorizontal,
+                potSlotMin, potSlotMax);
     }
 }

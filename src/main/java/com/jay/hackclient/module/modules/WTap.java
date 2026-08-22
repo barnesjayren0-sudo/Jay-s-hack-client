@@ -1,5 +1,6 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.util.Humanizer;
 import net.minecraft.entity.Entity;
@@ -7,7 +8,6 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/** Sprint-reset style W-tap after hits for more KB. */
 public class WTap extends Module {
 
     private long until = 0;
@@ -15,6 +15,13 @@ public class WTap extends Module {
 
     public WTap() {
         super("WTap", "Sprint reset after hits", Category.COMBAT);
+    }
+
+    @Override
+    public void onEnable() {
+        Module s = JayHackClient.moduleManager != null
+                ? JayHackClient.moduleManager.getModuleByName("STap") : null;
+        if (s != null && s.isEnabled()) s.setEnabled(false);
     }
 
     @Override
@@ -42,6 +49,7 @@ public class WTap extends Module {
         if (mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.ENTITY) {
             Entity e = ((EntityHitResult) mc.crosshairTarget).getEntity();
             if (e instanceof PlayerEntity && mc.player.handSwingTicks == 1) {
+                if (Humanizer.shouldMiss()) return;
                 if (Humanizer.chance(75)) {
                     reset = true;
                     until = now + Humanizer.tapResetMs();
