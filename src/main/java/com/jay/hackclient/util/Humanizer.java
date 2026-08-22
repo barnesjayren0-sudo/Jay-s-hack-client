@@ -5,6 +5,7 @@ import net.minecraft.client.MinecraftClient;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+/** Delays + randomness; pingScaleDelays widens windows on high latency. */
 public final class Humanizer {
 
     private Humanizer() {}
@@ -20,13 +21,25 @@ public final class Humanizer {
         return scaleByPing(v);
     }
 
+    /**
+     * Real ping scaling:
+     *  - ≤50ms: unchanged
+     *  - 50–150: +20% of (ping-50)
+     *  - 150+: +20% of excess + flat 30–80ms jitter
+     * Capped so it never becomes unplayable.
+     */
     private static int scaleByPing(int ms) {
         if (!ClientSettings.pingScaleDelays) return ms;
         int ping = getPing();
         if (ping <= 50) return ms;
-        // add ~15% of ping above 50
-        int extra = (int) ((ping - 50) * 0.15);
-        return ms + Math.min(extra, 120);
+        int extra = (int) ((ping - 50) * 0.20);
+        if (ping > 150) {
+            extra += 30 + R.nextInt(50);
+        } else if (ping > 100) {
+            extra += R.nextInt(20);
+        }
+        extra = Math.min(extra, 180);
+        return ms + extra;
     }
 
     public static int getPing() {
@@ -56,6 +69,11 @@ public final class Humanizer {
 
     public static int swapDelay() {
         return delay(100, 30, 55, 200);
+    }
+
+    /** Sprint-reset window (W-tap / S-tap), also ping-scaled. */
+    public static int tapResetMs() {
+        return delay(85, 22, 45, 160);
     }
 
     public static float aimJitter() {

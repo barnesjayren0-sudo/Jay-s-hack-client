@@ -44,7 +44,11 @@ public class ModuleManager {
 
     public void panic() {
         frozen = true;
+        disableCombat();
         for (Module m : modules) {
+            if (m.isEnabled() && m.getCategory() != Module.Category.RENDER) {
+                // leave pure render; disable rest on panic
+            }
             if (m.isEnabled()) m.setEnabled(false);
         }
     }
@@ -59,7 +63,17 @@ public class ModuleManager {
         }
     }
 
-    /** Poll module keybinds (edge-triggered). */
+    /** Combat + inventory combat helpers off (death / world change). */
+    public void disableCombat() {
+        for (Module m : modules) {
+            if (!m.isEnabled()) continue;
+            Module.Category c = m.getCategory();
+            if (c == Module.Category.COMBAT || c == Module.Category.PLAYER) {
+                m.setEnabled(false);
+            }
+        }
+    }
+
     public void pollKeybinds() {
         if (frozen) return;
         MinecraftClient mc = MinecraftClient.getInstance();

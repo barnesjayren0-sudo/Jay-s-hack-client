@@ -18,6 +18,12 @@ public class WTap extends Module {
     }
 
     @Override
+    public void onDisable() {
+        reset = false;
+        until = 0;
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null) return;
 
@@ -28,7 +34,9 @@ public class WTap extends Module {
         }
         if (reset && now >= until) {
             reset = false;
-            if (mc.player.forwardSpeed > 0) mc.player.setSprinting(true);
+            if (mc.player.forwardSpeed > 0 || (mc.options != null && mc.options.forwardKey.isPressed())) {
+                mc.player.setSprinting(true);
+            }
         }
 
         if (mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.ENTITY) {
@@ -36,7 +44,7 @@ public class WTap extends Module {
             if (e instanceof PlayerEntity && mc.player.handSwingTicks == 1) {
                 if (Humanizer.chance(75)) {
                     reset = true;
-                    until = now + Humanizer.delay(80, 20, 50, 140);
+                    until = now + Humanizer.tapResetMs();
                     mc.player.setSprinting(false);
                 }
             }
