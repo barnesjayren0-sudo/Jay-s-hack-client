@@ -22,7 +22,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Hack Client config\n");
+            sb.append("# Jay Hack Client config v1.16\n");
             sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
             sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
@@ -49,6 +49,11 @@ public class ConfigManager {
             sb.append("hideHudOnScreenshot=").append(ClientSettings.hideHudOnScreenshot).append('\n');
             sb.append("hideHudInDebug=").append(ClientSettings.hideHudInDebug).append('\n');
             sb.append("mode=").append(ClientSettings.mode).append('\n');
+            sb.append("lastProfile=").append(ClientSettings.lastProfile).append('\n');
+            sb.append("potSlotMin=").append(ClientSettings.potSlotMin).append('\n');
+            sb.append("potSlotMax=").append(ClientSettings.potSlotMax).append('\n');
+            sb.append("arrayListColor=").append(ClientSettings.arrayListColor).append('\n');
+            sb.append("arrayListRainbow=").append(ClientSettings.arrayListRainbow).append('\n');
 
             if (JayHackClient.moduleManager != null) {
                 for (Module m : JayHackClient.moduleManager.getModules()) {
@@ -60,6 +65,9 @@ public class ConfigManager {
                     sb.append("friend.").append(f).append("=true\n");
                 }
             }
+            for (String fav : ClientSettings.favorites) {
+                sb.append("fav.").append(fav).append("=true\n");
+            }
             Files.writeString(p, sb.toString());
         } catch (IOException e) {
             System.err.println("[Jay] config save failed: " + e.getMessage());
@@ -70,6 +78,7 @@ public class ConfigManager {
         try {
             Path p = path();
             if (!Files.exists(p)) return;
+            ClientSettings.favorites.clear();
             for (String line : Files.readAllLines(p)) {
                 line = line.trim();
                 if (line.isEmpty() || line.startsWith("#") || !line.contains("=")) continue;
@@ -95,7 +104,6 @@ public class ConfigManager {
                     case "velocityHorizontal" -> ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
                     case "velocityVertical" -> ClientSettings.velocityVertical = dbl(v, ClientSettings.velocityVertical);
                     case "velocityOnlyWhenHurt" -> ClientSettings.velocityOnlyWhenHurt = Boolean.parseBoolean(v);
-                    // legacy key from older configs
                     case "velocityFactor" -> {
                         ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
                         ClientSettings.velocityVertical = Math.max(ClientSettings.velocityVertical, 0.85);
@@ -111,12 +119,19 @@ public class ConfigManager {
                     case "hideHudOnScreenshot" -> ClientSettings.hideHudOnScreenshot = Boolean.parseBoolean(v);
                     case "hideHudInDebug" -> ClientSettings.hideHudInDebug = Boolean.parseBoolean(v);
                     case "mode" -> ClientSettings.mode = v;
+                    case "lastProfile" -> ClientSettings.lastProfile = v;
+                    case "potSlotMin" -> ClientSettings.potSlotMin = (int) dbl(v, ClientSettings.potSlotMin);
+                    case "potSlotMax" -> ClientSettings.potSlotMax = (int) dbl(v, ClientSettings.potSlotMax);
+                    case "arrayListColor" -> ClientSettings.arrayListColor = (int) dbl(v, ClientSettings.arrayListColor);
+                    case "arrayListRainbow" -> ClientSettings.arrayListRainbow = Boolean.parseBoolean(v);
                     default -> {
                         if (k.startsWith("mod.") && JayHackClient.moduleManager != null) {
                             Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
                             if (m != null) m.setEnabled(Boolean.parseBoolean(v));
                         } else if (k.startsWith("friend.") && JayHackClient.friendManager != null) {
                             JayHackClient.friendManager.add(k.substring(7));
+                        } else if (k.startsWith("fav.")) {
+                            ClientSettings.addFavorite(k.substring(4));
                         }
                     }
                 }
