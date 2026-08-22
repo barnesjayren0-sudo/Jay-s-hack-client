@@ -27,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.14.0";
+    public static final String VERSION = "1.15.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -70,7 +70,6 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PotRefill());
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
-        // Kotlin module
         moduleManager.register(new ComboAssist());
 
         moduleManager.register(new AutoSprint());
@@ -116,6 +115,7 @@ public class JayHackClient implements ClientModInitializer {
             EVENT_BUS.post(TickEvent.INSTANCE);
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
+                if (configManager != null) configManager.save();
                 client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
             }
             if (menuKey.wasPressed()) {
@@ -140,13 +140,16 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " Kotlin+Java hybrid");
+        System.out.println("[" + NAME + "] v" + VERSION);
     }
 
     private void toggle(String name) {
         if (moduleManager.isFrozen()) { msg("§cUnpanic"); return; }
         Module m = moduleManager.getModuleByName(name);
-        if (m != null) m.toggle();
+        if (m != null) {
+            m.toggle();
+            if (configManager != null) configManager.save();
+        }
     }
 
     private void handleCommand(String message) {
@@ -154,7 +157,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§fsword velmode settings set aimmode");
+            msg("§f.gui .sword .nethpot .aimmode .velmode .friend .set .config");
             return;
         }
 
@@ -187,13 +190,19 @@ public class JayHackClient implements ClientModInitializer {
                 if (vel != null && !vel.isEnabled()) vel.setEnabled(true);
             }
             case "aimmode" -> {
-                if (args.length < 3) return;
+                if (args.length < 3) {
+                    msg("§fclassic|silent (" + ClientSettings.aimMode + ")");
+                    return;
+                }
                 ClientSettings.aimMode = args[2].equalsIgnoreCase("silent") ? "silent" : "classic";
                 configManager.save();
                 msg("§aaimMode=" + ClientSettings.aimMode);
             }
             case "priority", "prio" -> {
-                if (args.length < 3) return;
+                if (args.length < 3) {
+                    msg("§fclosest|lowest_hp|crosshair");
+                    return;
+                }
                 ClientSettings.targetPriority = args[2].toLowerCase();
                 configManager.save();
                 msg("§apriority=" + ClientSettings.targetPriority);
@@ -201,22 +210,22 @@ public class JayHackClient implements ClientModInitializer {
             case "set" -> handleSet(args);
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
-            case "off" -> { moduleManager.disableAll(); msg("§eOff"); }
-            case "panic" -> { moduleManager.panic(); msg("§cPANIC"); }
+            case "off" -> { moduleManager.disableAll(); configManager.save(); msg("§eOff"); }
+            case "panic" -> { moduleManager.panic(); configManager.save(); msg("§cPANIC"); }
             case "unpanic" -> { moduleManager.unfreeze(); msg("§aOK"); }
             case "path" -> toggle("PathToBase");
             case "scan" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7J Aim §7T Trigger §7V Shield §7N Vel");
-            default -> msg("§c?");
+            case "binds" -> msg("§7RShift GUI · Del Panic · J Aim · T Trigger · N Vel");
+            default -> msg("§cUnknown — .jay gui");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set velh|velv|aimrange|aimfov|aimsmooth|hitbox <n>");
+            msg("§f.set velh|aimrange|aimfov|aimsmooth|hitbox|miss <n>");
             return;
         }
         try {
@@ -255,7 +264,10 @@ public class JayHackClient implements ClientModInitializer {
     }
 
     private void handleFriend(String[] args) {
-        if (args.length < 3) return;
+        if (args.length < 3) {
+            msg("§f.friend add|del|list");
+            return;
+        }
         String a = args[2].toLowerCase();
         if (a.equals("list")) { msg("§f" + String.join(", ", friendManager.getFriends())); return; }
         if (args.length < 4) return;

@@ -1,5 +1,6 @@
 package com.jay.hackclient.module;
 
+import com.jay.hackclient.JayHackClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 
@@ -34,6 +35,12 @@ public abstract class Module {
         } else {
             onDisable();
             notify("§cdisabled");
+        }
+        // Persist module toggles
+        if (JayHackClient.configManager != null) {
+            try {
+                JayHackClient.configManager.save();
+            } catch (Exception ignored) {}
         }
     }
 
