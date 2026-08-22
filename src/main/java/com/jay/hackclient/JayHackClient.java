@@ -27,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.15.1";
+    public static final String VERSION = "1.16.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -40,6 +40,7 @@ public class JayHackClient implements ClientModInitializer {
 
     private static KeyBinding menuKey;
     private static KeyBinding panicKey;
+    private static KeyBinding profileKey;
 
     private static boolean wasAlive = true;
     private static int lastWorldHash = 0;
@@ -95,12 +96,15 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoGap());
         moduleManager.register(new AutoHead());
         moduleManager.register(new PearlCatch());
+        moduleManager.register(new PearlAssist());
+        moduleManager.register(new InvManager());
 
         moduleManager.register(new BaseFinder());
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
         moduleManager.register(new PathToBase());
+        moduleManager.register(new Scaffold());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
@@ -113,10 +117,12 @@ public class JayHackClient implements ClientModInitializer {
         panicKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.panic", InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_DELETE, CATEGORY));
+        profileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.jayhackclient.profile", InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_P, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null) {
-                // world change / disconnect
                 if (lastWorldHash != 0) {
                     moduleManager.disableCombat();
                     lastWorldHash = 0;
@@ -126,12 +132,9 @@ public class JayHackClient implements ClientModInitializer {
             }
 
             int wh = System.identityHashCode(client.world);
-            if (lastWorldHash != 0 && wh != lastWorldHash) {
-                moduleManager.disableCombat();
-            }
+            if (lastWorldHash != 0 && wh != lastWorldHash) moduleManager.disableCombat();
             lastWorldHash = wh;
 
-            // Death → disable combat/player modules
             boolean alive = client.player.isAlive() && client.player.getHealth() > 0;
             if (wasAlive && !alive) {
                 moduleManager.disableCombat();
@@ -145,6 +148,9 @@ public class JayHackClient implements ClientModInitializer {
                 moduleManager.panic();
                 if (configManager != null) configManager.save();
                 client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
+            }
+            if (profileKey.wasPressed()) {
+                cycleProfile();
             }
             if (menuKey.wasPressed()) {
                 if (client.currentScreen instanceof ClickGuiScreen) client.setScreen(null);
@@ -171,6 +177,15 @@ public class JayHackClient implements ClientModInitializer {
         System.out.println("[" + NAME + "] v" + VERSION);
     }
 
+    private void cycleProfile() {
+        ClientSettings.profileCycleIndex =
+                (ClientSettings.profileCycleIndex + 1) % ClientSettings.PROFILE_CYCLE.length;
+        String name = ClientSettings.PROFILE_CYCLE[ClientSettings.profileCycleIndex];
+        applyProfile(name);
+        if (configManager != null) configManager.save();
+        msg("§aProfile §f" + name);
+    }
+
     private void toggle(String name) {
         if (moduleManager.isFrozen()) { msg("§cUnpanic"); return; }
         Module m = moduleManager.getModuleByName(name);
@@ -185,55 +200,45 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .sword .aimmode .velmode .friend .set .config");
+            msg("§f.gui .profile .fav .sword .aimmode .friend .set");
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
-            case "sword" -> {
-                LegitProfile.applySword();
-                configManager.save();
-                msg("§aSword · " + ClientSettings.summarize());
-            }
-            case "swordaggro", "aggro" -> {
-                LegitProfile.applySwordAggressive();
-                configManager.save();
-                msg("§6Sword AGGRO");
-            }
+            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
+            case "swordaggro", "aggro" -> { LegitProfile.applySwordAggressive(); configManager.save(); msg("§6Aggro"); }
             case "nethpot", "pot" -> { LegitProfile.applyNethpot(); configManager.save(); msg("§dNethpot"); }
             case "kit" -> { LegitProfile.applyKit(); configManager.save(); msg("§aKit"); }
-            case "profile" -> { if (args.length >= 3) { applyProfile(args[2]); configManager.save(); } }
+            case "profile" -> {
+                if (args.length >= 3) { applyProfile(args[2]); configManager.save(); }
+                else cycleProfile();
+            }
+            case "fav", "favorite" -> {
+                if (args.length < 3) { msg("§f" + String.join(", ", ClientSettings.favorites)); return; }
+                ClientSettings.toggleFavorite(args[2]);
+                configManager.save();
+                msg((ClientSettings.isFavorite(args[2]) ? "§a★ " : "§7☆ ") + args[2]);
+            }
             case "settings" -> msg("§f" + ClientSettings.summarize());
             case "velmode", "velocity" -> {
-                if (args.length < 3) {
-                    msg("§fsoft|medium|strong (" + ClientSettings.velocityMode + ")");
-                    return;
-                }
+                if (args.length < 3) { msg("§fsoft|medium|strong"); return; }
                 ClientSettings.applyVelocityMode(args[2]);
                 configManager.save();
-                msg("§aVel " + ClientSettings.velocityMode + " h=" + ClientSettings.velocityHorizontal);
-                Module vel = moduleManager.getModuleByName("Velocity");
-                if (vel != null && !vel.isEnabled()) vel.setEnabled(true);
+                msg("§aVel " + ClientSettings.velocityMode);
             }
             case "aimmode" -> {
-                if (args.length < 3) {
-                    msg("§fclassic|silent (" + ClientSettings.aimMode + ")");
-                    return;
-                }
+                if (args.length < 3) return;
                 ClientSettings.aimMode = args[2].equalsIgnoreCase("silent") ? "silent" : "classic";
                 configManager.save();
-                msg("§aaimMode=" + ClientSettings.aimMode);
+                msg("§a" + ClientSettings.aimMode);
             }
             case "priority", "prio" -> {
-                if (args.length < 3) {
-                    msg("§fclosest|lowest_hp|crosshair");
-                    return;
-                }
+                if (args.length < 3) return;
                 ClientSettings.targetPriority = args[2].toLowerCase();
                 configManager.save();
-                msg("§apriority=" + ClientSettings.targetPriority);
+                msg("§a" + ClientSettings.targetPriority);
             }
             case "set" -> handleSet(args);
             case "friend", "friends" -> handleFriend(args);
@@ -246,14 +251,14 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7RShift GUI · Del Panic · J Aim");
-            default -> msg("§cUnknown");
+            case "binds" -> msg("§7RShift GUI · P profile · Del panic · J aim");
+            default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set velh|aimrange|aimfov|aimsmooth|hitbox|miss <n>");
+            msg("§f.set velh|aimrange|potmin|potmax|miss|hitbox <n>");
             return;
         }
         try {
@@ -267,6 +272,8 @@ public class JayHackClient implements ClientModInitializer {
                 case "aurarange" -> ClientSettings.auraRange = v;
                 case "hitbox", "hb" -> { ClientSettings.hitboxExpand = v; Hitboxes.setExpand(v); }
                 case "miss" -> ClientSettings.missChance = (int) v;
+                case "potmin" -> ClientSettings.potSlotMin = Math.max(0, Math.min(8, (int) v));
+                case "potmax" -> ClientSettings.potSlotMax = Math.max(0, Math.min(8, (int) v));
                 default -> { msg("§cUnknown"); return; }
             }
             configManager.save();
@@ -288,14 +295,12 @@ public class JayHackClient implements ClientModInitializer {
             case "scout" -> LegitProfile.applyScout();
             default -> { msg("§c?"); return; }
         }
+        ClientSettings.lastProfile = name.toLowerCase();
         msg("§a" + name);
     }
 
     private void handleFriend(String[] args) {
-        if (args.length < 3) {
-            msg("§f.friend add|del|list");
-            return;
-        }
+        if (args.length < 3) { msg("§f.friend add|del|list"); return; }
         String a = args[2].toLowerCase();
         if (a.equals("list")) { msg("§f" + String.join(", ", friendManager.getFriends())); return; }
         if (args.length < 4) return;
