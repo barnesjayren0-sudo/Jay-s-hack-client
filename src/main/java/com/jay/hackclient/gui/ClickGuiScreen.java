@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Vape-style GUI — left click toggle, right click settings.
+ * Vape-style GUI — modules + Friends tab.
+ * LMB toggle, RMB settings, Friends: LMB remove, type name + Enter to add.
  */
 public class ClickGuiScreen extends Screen {
 
@@ -33,9 +34,11 @@ public class ClickGuiScreen extends Screen {
     private static final int TOGGLE_OFF = 0xFF333344;
 
     private Module.Category selected = Module.Category.COMBAT;
+    private boolean friendsTab = false;
     private int scroll;
     private String search = "";
     private boolean searchFocused = false;
+    private String friendInput = "";
 
     private int winX, winY, winW, winH;
     private int sidebarW;
@@ -95,6 +98,15 @@ public class ClickGuiScreen extends Screen {
         return base;
     }
 
+    private List<String> friendList() {
+        List<String> list = new ArrayList<>();
+        if (JayHackClient.friendManager != null) {
+            list.addAll(JayHackClient.friendManager.getFriends());
+            list.sort(String::compareToIgnoreCase);
+        }
+        return list;
+    }
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         computeLayout();
@@ -125,7 +137,7 @@ public class ClickGuiScreen extends Screen {
         int catY = y + headerH + 6;
         for (Module.Category cat : Module.Category.values()) {
             if (JayHackClient.moduleManager.getByCategory(cat).isEmpty()) continue;
-            boolean sel = cat == selected && (search == null || search.isBlank());
+            boolean sel = !friendsTab && cat == selected && (search == null || search.isBlank());
             boolean hover = mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22;
             if (sel) {
                 ctx.fill(x, catY, x + sidebarW, catY + 22, 0x33B24BF3);
@@ -138,50 +150,96 @@ public class ClickGuiScreen extends Screen {
             catY += 24;
         }
 
+        // Friends tab
+        {
+            boolean sel = friendsTab;
+            boolean hover = mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22;
+            if (sel) {
+                ctx.fill(x, catY, x + sidebarW, catY + 22, 0x33B24BF3);
+                ctx.fill(x, catY, x + 3, catY + 22, ACCENT);
+            } else if (hover) {
+                ctx.fill(x, catY, x + sidebarW, catY + 22, 0x15FFFFFF);
+            }
+            ctx.drawTextWithShadow(textRenderer, "Friends", x + 8, catY + 7,
+                    sel ? ACCENT : (hover ? TEXT : TEXT_DIM));
+        }
+
         int sx = x + sidebarW + 8;
         int sy = y + headerH + 4;
         int sw = winW - sidebarW - 16;
         ctx.fill(sx, sy, sx + sw, sy + searchH - 4, searchFocused ? 0xFF1A1A28 : 0xFF14141C);
         ctx.fill(sx, sy + searchH - 5, sx + sw, sy + searchH - 4, searchFocused ? ACCENT : 0x33FFFFFF);
-        String shown = search.isEmpty() && !searchFocused ? "§8Search modules..." : "§f" + search + (searchFocused ? "§7_" : "");
-        ctx.drawTextWithShadow(textRenderer, shown, sx + 6, sy + 5, TEXT);
 
-        List<Module> modules = filteredModules();
-        int listX = x + sidebarW;
-        int rowTop = y + headerH + searchH + 8;
-        int listBottom = y + winH - 16;
-        int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
+        if (friendsTab) {
+            String shown = friendInput.isEmpty() && !searchFocused
+                    ? "§8Type name + Enter to add..."
+                    : "§f" + friendInput + (searchFocused ? "§7_" : "");
+            ctx.drawTextWithShadow(textRenderer, shown, sx + 6, sy + 5, TEXT);
 
-        String title = (search == null || search.isBlank())
-                ? selected.displayName.toUpperCase(Locale.ROOT)
-                : "Results";
-        ctx.drawTextWithShadow(textRenderer, title, listX + 10, y + headerH + searchH + 2, TEXT_DIM);
+            List<String> friends = friendList();
+            int listX = x + sidebarW;
+            int rowTop = y + headerH + searchH + 8;
+            int listBottom = y + winH - 16;
+            int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
 
-        for (int i = 0; i < modules.size(); i++) {
-            if (i < scroll) continue;
-            int di = i - scroll;
-            if (di >= maxRows) break;
+            ctx.drawTextWithShadow(textRenderer, "FRIENDS (" + friends.size() + ")",
+                    listX + 10, y + headerH + searchH + 2, TEXT_DIM);
 
-            Module m = modules.get(i);
-            int ry = rowTop + di * rowH;
-            boolean hover = mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH;
+            for (int i = 0; i < friends.size(); i++) {
+                if (i < scroll) continue;
+                int di = i - scroll;
+                if (di >= maxRows) break;
+                String name = friends.get(i);
+                int ry = rowTop + di * rowH;
+                boolean hover = mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH;
+                if (hover) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_HOVER);
+                ctx.drawTextWithShadow(textRenderer, name, listX + 12, ry + (rowH / 2) - 4, TEXT);
+                ctx.drawTextWithShadow(textRenderer, "§c×", x + winW - 20, ry + (rowH / 2) - 4, 0xFFFF6666);
+            }
 
-            if (m.isEnabled()) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_ON);
-            else if (hover) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_HOVER);
+            ctx.drawTextWithShadow(textRenderer, "Enter add · click remove",
+                    x + 8, y + winH - 12, 0xFF555566);
+        } else {
+            String shown = search.isEmpty() && !searchFocused ? "§8Search modules..." : "§f" + search + (searchFocused ? "§7_" : "");
+            ctx.drawTextWithShadow(textRenderer, shown, sx + 6, sy + 5, TEXT);
 
-            ctx.drawTextWithShadow(textRenderer, m.getName(), listX + 12, ry + (rowH / 2) - 4,
-                    m.isEnabled() ? TEXT : TEXT_DIM);
+            List<Module> modules = filteredModules();
+            int listX = x + sidebarW;
+            int rowTop = y + headerH + searchH + 8;
+            int listBottom = y + winH - 16;
+            int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
 
-            int tw = 26, th = 14;
-            int tx = x + winW - 14 - tw;
-            int ty = ry + (rowH - th) / 2;
-            ctx.fill(tx, ty, tx + tw, ty + th, m.isEnabled() ? TOGGLE_ON : TOGGLE_OFF);
-            int knob = m.isEnabled() ? tx + tw - 13 : tx + 2;
-            ctx.fill(knob, ty + 2, knob + 11, ty + th - 2, 0xFFF0F0F8);
+            String title = (search == null || search.isBlank())
+                    ? selected.displayName.toUpperCase(Locale.ROOT)
+                    : "Results";
+            ctx.drawTextWithShadow(textRenderer, title, listX + 10, y + headerH + searchH + 2, TEXT_DIM);
+
+            for (int i = 0; i < modules.size(); i++) {
+                if (i < scroll) continue;
+                int di = i - scroll;
+                if (di >= maxRows) break;
+
+                Module m = modules.get(i);
+                int ry = rowTop + di * rowH;
+                boolean hover = mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH;
+
+                if (m.isEnabled()) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_ON);
+                else if (hover) ctx.fill(listX + 4, ry, x + winW - 4, ry + rowH - 2, ROW_HOVER);
+
+                ctx.drawTextWithShadow(textRenderer, m.getName(), listX + 12, ry + (rowH / 2) - 4,
+                        m.isEnabled() ? TEXT : TEXT_DIM);
+
+                int tw = 26, th = 14;
+                int tx = x + winW - 14 - tw;
+                int ty = ry + (rowH - th) / 2;
+                ctx.fill(tx, ty, tx + tw, ty + th, m.isEnabled() ? TOGGLE_ON : TOGGLE_OFF);
+                int knob = m.isEnabled() ? tx + tw - 13 : tx + 2;
+                ctx.fill(knob, ty + 2, knob + 11, ty + th - 2, 0xFFF0F0F8);
+            }
+
+            ctx.drawTextWithShadow(textRenderer, "LMB toggle · RMB settings · ESC",
+                    x + 8, y + winH - 12, 0xFF555566);
         }
-
-        ctx.drawTextWithShadow(textRenderer, "LMB toggle · RMB settings · ESC",
-                x + 8, y + winH - 12, 0xFF555566);
 
         super.render(ctx, mouseX, mouseY, delta);
     }
@@ -219,22 +277,50 @@ public class ClickGuiScreen extends Screen {
                 if (JayHackClient.moduleManager.getByCategory(cat).isEmpty()) continue;
                 if (mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22) {
                     selected = cat;
+                    friendsTab = false;
                     search = "";
+                    friendInput = "";
                     scroll = 0;
                     return true;
                 }
                 catY += 24;
             }
+            // Friends sidebar button
+            if (mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22) {
+                friendsTab = true;
+                searchFocused = true;
+                scroll = 0;
+                return true;
+            }
         }
 
-        // Module rows: LMB toggle, RMB settings
-        if (button == 0 || button == 1) {
-            List<Module> modules = filteredModules();
-            int listX = x + sidebarW;
-            int rowTop = y + headerH + searchH + 8;
-            int listBottom = y + winH - 16;
-            int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
+        int listX = x + sidebarW;
+        int rowTop = y + headerH + searchH + 8;
+        int listBottom = y + winH - 16;
+        int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
 
+        if (friendsTab && button == 0) {
+            List<String> friends = friendList();
+            for (int i = 0; i < friends.size(); i++) {
+                if (i < scroll) continue;
+                int di = i - scroll;
+                if (di >= maxRows) break;
+                int ry = rowTop + di * rowH;
+                if (mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH) {
+                    String name = friends.get(i);
+                    JayHackClient.friendManager.remove(name);
+                    if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+                    if (client != null && client.player != null) {
+                        client.player.sendMessage(Text.literal("§8[§bJay§8] §c- " + name), false);
+                    }
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        if (!friendsTab && (button == 0 || button == 1)) {
+            List<Module> modules = filteredModules();
             for (int i = 0; i < modules.size(); i++) {
                 if (i < scroll) continue;
                 int di = i - scroll;
@@ -263,12 +349,12 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        List<Module> modules = filteredModules();
         computeLayout();
         int rowTop = winY + headerH + searchH + 8;
         int listBottom = winY + winH - 16;
         int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
-        int maxScroll = Math.max(0, modules.size() - maxRows);
+        int size = friendsTab ? friendList().size() : filteredModules().size();
+        int maxScroll = Math.max(0, size - maxRows);
         if (verticalAmount > 0) scroll = Math.max(0, scroll - 1);
         else if (verticalAmount < 0) scroll = Math.min(maxScroll, scroll + 1);
         return true;
@@ -279,8 +365,9 @@ public class ClickGuiScreen extends Screen {
         int keyCode = input.key();
 
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            if (searchFocused && !search.isEmpty()) {
-                search = "";
+            if (searchFocused && (!(friendsTab ? friendInput : search).isEmpty())) {
+                if (friendsTab) friendInput = "";
+                else search = "";
                 return true;
             }
             close();
@@ -288,12 +375,28 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (searchFocused) {
-            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
-                search = search.substring(0, search.length() - 1);
-                scroll = 0;
-                return true;
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+                if (friendsTab && !friendInput.isEmpty()) {
+                    friendInput = friendInput.substring(0, friendInput.length() - 1);
+                    return true;
+                }
+                if (!friendsTab && !search.isEmpty()) {
+                    search = search.substring(0, search.length() - 1);
+                    scroll = 0;
+                    return true;
+                }
             }
-            if (keyCode == GLFW.GLFW_KEY_ENTER) {
+            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+                if (friendsTab && !friendInput.isBlank()) {
+                    String name = friendInput.trim();
+                    JayHackClient.friendManager.add(name);
+                    if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+                    if (client != null && client.player != null) {
+                        client.player.sendMessage(Text.literal("§8[§bJay§8] §a+ " + name), false);
+                    }
+                    friendInput = "";
+                    return true;
+                }
                 searchFocused = false;
                 return true;
             }
@@ -311,9 +414,13 @@ public class ClickGuiScreen extends Screen {
     public boolean charTyped(CharInput input) {
         if (searchFocused) {
             int cp = input.codepoint();
-            if (cp >= 32 && cp < 127 && search.length() < 32) {
-                search += (char) cp;
-                scroll = 0;
+            if (cp >= 32 && cp < 127) {
+                if (friendsTab) {
+                    if (friendInput.length() < 24) friendInput += (char) cp;
+                } else if (search.length() < 32) {
+                    search += (char) cp;
+                    scroll = 0;
+                }
                 return true;
             }
             return true;

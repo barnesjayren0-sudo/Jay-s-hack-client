@@ -27,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.15.0";
+    public static final String VERSION = "1.15.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -40,6 +40,9 @@ public class JayHackClient implements ClientModInitializer {
 
     private static KeyBinding menuKey;
     private static KeyBinding panicKey;
+
+    private static boolean wasAlive = true;
+    private static int lastWorldHash = 0;
 
     @Override
     public void onInitializeClient() {
@@ -64,6 +67,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Criticals());
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
+        moduleManager.register(new STap());
         moduleManager.register(new Reach());
         moduleManager.register(new Hitboxes());
         moduleManager.register(new AutoPot());
@@ -111,7 +115,31 @@ public class JayHackClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_DELETE, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.player == null) return;
+            if (client.player == null) {
+                // world change / disconnect
+                if (lastWorldHash != 0) {
+                    moduleManager.disableCombat();
+                    lastWorldHash = 0;
+                    wasAlive = true;
+                }
+                return;
+            }
+
+            int wh = System.identityHashCode(client.world);
+            if (lastWorldHash != 0 && wh != lastWorldHash) {
+                moduleManager.disableCombat();
+            }
+            lastWorldHash = wh;
+
+            // Death → disable combat/player modules
+            boolean alive = client.player.isAlive() && client.player.getHealth() > 0;
+            if (wasAlive && !alive) {
+                moduleManager.disableCombat();
+                if (configManager != null) configManager.save();
+                client.player.sendMessage(Text.literal("§8[§bJay§8] §7Combat off (death)"), false);
+            }
+            wasAlive = alive;
+
             EVENT_BUS.post(TickEvent.INSTANCE);
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
@@ -157,7 +185,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .sword .nethpot .aimmode .velmode .friend .set .config");
+            msg("§f.gui .sword .aimmode .velmode .friend .set .config");
             return;
         }
 
@@ -218,8 +246,8 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7RShift GUI · Del Panic · J Aim · T Trigger · N Vel");
-            default -> msg("§cUnknown — .jay gui");
+            case "binds" -> msg("§7RShift GUI · Del Panic · J Aim");
+            default -> msg("§cUnknown");
         }
     }
 
