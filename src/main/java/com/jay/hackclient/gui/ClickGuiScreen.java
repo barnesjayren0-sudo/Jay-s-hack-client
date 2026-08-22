@@ -15,8 +15,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Responsive Vape-style GUI for PC + PoJav/Mojo.
- * Compatible with Minecraft 1.21.11 input API (Click / KeyInput / CharInput).
+ * Vape-style GUI — left click toggle, right click settings.
  */
 public class ClickGuiScreen extends Screen {
 
@@ -139,7 +138,6 @@ public class ClickGuiScreen extends Screen {
             catY += 24;
         }
 
-        // Search box (custom — no TextFieldWidget API friction)
         int sx = x + sidebarW + 8;
         int sy = y + headerH + 4;
         int sw = winW - sidebarW - 16;
@@ -182,7 +180,7 @@ public class ClickGuiScreen extends Screen {
             ctx.fill(knob, ty + 2, knob + 11, ty + th - 2, 0xFFF0F0F8);
         }
 
-        ctx.drawTextWithShadow(textRenderer, "ESC close · type to search",
+        ctx.drawTextWithShadow(textRenderer, "LMB toggle · RMB settings · ESC",
                 x + 8, y + winH - 12, 0xFF555566);
 
         super.render(ctx, mouseX, mouseY, delta);
@@ -194,62 +192,69 @@ public class ClickGuiScreen extends Screen {
         double mouseY = click.y();
         int button = click.button();
 
-        if (button != 0) return super.mouseClicked(click, doubled);
-
         computeLayout();
         int x = winX;
         int y = winY;
 
         int closeX = x + winW - 24;
         int closeY = y + 6;
-        if (mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18) {
+        if (button == 0 && mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18) {
             close();
             return true;
         }
 
-        // Search focus
-        int sx = x + sidebarW + 8;
-        int sy = y + headerH + 4;
-        int sw = winW - sidebarW - 16;
-        if (mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + searchH - 4) {
-            searchFocused = true;
-            return true;
-        } else {
-            searchFocused = false;
-        }
-
-        int catY = y + headerH + 6;
-        for (Module.Category cat : Module.Category.values()) {
-            if (JayHackClient.moduleManager.getByCategory(cat).isEmpty()) continue;
-            if (mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22) {
-                selected = cat;
-                search = "";
-                scroll = 0;
+        if (button == 0) {
+            int sx = x + sidebarW + 8;
+            int sy = y + headerH + 4;
+            int sw = winW - sidebarW - 16;
+            if (mouseX >= sx && mouseX <= sx + sw && mouseY >= sy && mouseY <= sy + searchH - 4) {
+                searchFocused = true;
                 return true;
+            } else {
+                searchFocused = false;
             }
-            catY += 24;
+
+            int catY = y + headerH + 6;
+            for (Module.Category cat : Module.Category.values()) {
+                if (JayHackClient.moduleManager.getByCategory(cat).isEmpty()) continue;
+                if (mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22) {
+                    selected = cat;
+                    search = "";
+                    scroll = 0;
+                    return true;
+                }
+                catY += 24;
+            }
         }
 
-        List<Module> modules = filteredModules();
-        int listX = x + sidebarW;
-        int rowTop = y + headerH + searchH + 8;
-        int listBottom = y + winH - 16;
-        int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
+        // Module rows: LMB toggle, RMB settings
+        if (button == 0 || button == 1) {
+            List<Module> modules = filteredModules();
+            int listX = x + sidebarW;
+            int rowTop = y + headerH + searchH + 8;
+            int listBottom = y + winH - 16;
+            int maxRows = Math.max(1, (listBottom - rowTop) / rowH);
 
-        for (int i = 0; i < modules.size(); i++) {
-            if (i < scroll) continue;
-            int di = i - scroll;
-            if (di >= maxRows) break;
-            int ry = rowTop + di * rowH;
-            if (mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH) {
-                if (JayHackClient.moduleManager.isFrozen()) {
-                    if (client != null && client.player != null) {
-                        client.player.sendMessage(Text.literal("§8[§bJay§8] §cUnpanic first"), false);
+            for (int i = 0; i < modules.size(); i++) {
+                if (i < scroll) continue;
+                int di = i - scroll;
+                if (di >= maxRows) break;
+                int ry = rowTop + di * rowH;
+                if (mouseX >= listX && mouseX < x + winW && mouseY >= ry && mouseY < ry + rowH) {
+                    Module mod = modules.get(i);
+                    if (button == 1) {
+                        if (client != null) client.setScreen(new SettingsScreen(this, mod));
+                        return true;
                     }
-                } else {
-                    modules.get(i).toggle();
+                    if (JayHackClient.moduleManager.isFrozen()) {
+                        if (client != null && client.player != null) {
+                            client.player.sendMessage(Text.literal("§8[§bJay§8] §cUnpanic first"), false);
+                        }
+                    } else {
+                        mod.toggle();
+                    }
+                    return true;
                 }
-                return true;
             }
         }
 
@@ -305,17 +310,6 @@ public class ClickGuiScreen extends Screen {
     @Override
     public boolean charTyped(CharInput input) {
         if (searchFocused) {
-            char chr = input.codepoint() > 0 ? (char) input.codepoint() : 0;
-            // CharInput API may expose different accessors — fallback via codepoint
-            try {
-                // Prefer printable characters
-                if (chr >= 32 && chr < 127 && search.length() < 32) {
-                    search += chr;
-                    scroll = 0;
-                    return true;
-                }
-            } catch (Exception ignored) {}
-            // Alternate: some mappings use input.asString() / codepoint only
             int cp = input.codepoint();
             if (cp >= 32 && cp < 127 && search.length() < 32) {
                 search += (char) cp;
