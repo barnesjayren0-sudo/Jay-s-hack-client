@@ -2,6 +2,7 @@ package com.jay.hackclient.gui;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.render.JayLogo;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -15,8 +16,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Vape-style GUI — modules + Friends tab.
- * LMB toggle, RMB settings, Friends: LMB remove, type name + Enter to add.
+ * Vape-style GUI — modules + Friends tab + Jay logo header.
  */
 public class ClickGuiScreen extends Screen {
 
@@ -67,7 +67,7 @@ public class ClickGuiScreen extends Screen {
             winY = (this.height - winH) / 2;
             sidebarW = Math.max(72, winW / 4);
             rowH = 28;
-            headerH = 30;
+            headerH = 32;
             searchH = 24;
         } else {
             winW = Math.min(460, this.width - 40);
@@ -76,7 +76,7 @@ public class ClickGuiScreen extends Screen {
             winY = (this.height - winH) / 2;
             sidebarW = 100;
             rowH = 22;
-            headerH = 28;
+            headerH = 30;
             searchH = 22;
         }
     }
@@ -117,16 +117,25 @@ public class ClickGuiScreen extends Screen {
         ctx.fill(x + 3, y + 3, x + winW + 3, y + winH + 3, 0x55000000);
         ctx.fill(x, y, x + winW, y + winH, BG_WINDOW);
 
+        // Header
         ctx.fill(x, y, x + winW, y + headerH, BG_HEADER);
         ctx.fill(x, y + headerH - 1, x + winW, y + headerH, ACCENT_DIM);
-        ctx.drawTextWithShadow(textRenderer, "§dJ§fay", x + 8, y + 10, TEXT);
-        ctx.drawTextWithShadow(textRenderer, "§8v" + JayHackClient.VERSION, x + 34, y + 10, TEXT_DIM);
+
+        int logoSize = Math.min(22, headerH - 6);
+        int logoX = x + 6;
+        int logoY = y + (headerH - logoSize) / 2;
+        JayLogo.draw(ctx, logoX, logoY, logoSize);
+
+        int titleX = logoX + logoSize + 6;
+        ctx.drawTextWithShadow(textRenderer, "§dJ§fay", titleX, y + (headerH / 2) - 4, TEXT);
+        int verX = titleX + textRenderer.getWidth("Jay") + 6;
+        ctx.drawTextWithShadow(textRenderer, "§8v" + JayHackClient.VERSION, verX, y + (headerH / 2) - 4, TEXT_DIM);
 
         String status = JayHackClient.moduleManager.isFrozen() ? "§cFROZEN" : "§aREADY";
-        ctx.drawTextWithShadow(textRenderer, status, x + winW - 78, y + 10, TEXT);
+        ctx.drawTextWithShadow(textRenderer, status, x + winW - 78, y + (headerH / 2) - 4, TEXT);
 
         int closeX = x + winW - 24;
-        int closeY = y + 6;
+        int closeY = y + (headerH - 18) / 2;
         boolean hoverX = mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18;
         ctx.fill(closeX, closeY, closeX + 18, closeY + 18, hoverX ? 0xFFAA3333 : 0x22FFFFFF);
         ctx.drawCenteredTextWithShadow(textRenderer, "x", closeX + 9, closeY + 5, 0xFFFFFF);
@@ -150,7 +159,6 @@ public class ClickGuiScreen extends Screen {
             catY += 24;
         }
 
-        // Friends tab
         {
             boolean sel = friendsTab;
             boolean hover = mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22;
@@ -233,8 +241,8 @@ public class ClickGuiScreen extends Screen {
                 int tx = x + winW - 14 - tw;
                 int ty = ry + (rowH - th) / 2;
                 ctx.fill(tx, ty, tx + tw, ty + th, m.isEnabled() ? TOGGLE_ON : TOGGLE_OFF);
-                int knob = m.isEnabled() ? tx + tw - 13 : tx + 2;
-                ctx.fill(knob, ty + 2, knob + 11, ty + th - 2, 0xFFF0F0F8);
+                int kn = m.isEnabled() ? tx + tw - 13 : tx + 2;
+                ctx.fill(kn, ty + 2, kn + 11, ty + th - 2, 0xFFF0F0F8);
             }
 
             ctx.drawTextWithShadow(textRenderer, "LMB toggle · RMB settings · ESC",
@@ -255,7 +263,7 @@ public class ClickGuiScreen extends Screen {
         int y = winY;
 
         int closeX = x + winW - 24;
-        int closeY = y + 6;
+        int closeY = y + (headerH - 18) / 2;
         if (button == 0 && mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18) {
             close();
             return true;
@@ -285,7 +293,6 @@ public class ClickGuiScreen extends Screen {
                 }
                 catY += 24;
             }
-            // Friends sidebar button
             if (mouseX >= x && mouseX < x + sidebarW && mouseY >= catY && mouseY < catY + 22) {
                 friendsTab = true;
                 searchFocused = true;
