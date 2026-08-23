@@ -6,14 +6,11 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * Horizontal knockback reduction via EntityVelocityUpdateS2CPacketMixin.
- * Y is never modified.
+ * Y is never modified. Factor always follows ClientSettings (config/GUI).
  */
 public class Velocity extends Module {
 
     public static long lastPacketMs = 0;
-
-    public static double velocityHorizontal = 0.55;
-    public static double velocityVertical = 1.0;
 
     public Velocity() {
         super(
@@ -30,37 +27,12 @@ public class Velocity extends Module {
     }
 
     public static void applyVelocityMode(String mode) {
-        if (mode == null) {
-            velocityHorizontal = 0.55;
-            ClientSettings.velocityHorizontal = 0.55;
-            ClientSettings.velocityMode = "soft";
-            return;
-        }
-
-        switch (mode.toLowerCase()) {
-            case "soft" -> {
-                velocityHorizontal = 0.55;
-                ClientSettings.velocityMode = "soft";
-            }
-            case "medium" -> {
-                velocityHorizontal = 0.50;
-                ClientSettings.velocityMode = "medium";
-            }
-            case "strong" -> {
-                velocityHorizontal = 0.42;
-                ClientSettings.velocityMode = "strong";
-            }
-            default -> {
-                velocityHorizontal = 0.55;
-                ClientSettings.velocityMode = "soft";
-            }
-        }
-        ClientSettings.velocityHorizontal = velocityHorizontal;
-        ClientSettings.velocityVertical = 1.0;
+        ClientSettings.applyVelocityMode(mode);
     }
 
+    /** Always from ClientSettings so config / .jay set / GUI stay in sync. */
     public static double horizontalFactor() {
-        return Math.max(0.40, Math.min(0.95, velocityHorizontal));
+        return Math.max(0.40, Math.min(0.95, ClientSettings.velocityHorizontal));
     }
 
     public static double verticalFactor() {
