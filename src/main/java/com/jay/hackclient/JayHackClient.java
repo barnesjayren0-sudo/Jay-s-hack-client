@@ -12,6 +12,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
+import com.jay.hackclient.compat.BaritoneCommands;
+import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.config.ConfigManager;
 import com.jay.hackclient.event.EventBus;
 import com.jay.hackclient.event.events.TickEvent;
@@ -27,7 +29,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.17.1";
+    public static final String VERSION = "1.18.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -75,7 +77,6 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PotRefill());
         moduleManager.register(new AnchorMacro());
         moduleManager.register(new AntiBot());
-        moduleManager.register(new ComboAssist());
 
         moduleManager.register(new AutoSprint());
         moduleManager.register(new NoSlow());
@@ -105,6 +106,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
         moduleManager.register(new PathToBase());
+        moduleManager.register(new BaritoneControl());
         moduleManager.register(new Scaffold());
         moduleManager.register(new AutoTool());
 
@@ -152,6 +154,7 @@ public class JayHackClient implements ClientModInitializer {
             EVENT_BUS.post(TickEvent.INSTANCE);
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
+                BaritoneCompat.cancel();
                 if (configManager != null) configManager.save();
                 client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
             }
@@ -172,6 +175,9 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         ClientSendMessageEvents.ALLOW_CHAT.register(message -> {
+            if (BaritoneCommands.tryHandle(message)) {
+                return false;
+            }
             if (message.startsWith(".jay")) {
                 handleCommand(message);
                 return false;
@@ -180,7 +186,8 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION);
+        System.out.println("[" + NAME + "] v" + VERSION
+                + " Baritone=" + BaritoneCompat.isPresent());
     }
 
     private void cycleProfile() {
@@ -206,7 +213,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .profile .fav .sword .aimmode .friend .set");
+            msg("§f.gui .profile .fav .sword .aimmode .friend .set .b");
             return;
         }
 
@@ -249,10 +256,23 @@ public class JayHackClient implements ClientModInitializer {
             case "set" -> handleSet(args);
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
-            case "off" -> { moduleManager.disableAll(); configManager.save(); msg("§eOff"); }
-            case "panic" -> { moduleManager.panic(); configManager.save(); msg("§cPANIC"); }
+            case "off" -> { moduleManager.disableAll(); BaritoneCompat.cancel(); configManager.save(); msg("§eOff"); }
+            case "panic" -> { moduleManager.panic(); BaritoneCompat.cancel(); configManager.save(); msg("§cPANIC"); }
             case "unpanic" -> { moduleManager.unfreeze(); msg("§aOK"); }
             case "path" -> toggle("PathToBase");
+            case "baritone", "b" -> {
+                if (args.length >= 3) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 2; i < args.length; i++) {
+                        if (i > 2) sb.append(' ');
+                        sb.append(args[i]);
+                    }
+                    BaritoneCommands.tryHandle("#" + sb);
+                } else {
+                    msg("§f" + BaritoneCompat.status());
+                    toggle("Baritone");
+                }
+            }
             case "scan" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
