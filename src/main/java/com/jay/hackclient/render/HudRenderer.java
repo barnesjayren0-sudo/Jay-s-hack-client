@@ -1,9 +1,9 @@
 package com.jay.hackclient.render;
 
 import com.jay.hackclient.JayHackClient;
+import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.TargetHUD;
-import com.jay.hackclient.module.modules.ComboAssist;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Mobile;
 import net.minecraft.client.MinecraftClient;
@@ -34,7 +34,6 @@ public final class HudRenderer {
         for (Module m : JayHackClient.moduleManager.getModules()) {
             if (m.isEnabled() && !m.getName().equalsIgnoreCase("HUD")) enabled.add(m);
         }
-        // Favorites first, then width
         enabled.sort(Comparator
                 .comparing((Module m) -> !ClientSettings.isFavorite(m.getName()))
                 .thenComparingInt(m -> -mc.textRenderer.getWidth(m.getName())));
@@ -55,18 +54,22 @@ public final class HudRenderer {
         context.fill(4, 4, 6, 17, accent);
         context.drawTextWithShadow(mc.textRenderer, "§dJ§fay §8" + ver, 10, 7, 0xFFFFFF);
 
-        // profile tag
         String prof = ClientSettings.lastProfile;
         context.drawTextWithShadow(mc.textRenderer, "§8" + prof, 10, 18, 0x888888);
 
-        int y = 28, shown = 0;
+        // Baritone path status under profile
+        String bLine = BaritoneCompat.hudLine();
+        if (bLine != null) {
+            context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, 28, 0xFFFFFF);
+        }
+
+        int y = bLine != null ? 40 : 28;
+        int shown = 0;
         for (Module m : enabled) {
             if (shown >= maxList) break;
             String star = ClientSettings.isFavorite(m.getName()) ? "§e★ " : "";
             String label = star + m.getName();
-            int w = mc.textRenderer.getWidth(label.replace("§e", "").replace("★ ", "* "));
-            // approximate width without formatting
-            w = mc.textRenderer.getWidth(m.getName()) + (ClientSettings.isFavorite(m.getName()) ? 12 : 0);
+            int w = mc.textRenderer.getWidth(m.getName()) + (ClientSettings.isFavorite(m.getName()) ? 12 : 0);
             int x = screenW - w - 10;
             context.fill(x - 5, y - 1, screenW - 2, y + 10, 0x990A0A10);
             context.fill(screenW - 2, y - 1, screenW, y + 10, accent);
@@ -99,7 +102,8 @@ public final class HudRenderer {
         int fill = (int) (barW * pct);
         int col = pct > 0.5f ? 0xFF44CC66 : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
         context.fill(bx + 8, by + 16, bx + 8 + fill, by + 22, col);
-        String hpText = String.format("%.1f HP  C%d", hp, ComboAssist.currentCombo);
+        // avoid hard dependency on ComboAssist class at runtime
+        String hpText = String.format("%.1f HP", hp);
         context.drawTextWithShadow(mc.textRenderer, hpText, bx + 8, by + 24, 0xFFD0D0D8);
     }
 }

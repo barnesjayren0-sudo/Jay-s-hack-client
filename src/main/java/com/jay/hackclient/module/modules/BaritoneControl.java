@@ -5,34 +5,43 @@ import com.jay.hackclient.module.Module;
 import net.minecraft.text.Text;
 
 /**
- * Toggle = cancel Baritone path when disabled.
- * Enable with commands: #goto / .b goto / .jay baritone
+ * WORLD → Baritone. Enable to confirm link; disable cancels path.
  */
 public class BaritoneControl extends Module {
 
+    private boolean warnedMissing;
+
     public BaritoneControl() {
-        super("Baritone", "JayBaritone control — needs Baritone jar in mods", Category.WORLD);
+        super("Baritone", "JayBaritone — path with #goto / #mine (needs jar)", Category.WORLD);
     }
 
     @Override
     public void onEnable() {
+        BaritoneCompat.resetDetection();
         if (!BaritoneCompat.isPresent()) {
-            msg("§cInstall baritone-fabric-1.21.11.jar in mods/");
+            msg("§cMissing §fbaritone-fabric-1.21.11.jar §cin mods/");
+            warnedMissing = true;
             setEnabled(false);
             return;
         }
-        msg("§aBaritone linked · §f#goto #mine #stop  or  .b help");
+        msg("§aLinked §7· §f#goto §8| §f#mine §8| §f#stop");
     }
 
     @Override
     public void onDisable() {
-        BaritoneCompat.cancel();
+        if (BaritoneCompat.isPresent()) {
+            BaritoneCompat.cancel();
+        }
     }
 
     @Override
     public void onTick() {
-        // pathing runs inside Baritone; module just tracks presence
-        if (!BaritoneCompat.isPresent() && isEnabled()) {
+        if (!isEnabled()) return;
+        if (!BaritoneCompat.isPresent()) {
+            if (!warnedMissing) {
+                msg("§cBaritone unloaded");
+                warnedMissing = true;
+            }
             setEnabled(false);
         }
     }
