@@ -9,7 +9,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/** Switch to best hotbar tool for the block you are mining. */
+/**
+ * Switch to best hotbar tool while mining.
+ * Uses PlayerInventory getSelectedSlot / setSelectedSlot (same as AutoSword).
+ */
 public class AutoTool extends Module {
 
     private long lastSwap;
@@ -30,7 +33,10 @@ public class AutoTool extends Module {
         if (!mc.options.attackKey.isPressed()) return;
         if (SlotLock.isLockedByOther("AutoTool")) return;
 
-        if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.BLOCK) return;
+        if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.BLOCK) {
+            return;
+        }
+
         BlockHitResult bhr = (BlockHitResult) mc.crosshairTarget;
         BlockState state = mc.world.getBlockState(bhr.getBlockPos());
         if (state.isAir()) return;
@@ -40,7 +46,8 @@ public class AutoTool extends Module {
 
         PlayerInventory inv = mc.player.getInventory();
         int best = -1;
-        float bestSpeed = 1f;
+        float bestSpeed = 1.0f;
+
         for (int i = 0; i < 9; i++) {
             ItemStack stack = inv.getStack(i);
             if (stack.isEmpty()) continue;
@@ -50,17 +57,15 @@ public class AutoTool extends Module {
                 best = i;
             }
         }
-        if (best < 0) return;
 
-        int current = inv.selectedSlot;
-        if (best == current) return;
+        if (best < 0) return;
+        if (inv.getSelectedSlot() == best) return;
         if (!SlotLock.tryAcquire("AutoTool", 150)) return;
 
         try {
-            inv.selectedSlot = best;
+            inv.setSelectedSlot(best);
             lastSwap = now;
         } catch (Exception ignored) {
-            // selectedSlot access may fail on some mappings — Replit can add accessor
         } finally {
             SlotLock.release("AutoTool");
         }
