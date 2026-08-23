@@ -29,7 +29,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.18.0";
+    public static final String VERSION = "1.18.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -146,6 +146,7 @@ public class JayHackClient implements ClientModInitializer {
             boolean alive = client.player.isAlive() && client.player.getHealth() > 0;
             if (wasAlive && !alive) {
                 moduleManager.disableCombat();
+                BaritoneCompat.cancel();
                 if (configManager != null) configManager.save();
                 client.player.sendMessage(Text.literal("§8[§bJay§8] §7Combat off (death)"), false);
             }
@@ -158,9 +159,7 @@ public class JayHackClient implements ClientModInitializer {
                 if (configManager != null) configManager.save();
                 client.player.sendMessage(Text.literal("§8[§cPANIC§8] §fAll off"), false);
             }
-            if (profileKey.wasPressed()) {
-                cycleProfile();
-            }
+            if (profileKey.wasPressed()) cycleProfile();
             if (menuKey.wasPressed()) {
                 if (client.currentScreen instanceof ClickGuiScreen) client.setScreen(null);
                 else if (client.currentScreen == null) client.setScreen(new ClickGuiScreen());
@@ -175,9 +174,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         ClientSendMessageEvents.ALLOW_CHAT.register(message -> {
-            if (BaritoneCommands.tryHandle(message)) {
-                return false;
-            }
+            if (BaritoneCommands.tryHandle(message)) return false;
             if (message.startsWith(".jay")) {
                 handleCommand(message);
                 return false;
@@ -186,8 +183,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION
-                + " Baritone=" + BaritoneCompat.isPresent());
+        System.out.println("[" + NAME + "] v" + VERSION + " Baritone=" + BaritoneCompat.isPresent());
     }
 
     private void cycleProfile() {
@@ -213,7 +209,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .profile .fav .sword .aimmode .friend .set .b");
+            msg("§f.gui .profile .fav .sword .b #goto");
             return;
         }
 
@@ -262,12 +258,12 @@ public class JayHackClient implements ClientModInitializer {
             case "path" -> toggle("PathToBase");
             case "baritone", "b" -> {
                 if (args.length >= 3) {
-                    StringBuilder sb = new StringBuilder();
+                    StringBuilder sb = new StringBuilder("#");
                     for (int i = 2; i < args.length; i++) {
                         if (i > 2) sb.append(' ');
                         sb.append(args[i]);
                     }
-                    BaritoneCommands.tryHandle("#" + sb);
+                    BaritoneCommands.tryHandle(sb.toString());
                 } else {
                     msg("§f" + BaritoneCompat.status());
                     toggle("Baritone");
@@ -277,14 +273,14 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7RShift GUI · P profile · Del panic · J aim · MMB friend");
+            case "binds" -> msg("§7RShift GUI · P profile · Del panic");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set velh|aimrange|potmin|potmax|miss|hitbox <n>");
+            msg("§f.set velh|aimrange|miss|hitbox <n>");
             return;
         }
         try {
