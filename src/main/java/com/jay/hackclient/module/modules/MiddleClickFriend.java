@@ -15,8 +15,6 @@ public class MiddleClickFriend extends Module {
 
     public MiddleClickFriend() {
         super("MiddleClickFriend", "Middle-click player = friend toggle", Category.MISC);
-        // on by default for QoL
-        setEnabled(true);
     }
 
     @Override

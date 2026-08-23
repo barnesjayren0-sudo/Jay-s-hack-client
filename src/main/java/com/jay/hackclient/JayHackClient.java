@@ -27,7 +27,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.16.0";
+    public static final String VERSION = "1.17.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -81,6 +81,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
+        moduleManager.register(new SafeWalk());
 
         moduleManager.register(new ESP());
         moduleManager.register(new Nametags());
@@ -105,11 +106,16 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PortalFinder());
         moduleManager.register(new PathToBase());
         moduleManager.register(new Scaffold());
+        moduleManager.register(new AutoTool());
+
+        moduleManager.register(new MiddleClickFriend());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
         Module ab = moduleManager.getModuleByName("AntiBot");
         if (ab != null) ab.setEnabled(true);
+        Module mcf = moduleManager.getModuleByName("MiddleClickFriend");
+        if (mcf != null) mcf.setEnabled(true);
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
@@ -251,7 +257,7 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7RShift GUI · P profile · Del panic · J aim");
+            case "binds" -> msg("§7RShift GUI · P profile · Del panic · J aim · MMB friend");
             default -> msg("§c?");
         }
     }
