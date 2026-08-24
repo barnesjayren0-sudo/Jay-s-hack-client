@@ -29,7 +29,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.20.0";
+    public static final String VERSION = "1.20.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -57,6 +57,8 @@ public class JayHackClient implements ClientModInitializer {
 
         ClientSettings.applySwordConfig();
 
+        // Combat — KillAura (not Aura), Reach (not Range)
+        moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
         moduleManager.register(new CritAssist());
@@ -272,7 +274,7 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7RShift GUI · J aim · T trigger · N vel · H hitbox · P profile · Del panic");
+            case "binds" -> msg("§7RShift GUI · R KillAura · J aim · T trigger · N vel · H hitbox · P profile · Del panic");
             default -> msg("§c?");
         }
     }
