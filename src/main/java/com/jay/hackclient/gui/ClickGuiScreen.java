@@ -16,19 +16,15 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Jay ClickGUI — matches the modern mockup:
- * header (logo + Jay + READY), search, horizontal category pills,
- * module rows with description + iOS-style toggles.
+ * Jay ClickGUI — mockup style + keybind tags e.g. Aura [R]
  */
 public class ClickGuiScreen extends Screen {
 
-    // Mockup palette
     private static final int BG_OVERLAY = 0x99000000;
     private static final int BG_WINDOW = 0xFF0E0E14;
     private static final int BG_ROW = 0xFF14141C;
     private static final int BG_SEARCH = 0xFF1A1A24;
     private static final int ACCENT = 0xFF3DDCFF;
-    private static final int ACCENT_DIM = 0x553DDCFF;
     private static final int TEXT = 0xFFF0F0F8;
     private static final int TEXT_DIM = 0xFF7A7A90;
     private static final int TOGGLE_OFF = 0xFF2A2A38;
@@ -117,7 +113,6 @@ public class ClickGuiScreen extends Screen {
         return out;
     }
 
-    /** Rounded-ish rect via layered fills (no native round API needed). */
     private void fillRound(DrawContext ctx, int x1, int y1, int x2, int y2, int color) {
         ctx.fill(x1 + 2, y1, x2 - 2, y2, color);
         ctx.fill(x1, y1 + 2, x2, y2 - 2, color);
@@ -128,15 +123,13 @@ public class ClickGuiScreen extends Screen {
         int tw = 34;
         int th = 18;
         int bg = on ? ACCENT : TOGGLE_OFF;
-        // track
         ctx.fill(x + 1, y, x + tw - 1, y + th, bg);
         ctx.fill(x, y + 1, x + tw, y + th - 1, bg);
-        // knob
         int kn = 14;
         int kx = on ? x + tw - kn - 2 : x + 2;
         int ky = y + 2;
         ctx.fill(kx, ky, kx + kn, ky + kn, 0xFFF5F5FA);
-        ctx.fill(kx + 1, ky - 0, kx + kn - 1, ky + kn, 0xFFFFFFFF);
+        ctx.fill(kx + 1, ky, kx + kn - 1, ky + kn, 0xFFFFFFFF);
     }
 
     @Override
@@ -145,36 +138,28 @@ public class ClickGuiScreen extends Screen {
         int x = winX;
         int y = winY;
 
-        // Dim world
         ctx.fill(0, 0, this.width, this.height, BG_OVERLAY);
-
-        // Window shadow + body
         ctx.fill(x + 3, y + 4, x + winW + 3, y + winH + 4, 0x44000000);
         fillRound(ctx, x, y, x + winW, y + winH, BG_WINDOW);
 
-        // ── Header ──
         int logoSize = 20;
         JayLogo.draw(ctx, x + 12, y + (headerH - logoSize) / 2, logoSize);
         ctx.drawTextWithShadow(textRenderer, "§fJay", x + 14 + logoSize, y + (headerH / 2) - 4, TEXT);
 
-        // READY / FROZEN pill
         boolean frozen = JayHackClient.moduleManager != null && JayHackClient.moduleManager.isFrozen();
         String status = frozen ? "FROZEN" : "READY";
         int statusColor = frozen ? 0xFFFF5555 : ACCENT;
         int sw = textRenderer.getWidth(status) + 18;
         int sx = x + winW - 28 - sw;
         int sy = y + (headerH / 2) - 6;
-        // dot
         ctx.fill(sx, sy + 4, sx + 5, sy + 9, statusColor);
         ctx.drawTextWithShadow(textRenderer, status, sx + 10, sy + 1, statusColor);
 
-        // Close
         int closeX = x + winW - 22;
         int closeY = y + (headerH / 2) - 6;
         boolean hoverClose = mouseX >= closeX - 4 && mouseX <= closeX + 12 && mouseY >= closeY - 2 && mouseY <= closeY + 12;
         ctx.drawTextWithShadow(textRenderer, "×", closeX, closeY, hoverClose ? 0xFFFF8888 : TEXT_DIM);
 
-        // ── Search ──
         int searchY = y + headerH + 4;
         int searchX = x + 12;
         int searchW = winW - 24;
@@ -195,7 +180,6 @@ public class ClickGuiScreen extends Screen {
         }
         ctx.drawTextWithShadow(textRenderer, searchShown, searchX + 10, searchY + 6, TEXT);
 
-        // ── Category pills (horizontal) ──
         int tabY = searchY + searchH + 2;
         int tabX = x + 12;
         List<Module.Category> cats = visibleCategories();
@@ -211,7 +195,6 @@ public class ClickGuiScreen extends Screen {
 
             if (on) {
                 fillRound(ctx, tabX, tabY, tabX + pw, tabY + tabH - 8, PILL_ON);
-                // cyan bottom accent
                 ctx.fill(tabX + 4, tabY + tabH - 10, tabX + pw - 4, tabY + tabH - 9, ACCENT);
             } else if (hover) {
                 fillRound(ctx, tabX, tabY, tabX + pw, tabY + tabH - 8, PILL_BG);
@@ -220,7 +203,6 @@ public class ClickGuiScreen extends Screen {
             tabX += pw + 4;
         }
 
-        // Friends pill
         {
             String label = "Friends";
             int pw = textRenderer.getWidth(label) + 16;
@@ -237,7 +219,6 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // ── Module / friends list ──
         int listTop = tabY + tabH + 2;
         int listBottom = y + winH - 10;
         int maxRows = Math.max(1, (listBottom - listTop) / rowH);
@@ -273,14 +254,20 @@ public class ClickGuiScreen extends Screen {
                             m.isEnabled() ? 0xFF121820 : BG_ROW);
                 }
 
-                // Name + description
-                ctx.drawTextWithShadow(textRenderer, m.getName(), x + 16, ry + 10,
+                // Name + optional [R] bind tag
+                String keyLab = m.getKeyLabel();
+                String title = m.getName();
+                ctx.drawTextWithShadow(textRenderer, title, x + 16, ry + 10,
                         m.isEnabled() ? TEXT : 0xFFC8C8D4);
+                if (!keyLab.isEmpty()) {
+                    int nx = x + 16 + textRenderer.getWidth(title) + 5;
+                    ctx.drawTextWithShadow(textRenderer, "§8[§b" + keyLab + "§8]", nx, ry + 10, TEXT_DIM);
+                }
+
                 String desc = m.getDescription();
                 if (desc.length() > 32) desc = desc.substring(0, 29) + "...";
                 ctx.drawTextWithShadow(textRenderer, desc, x + 16, ry + 22, TEXT_DIM);
 
-                // iOS toggle
                 int tx = x + winW - 52;
                 int ty = ry + (rowH - 18) / 2;
                 drawToggle(ctx, tx, ty, m.isEnabled());
@@ -302,7 +289,6 @@ public class ClickGuiScreen extends Screen {
         int x = winX;
         int y = winY;
 
-        // Close
         int closeX = x + winW - 22;
         int closeY = y + (headerH / 2) - 6;
         if (button == 0 && mouseX >= closeX - 4 && mouseX <= closeX + 12 && mouseY >= closeY - 2 && mouseY <= closeY + 12) {
@@ -311,7 +297,6 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (button == 0) {
-            // Search focus
             int searchY = y + headerH + 4;
             int searchX = x + 12;
             int searchW = winW - 24;
@@ -322,7 +307,6 @@ public class ClickGuiScreen extends Screen {
                 searchFocused = false;
             }
 
-            // Category pills
             int tabY = searchY + searchH + 2;
             int tabX = x + 12;
             for (Module.Category cat : visibleCategories()) {
@@ -339,7 +323,6 @@ public class ClickGuiScreen extends Screen {
                 }
                 tabX += pw + 4;
             }
-            // Friends pill
             {
                 String label = "Friends";
                 int pw = textRenderer.getWidth(label) + 16;
@@ -391,7 +374,6 @@ public class ClickGuiScreen extends Screen {
                         if (client != null) client.setScreen(new SettingsScreen(this, mod));
                         return true;
                     }
-                    // Prefer clicking the toggle area, but whole row toggles
                     if (JayHackClient.moduleManager.isFrozen()) {
                         if (client != null && client.player != null) {
                             client.player.sendMessage(Text.literal("§8[§bJay§8] §cUnpanic first"), false);
