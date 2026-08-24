@@ -21,6 +21,10 @@ public final class ClientSettings {
     public static boolean auraMultiTarget = false;
     public static double hitboxExpand = 0.10;
 
+    /** Entity attack reach when Reach module is on (vanilla = 3.0). */
+    public static double reachDistance = 3.12;
+    public static String reachMode = "soft";
+
     public static int combatDelayMin = 540;
     public static int combatDelayMax = 700;
     public static int clickDelayMin = 105;
@@ -41,22 +45,17 @@ public final class ClientSettings {
     public static boolean hideHudOnScreenshot = true;
     public static boolean hideHudInDebug = true;
 
-    /** Hotbar slots 0-8 for pot refill (default 0,1,2). */
     public static int potSlotMin = 0;
     public static int potSlotMax = 2;
 
-    /** ArrayList color ARGB without alpha in low bytes — use with 0xFF */
     public static int arrayListColor = 0xB24BF3;
-
     public static boolean arrayListRainbow = false;
 
-    /** Favorites module names (lowercase). */
     public static final Set<String> favorites = new HashSet<>();
 
     public static String mode = "sword";
     public static String lastProfile = "sword";
 
-    /** Cycle order for profile keybind */
     public static final String[] PROFILE_CYCLE = {
             "sword", "swordaggro", "nethpot", "uhc", "kit", "legit"
     };
@@ -106,6 +105,8 @@ public final class ClientSettings {
         auraFov = 70f;
         auraMultiTarget = false;
         hitboxExpand = 0.10;
+        reachDistance = 3.12;
+        reachMode = "soft";
         combatDelayMin = 540;
         combatDelayMax = 700;
         requireAttackKey = true;
@@ -128,6 +129,8 @@ public final class ClientSettings {
         aimFov = 75f;
         aimRange = 4.5;
         hitboxExpand = 0.12;
+        reachDistance = 3.2;
+        reachMode = "medium";
         applyVelocityMode("medium");
     }
 
@@ -141,6 +144,8 @@ public final class ClientSettings {
         aimSmooth = 0.20f;
         auraRange = 3.2;
         hitboxExpand = 0.11;
+        reachDistance = 3.15;
+        reachMode = "soft";
         combatDelayMin = 480;
         combatDelayMax = 700;
         requireAttackKey = false;
@@ -162,6 +167,8 @@ public final class ClientSettings {
         aimSmooth = 0.16f;
         auraRange = 3.1;
         hitboxExpand = 0.06;
+        reachDistance = 3.05;
+        reachMode = "soft";
         combatDelayMin = 560;
         combatDelayMax = 820;
         requireAttackKey = true;
@@ -181,6 +188,8 @@ public final class ClientSettings {
         aimSmooth = 0.40f;
         auraRange = 4.0;
         hitboxExpand = 0.28;
+        reachDistance = 3.4;
+        reachMode = "strong";
         combatDelayMin = 400;
         combatDelayMax = 560;
         requireAttackKey = false;
@@ -194,7 +203,6 @@ public final class ClientSettings {
         applySwordConfig();
         mode = "kit";
         lastProfile = "kit";
-        // soup/gap heavy
         missChance = 5;
         potSlotMin = 1;
         potSlotMax = 3;
@@ -202,8 +210,8 @@ public final class ClientSettings {
 
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%s prio=%s vel=%s h=%.2f pots=%d-%d",
-                mode, aimMode, targetPriority, velocityMode, velocityHorizontal,
+                "mode=%s aim=%s reach=%.2f vel=%s h=%.2f pots=%d-%d",
+                mode, aimMode, reachDistance, velocityMode, velocityHorizontal,
                 potSlotMin, potSlotMax);
     }
 }
