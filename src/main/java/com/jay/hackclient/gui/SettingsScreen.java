@@ -3,6 +3,7 @@ package com.jay.hackclient.gui;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Hitboxes;
+import com.jay.hackclient.module.modules.Reach;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
@@ -13,7 +14,6 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * Module settings — same visual language as the v1.19 ClickGUI mockup.
- * Click a row to cycle / step values. Sliders for numeric fields.
  */
 public class SettingsScreen extends Screen {
 
@@ -29,7 +29,7 @@ public class SettingsScreen extends Screen {
     private final Screen parent;
     private final Module module;
     private int scroll;
-    private int dragging = -1; // row index while dragging slider
+    private int dragging = -1;
 
     private int winX, winY, winW, winH;
     private int headerH = 36;
@@ -39,6 +39,7 @@ public class SettingsScreen extends Screen {
             "aimMode",
             "targetPriority",
             "velocityMode",
+            "reachDistance",
             "aimRange",
             "aimFov",
             "aimSmooth",
@@ -79,7 +80,7 @@ public class SettingsScreen extends Screen {
         return switch (key) {
             case "aimRange", "aimFov", "aimSmooth", "auraRange",
                  "hitboxExpand", "missChance", "velHorizontal",
-                 "potSlotMin", "potSlotMax" -> true;
+                 "potSlotMin", "potSlotMax", "reachDistance" -> true;
             default -> false;
         };
     }
@@ -94,6 +95,7 @@ public class SettingsScreen extends Screen {
             case "missChance" -> 0;
             case "velHorizontal" -> 0.25;
             case "potSlotMin", "potSlotMax" -> 0;
+            case "reachDistance" -> 3.0;
             default -> 0;
         };
     }
@@ -108,6 +110,7 @@ public class SettingsScreen extends Screen {
             case "missChance" -> 20;
             case "velHorizontal" -> 0.90;
             case "potSlotMin", "potSlotMax" -> 8;
+            case "reachDistance" -> 3.5;
             default -> 1;
         };
     }
@@ -122,6 +125,7 @@ public class SettingsScreen extends Screen {
             case "missChance" -> 1;
             case "velHorizontal" -> 0.05;
             case "potSlotMin", "potSlotMax" -> 1;
+            case "reachDistance" -> 0.05;
             default -> 0.1;
         };
     }
@@ -137,6 +141,7 @@ public class SettingsScreen extends Screen {
             case "velHorizontal" -> ClientSettings.velocityHorizontal;
             case "potSlotMin" -> ClientSettings.potSlotMin;
             case "potSlotMax" -> ClientSettings.potSlotMax;
+            case "reachDistance" -> ClientSettings.reachDistance;
             default -> 0;
         };
     }
@@ -158,6 +163,7 @@ public class SettingsScreen extends Screen {
             case "velHorizontal" -> ClientSettings.velocityHorizontal = v;
             case "potSlotMin" -> ClientSettings.potSlotMin = (int) Math.round(v);
             case "potSlotMax" -> ClientSettings.potSlotMax = (int) Math.round(v);
+            case "reachDistance" -> Reach.setReach(v);
             default -> {}
         }
     }
@@ -167,6 +173,7 @@ public class SettingsScreen extends Screen {
             case "aimMode" -> "Aim mode";
             case "targetPriority" -> "Target priority";
             case "velocityMode" -> "Velocity mode";
+            case "reachDistance" -> "Reach distance";
             case "aimRange" -> "Aim range";
             case "aimFov" -> "Aim FOV";
             case "aimSmooth" -> "Aim smooth";
@@ -188,6 +195,7 @@ public class SettingsScreen extends Screen {
             case "aimMode" -> ClientSettings.aimMode;
             case "targetPriority" -> ClientSettings.targetPriority;
             case "velocityMode" -> ClientSettings.velocityMode;
+            case "reachDistance" -> String.format("%.2f", ClientSettings.reachDistance);
             case "aimRange" -> String.format("%.2f", ClientSettings.aimRange);
             case "aimFov" -> String.format("%.0f", ClientSettings.aimFov);
             case "aimSmooth" -> String.format("%.2f", ClientSettings.aimSmooth);
@@ -250,7 +258,6 @@ public class SettingsScreen extends Screen {
         double min = minOf(key);
         double max = maxOf(key);
         double v = min + t * (max - min);
-        // snap to step
         double step = stepOf(key);
         v = Math.round(v / step) * step;
         setNum(key, v);
@@ -266,13 +273,11 @@ public class SettingsScreen extends Screen {
         ctx.fill(x + 3, y + 4, x + winW + 3, y + winH + 4, 0x44000000);
         fillRound(ctx, x, y, x + winW, y + winH, BG_WINDOW);
 
-        // Header
         String title = module != null ? module.getName() : "Settings";
         ctx.drawTextWithShadow(textRenderer, "§b← §f" + title, x + 12, y + (headerH / 2) - 4, TEXT);
         ctx.drawTextWithShadow(textRenderer, "§8settings", x + 12 + textRenderer.getWidth("← " + title) + 6,
                 y + (headerH / 2) - 4, TEXT_DIM);
 
-        // Close
         int closeX = x + winW - 22;
         int closeY = y + (headerH / 2) - 6;
         boolean hoverClose = mouseX >= closeX - 4 && mouseX <= closeX + 12
@@ -328,7 +333,6 @@ public class SettingsScreen extends Screen {
             } else {
                 ctx.drawTextWithShadow(textRenderer, label, x + 16, ry + rowH / 2 - 4, TEXT);
                 int vw = textRenderer.getWidth(val);
-                // value pill
                 int px = x + winW - 16 - vw - 10;
                 int py = ry + rowH / 2 - 7;
                 fillRound(ctx, px, py, x + winW - 12, py + 14, 0xFF1A2A32);
@@ -354,18 +358,11 @@ public class SettingsScreen extends Screen {
         double mx = click.x();
         double my = click.y();
 
-        // Back / close on header left or X
         int closeX = x + winW - 22;
         int closeY = y + (headerH / 2) - 6;
         if (my >= y && my <= y + headerH) {
-            if (mx >= x && mx <= x + 80) {
-                close();
-                return true;
-            }
-            if (mx >= closeX - 4 && mx <= closeX + 12) {
-                close();
-                return true;
-            }
+            if (mx >= x && mx <= x + 80) { close(); return true; }
+            if (mx >= closeX - 4 && mx <= closeX + 12) { close(); return true; }
         }
 
         int listTop = y + headerH + 4;
@@ -383,7 +380,6 @@ public class SettingsScreen extends Screen {
                     int trackX = x + 16;
                     int trackW = winW - 32;
                     int trackY = ry + rowH - 14;
-                    // click on slider track → drag
                     if (my >= trackY - 6 && my <= trackY + 10) {
                         dragging = i;
                         applySliderDrag(key, mx, trackX, trackW);
@@ -404,9 +400,7 @@ public class SettingsScreen extends Screen {
             computeLayout();
             String key = ROWS[dragging];
             if (isSlider(key)) {
-                int trackX = winX + 16;
-                int trackW = winW - 32;
-                applySliderDrag(key, click.x(), trackX, trackW);
+                applySliderDrag(key, click.x(), winX + 16, winW - 32);
                 return true;
             }
         }
@@ -437,10 +431,7 @@ public class SettingsScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyInput input) {
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
-            close();
-            return true;
-        }
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
         return super.keyPressed(input);
     }
 
@@ -450,7 +441,5 @@ public class SettingsScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
-        return false;
-    }
+    public boolean shouldPause() { return false; }
 }
