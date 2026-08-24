@@ -29,7 +29,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.19.4";
+    public static final String VERSION = "1.20.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -57,7 +57,6 @@ public class JayHackClient implements ClientModInitializer {
 
         ClientSettings.applySwordConfig();
 
-        // Combat (Aura + Reach removed)
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
         moduleManager.register(new CritAssist());
@@ -71,6 +70,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Velocity());
         moduleManager.register(new WTap());
         moduleManager.register(new STap());
+        moduleManager.register(new Reach());
         moduleManager.register(new Hitboxes());
         moduleManager.register(new AutoPot());
         moduleManager.register(new PotRefill());
@@ -272,25 +272,26 @@ public class JayHackClient implements ClientModInitializer {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
             }
-            case "binds" -> msg("§7RShift GUI · P profile · Del panic");
+            case "binds" -> msg("§7RShift GUI · J aim · T trigger · N vel · H hitbox · P profile · Del panic");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set velh|aimrange|miss|hitbox <n>");
+            msg("§f.set velh|aimrange|miss|hitbox|reach <n>");
             return;
         }
         try {
             double v = Double.parseDouble(args[3]);
             switch (args[2].toLowerCase()) {
-                case "velh", "vel" -> ClientSettings.velocityHorizontal = Math.max(0.2, Math.min(0.95, v));
+                case "velh", "vel" -> ClientSettings.velocityHorizontal = Math.max(0.4, Math.min(0.95, v));
                 case "velv" -> ClientSettings.velocityVertical = Math.max(0.65, Math.min(1.0, v));
                 case "aimrange" -> ClientSettings.aimRange = v;
                 case "aimfov" -> ClientSettings.aimFov = (float) v;
                 case "aimsmooth" -> ClientSettings.aimSmooth = (float) v;
-                case "hitbox", "hb" -> { ClientSettings.hitboxExpand = v; Hitboxes.setExpand(v); }
+                case "hitbox", "hb" -> Hitboxes.setExpand(v);
+                case "reach" -> Reach.setReach(v);
                 case "miss" -> ClientSettings.missChance = (int) v;
                 case "potmin" -> ClientSettings.potSlotMin = Math.max(0, Math.min(8, (int) v));
                 case "potmax" -> ClientSettings.potSlotMax = Math.max(0, Math.min(8, (int) v));
