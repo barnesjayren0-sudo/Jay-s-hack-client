@@ -20,15 +20,15 @@ public class AimAssist extends Module {
     private int tickCounter = 0;
 
     public AimAssist() {
-        super("AimAssist", "smooth assist — key J", Category.COMBAT);
+        super("AimAssist", "Soft aim — bind [J]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_J);
     }
 
     @Override
     public void onEnable() {
-        // Avoid a fixed first interval just like subsequent combat actions.
         silentDelay = Humanizer.combatDelay();
         lastSilentHit = 0;
+        tickCounter = 0;
     }
 
     @Override
@@ -38,11 +38,13 @@ public class AimAssist extends Module {
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Mobile.shouldThrottle()) return;
 
-        // Run assist every other tick — halves fight with your camera
         tickCounter++;
         if ((tickCounter & 1) != 0) return;
 
-        PlayerEntity target = TargetUtil.findCombatTarget(ClientSettings.aimRange, ClientSettings.aimFov);
+        double range = ClientSettings.aimRange;
+        if (Reach.isActive()) range = Math.max(range, Reach.getReach() + 0.8);
+
+        PlayerEntity target = TargetUtil.findCombatTarget(range, ClientSettings.aimFov);
         if (target == null) return;
 
         if ("silent".equalsIgnoreCase(ClientSettings.aimMode)) {
@@ -59,22 +61,21 @@ public class AimAssist extends Module {
         float dyaw = Math.abs(MathHelper.wrapDegrees(ang[0] - mc.player.getYaw()));
         if (dyaw > ClientSettings.aimFov) return;
 
-        // Only pull hard while actually attacking; idle = very light or skip
         boolean attacking = mc.options.attackKey.isPressed();
         if (ClientSettings.requireAttackKey && !attacking) {
-            // Gentle float toward target only if already close
-            if (dyaw > 25f) return;
-            RotationUtil.lookAt(target, 0.12f);
+            if (dyaw > 22f) return;
+            RotationUtil.lookAt(target, 0.10f);
             return;
         }
 
-        // Soft strength — old 0.34 * 1.3 was too sticky
-        float strength = Math.min(0.28f, ClientSettings.aimSmooth * 0.7f);
-        if (attacking) strength = Math.min(0.32f, strength + 0.06f);
+        float strength = Math.min(0.30f, ClientSettings.aimSmooth * 0.72f);
+        if (attacking) strength = Math.min(0.34f, strength + 0.05f);
 
-        // Skip some frames randomly so it doesn't feel robotic
+        // Distance scale — stronger when closer
+        double dist = mc.player.distanceTo(target);
+        if (dist < 2.5) strength = Math.min(0.36f, strength + 0.04f);
+
         if (Humanizer.shouldSkipTick()) return;
-
         RotationUtil.lookAt(target, strength);
     }
 
@@ -87,7 +88,7 @@ public class AimAssist extends Module {
 
         boolean attacking = mc.options.attackKey.isPressed() || !ClientSettings.requireAttackKey;
         if (!attacking) return;
-        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.9f) return;
+        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
         if (Humanizer.shouldMiss()) {
             lastSilentHit = now;
             silentDelay = Humanizer.combatDelay();

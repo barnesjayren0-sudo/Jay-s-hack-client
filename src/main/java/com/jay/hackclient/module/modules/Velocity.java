@@ -5,33 +5,26 @@ import com.jay.hackclient.settings.ClientSettings;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Horizontal knockback reduction via EntityVelocityUpdateS2CPacketMixin.
- * Y is never modified. Factor always follows ClientSettings (config/GUI).
+ * Horizontal KB reduction via packet mixin. Y never touched.
  */
 public class Velocity extends Module {
 
     public static long lastPacketMs = 0;
 
     public Velocity() {
-        super(
-            "Velocity",
-            "Reduces horizontal knockback",
-            Category.COMBAT
-        );
+        super("Velocity", "Horizontal KB reduce — bind [N]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_N);
     }
 
     @Override
-    public void onTick() {
-        // empty — packet mixin only
-    }
+    public void onTick() {}
 
     public static void applyVelocityMode(String mode) {
         ClientSettings.applyVelocityMode(mode);
     }
 
-    /** Always from ClientSettings so config / .jay set / GUI stay in sync. */
     public static double horizontalFactor() {
+        // Never below 0.40 — zero velocity is free ban
         return Math.max(0.40, Math.min(0.95, ClientSettings.velocityHorizontal));
     }
 

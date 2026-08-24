@@ -5,7 +5,8 @@
   "client": [
     "EntityMixin",
     "EntityVelocityUpdateS2CPacketMixin",
-    "LivingEntityAccessor"
+    "LivingEntityAccessor",
+    "PlayerEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

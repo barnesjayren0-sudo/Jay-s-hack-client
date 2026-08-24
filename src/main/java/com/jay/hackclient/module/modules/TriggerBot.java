@@ -18,7 +18,7 @@ public class TriggerBot extends Module {
     private int nextDelay = 550;
 
     public TriggerBot() {
-        super("TriggerBot", "Crosshair hits only", Category.COMBAT);
+        super("TriggerBot", "Hit on crosshair — bind [T]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_T);
     }
 
@@ -44,7 +44,11 @@ public class TriggerBot extends Module {
         if (JayHackClient.friendManager != null
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
-        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.9f) return;
+        // Respect reach cap
+        double maxDist = Reach.isActive() ? Reach.getReach() + 0.15 : 3.15;
+        if (mc.player.distanceTo(player) > maxDist + Hitboxes.getExpand()) return;
+
+        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
         if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)) return;
 
         long now = System.currentTimeMillis();
