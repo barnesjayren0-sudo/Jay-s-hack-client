@@ -3,7 +3,6 @@ package com.jay.hackclient.config;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Hitboxes;
-import com.jay.hackclient.module.modules.Reach;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.MinecraftClient;
 
@@ -23,7 +22,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Hack Client config v1.19\n");
+            sb.append("# Jay Hack Client config v1.19.4\n");
             sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
             sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
@@ -35,8 +34,6 @@ public class ConfigManager {
             sb.append("auraFov=").append(ClientSettings.auraFov).append('\n');
             sb.append("auraMultiTarget=").append(ClientSettings.auraMultiTarget).append('\n');
             sb.append("hitboxExpand=").append(ClientSettings.hitboxExpand).append('\n');
-            sb.append("reachDistance=").append(ClientSettings.reachDistance).append('\n');
-            sb.append("reachMode=").append(ClientSettings.reachMode).append('\n');
             sb.append("velocityMode=").append(ClientSettings.velocityMode).append('\n');
             sb.append("velocityHorizontal=").append(ClientSettings.velocityHorizontal).append('\n');
             sb.append("velocityVertical=").append(ClientSettings.velocityVertical).append('\n');
@@ -103,8 +100,6 @@ public class ConfigManager {
                         ClientSettings.hitboxExpand = dbl(v, ClientSettings.hitboxExpand);
                         Hitboxes.setExpand(ClientSettings.hitboxExpand);
                     }
-                    case "reachDistance" -> ClientSettings.reachDistance = Reach.clamp(dbl(v, ClientSettings.reachDistance));
-                    case "reachMode" -> ClientSettings.reachMode = v;
                     case "velocityMode" -> ClientSettings.applyVelocityMode(v);
                     case "velocityHorizontal" -> ClientSettings.velocityHorizontal = dbl(v, ClientSettings.velocityHorizontal);
                     case "velocityVertical" -> ClientSettings.velocityVertical = dbl(v, ClientSettings.velocityVertical);
@@ -129,6 +124,8 @@ public class ConfigManager {
                     case "potSlotMax" -> ClientSettings.potSlotMax = (int) dbl(v, ClientSettings.potSlotMax);
                     case "arrayListColor" -> ClientSettings.arrayListColor = (int) dbl(v, ClientSettings.arrayListColor);
                     case "arrayListRainbow" -> ClientSettings.arrayListRainbow = Boolean.parseBoolean(v);
+                    // ignore legacy reachDistance / reachMode / mod.Aura / mod.Reach
+                    case "reachDistance", "reachMode" -> {}
                     default -> {
                         if (k.startsWith("mod.") && JayHackClient.moduleManager != null) {
                             Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));

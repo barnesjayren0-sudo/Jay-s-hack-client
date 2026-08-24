@@ -3,7 +3,6 @@ package com.jay.hackclient.gui;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Hitboxes;
-import com.jay.hackclient.module.modules.Reach;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
@@ -12,9 +11,7 @@ import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Module settings — same visual language as the v1.19 ClickGUI mockup.
- */
+/** Module settings — mockup style (Reach/Aura rows removed). */
 public class SettingsScreen extends Screen {
 
     private static final int BG_OVERLAY = 0x99000000;
@@ -39,11 +36,9 @@ public class SettingsScreen extends Screen {
             "aimMode",
             "targetPriority",
             "velocityMode",
-            "reachDistance",
             "aimRange",
             "aimFov",
             "aimSmooth",
-            "auraRange",
             "hitboxExpand",
             "missChance",
             "velHorizontal",
@@ -78,9 +73,9 @@ public class SettingsScreen extends Screen {
 
     private boolean isSlider(String key) {
         return switch (key) {
-            case "aimRange", "aimFov", "aimSmooth", "auraRange",
+            case "aimRange", "aimFov", "aimSmooth",
                  "hitboxExpand", "missChance", "velHorizontal",
-                 "potSlotMin", "potSlotMax", "reachDistance" -> true;
+                 "potSlotMin", "potSlotMax" -> true;
             default -> false;
         };
     }
@@ -90,12 +85,10 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> 3.0;
             case "aimFov" -> 40;
             case "aimSmooth" -> 0.08;
-            case "auraRange" -> 3.0;
             case "hitboxExpand" -> 0.0;
             case "missChance" -> 0;
             case "velHorizontal" -> 0.25;
             case "potSlotMin", "potSlotMax" -> 0;
-            case "reachDistance" -> 3.0;
             default -> 0;
         };
     }
@@ -105,12 +98,10 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> 6.0;
             case "aimFov" -> 180;
             case "aimSmooth" -> 0.55;
-            case "auraRange" -> 4.5;
             case "hitboxExpand" -> 0.35;
             case "missChance" -> 20;
             case "velHorizontal" -> 0.90;
             case "potSlotMin", "potSlotMax" -> 8;
-            case "reachDistance" -> 3.5;
             default -> 1;
         };
     }
@@ -120,12 +111,10 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> 0.25;
             case "aimFov" -> 5;
             case "aimSmooth" -> 0.02;
-            case "auraRange" -> 0.1;
             case "hitboxExpand" -> 0.02;
             case "missChance" -> 1;
             case "velHorizontal" -> 0.05;
             case "potSlotMin", "potSlotMax" -> 1;
-            case "reachDistance" -> 0.05;
             default -> 0.1;
         };
     }
@@ -135,13 +124,11 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> ClientSettings.aimRange;
             case "aimFov" -> ClientSettings.aimFov;
             case "aimSmooth" -> ClientSettings.aimSmooth;
-            case "auraRange" -> ClientSettings.auraRange;
             case "hitboxExpand" -> ClientSettings.hitboxExpand;
             case "missChance" -> ClientSettings.missChance;
             case "velHorizontal" -> ClientSettings.velocityHorizontal;
             case "potSlotMin" -> ClientSettings.potSlotMin;
             case "potSlotMax" -> ClientSettings.potSlotMax;
-            case "reachDistance" -> ClientSettings.reachDistance;
             default -> 0;
         };
     }
@@ -154,7 +141,6 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> ClientSettings.aimRange = v;
             case "aimFov" -> ClientSettings.aimFov = (float) v;
             case "aimSmooth" -> ClientSettings.aimSmooth = (float) v;
-            case "auraRange" -> ClientSettings.auraRange = v;
             case "hitboxExpand" -> {
                 ClientSettings.hitboxExpand = v;
                 Hitboxes.setExpand(v);
@@ -163,7 +149,6 @@ public class SettingsScreen extends Screen {
             case "velHorizontal" -> ClientSettings.velocityHorizontal = v;
             case "potSlotMin" -> ClientSettings.potSlotMin = (int) Math.round(v);
             case "potSlotMax" -> ClientSettings.potSlotMax = (int) Math.round(v);
-            case "reachDistance" -> Reach.setReach(v);
             default -> {}
         }
     }
@@ -173,11 +158,9 @@ public class SettingsScreen extends Screen {
             case "aimMode" -> "Aim mode";
             case "targetPriority" -> "Target priority";
             case "velocityMode" -> "Velocity mode";
-            case "reachDistance" -> "Reach distance";
             case "aimRange" -> "Aim range";
             case "aimFov" -> "Aim FOV";
             case "aimSmooth" -> "Aim smooth";
-            case "auraRange" -> "Aura range";
             case "hitboxExpand" -> "Hitbox expand";
             case "missChance" -> "Miss chance";
             case "velHorizontal" -> "Velocity horizontal";
@@ -195,11 +178,9 @@ public class SettingsScreen extends Screen {
             case "aimMode" -> ClientSettings.aimMode;
             case "targetPriority" -> ClientSettings.targetPriority;
             case "velocityMode" -> ClientSettings.velocityMode;
-            case "reachDistance" -> String.format("%.2f", ClientSettings.reachDistance);
             case "aimRange" -> String.format("%.2f", ClientSettings.aimRange);
             case "aimFov" -> String.format("%.0f", ClientSettings.aimFov);
             case "aimSmooth" -> String.format("%.2f", ClientSettings.aimSmooth);
-            case "auraRange" -> String.format("%.2f", ClientSettings.auraRange);
             case "hitboxExpand" -> String.format("%.2f", ClientSettings.hitboxExpand);
             case "missChance" -> String.valueOf(ClientSettings.missChance);
             case "velHorizontal" -> String.format("%.2f", ClientSettings.velocityHorizontal);
@@ -247,9 +228,7 @@ public class SettingsScreen extends Screen {
                 }
             }
         }
-        if (JayHackClient.configManager != null) {
-            JayHackClient.configManager.save();
-        }
+        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
     }
 
     private void applySliderDrag(String key, double mouseX, int trackX, int trackW) {
