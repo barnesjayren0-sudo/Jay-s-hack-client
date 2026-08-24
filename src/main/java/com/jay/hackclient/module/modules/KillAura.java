@@ -13,6 +13,10 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
+/**
+ * Aura — toggle with [R].
+ * Uses ClientSettings.auraRange, capped by Reach when that module is on.
+ */
 public class KillAura extends Module {
 
     private long lastAttack = 0;
@@ -21,7 +25,7 @@ public class KillAura extends Module {
     private long targetLockedUntil = 0;
 
     public KillAura() {
-        super("KillAura", "Quiet aura (use TriggerBot if possible)", Category.COMBAT);
+        super("Aura", "Auto attack nearby — bind [R]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_R);
     }
 
@@ -29,6 +33,7 @@ public class KillAura extends Module {
     public void onEnable() {
         nextDelay = Humanizer.combatDelay();
         lastAttack = 0;
+        lockedTargetId = -1;
     }
 
     @Override
@@ -44,18 +49,21 @@ public class KillAura extends Module {
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            if (Humanizer.chance(50)) RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.5f);
+            // light track while waiting
+            if (Humanizer.chance(40)) {
+                RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.45f);
+            }
             return;
         }
 
-        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.85f) return;
+        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
         if (Humanizer.shouldMiss()) {
             lastAttack = now;
             nextDelay = Humanizer.combatDelay();
             return;
         }
 
-        RotationUtil.lookAt(target, ClientSettings.aimSmooth * 1.2f);
+        RotationUtil.lookAt(target, ClientSettings.aimSmooth * 1.15f);
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -63,9 +71,18 @@ public class KillAura extends Module {
         nextDelay = Humanizer.combatDelay();
     }
 
+    private double effectiveRange() {
+        double r = ClientSettings.auraRange;
+        // If Reach is on, don't claim hits beyond actual interaction range
+        if (Reach.isActive()) {
+            r = Math.min(r, Reach.getReach() + 0.05);
+        }
+        return r;
+    }
+
     private LivingEntity findTarget() {
         LivingEntity best = null;
-        double closest = ClientSettings.auraRange;
+        double closest = effectiveRange();
         long now = System.currentTimeMillis();
 
         for (PlayerEntity player : mc.world.getPlayers()) {
@@ -75,21 +92,25 @@ public class KillAura extends Module {
                     && JayHackClient.friendManager.isFriend(player.getName().getString())) continue;
 
             double dist = mc.player.distanceTo(player);
+            if (dist > closest) continue;
+
             float yaw = (float) (Math.atan2(player.getZ() - mc.player.getZ(),
                     player.getX() - mc.player.getX()) * (180.0 / Math.PI)) - 90f;
             float yawDiff = Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
-            if (dist <= closest && yawDiff <= ClientSettings.auraFov) {
-                if (!ClientSettings.auraMultiTarget && lockedTargetId != -1
-                        && now < targetLockedUntil && player.getId() != lockedTargetId) {
-                    continue;
-                }
-                closest = dist;
-                best = player;
+            if (yawDiff > ClientSettings.auraFov) continue;
+
+            if (!ClientSettings.auraMultiTarget && lockedTargetId != -1
+                    && now < targetLockedUntil && player.getId() != lockedTargetId) {
+                continue;
             }
+
+            closest = dist;
+            best = player;
         }
+
         if (best != null && best.getId() != lockedTargetId) {
             lockedTargetId = best.getId();
-            targetLockedUntil = now + Humanizer.combatDelay();
+            targetLockedUntil = now + Humanizer.combatDelay() + 200L;
         }
         return best;
     }

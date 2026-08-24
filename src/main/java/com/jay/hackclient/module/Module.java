@@ -3,6 +3,7 @@ package com.jay.hackclient.module;
 import com.jay.hackclient.JayHackClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
+import org.lwjgl.glfw.GLFW;
 
 public abstract class Module {
 
@@ -36,7 +37,6 @@ public abstract class Module {
             onDisable();
             notify("§cdisabled");
         }
-        // Persist module toggles
         if (JayHackClient.configManager != null) {
             try {
                 JayHackClient.configManager.save();
@@ -60,6 +60,39 @@ public abstract class Module {
     public boolean isEnabled() { return enabled; }
     public int getKeyBind() { return keyBind; }
     public void setKeyBind(int keyBind) { this.keyBind = keyBind; }
+
+    /** Short label like [R] for the GUI. */
+    public String getKeyLabel() {
+        if (keyBind < 0) return "";
+        return switch (keyBind) {
+            case GLFW.GLFW_KEY_R -> "R";
+            case GLFW.GLFW_KEY_N -> "N";
+            case GLFW.GLFW_KEY_P -> "P";
+            case GLFW.GLFW_KEY_G -> "G";
+            case GLFW.GLFW_KEY_H -> "H";
+            case GLFW.GLFW_KEY_J -> "J";
+            case GLFW.GLFW_KEY_K -> "K";
+            case GLFW.GLFW_KEY_L -> "L";
+            case GLFW.GLFW_KEY_V -> "V";
+            case GLFW.GLFW_KEY_B -> "B";
+            case GLFW.GLFW_KEY_X -> "X";
+            case GLFW.GLFW_KEY_C -> "C";
+            case GLFW.GLFW_KEY_Z -> "Z";
+            case GLFW.GLFW_KEY_F -> "F";
+            case GLFW.GLFW_KEY_T -> "T";
+            case GLFW.GLFW_KEY_Y -> "Y";
+            case GLFW.GLFW_KEY_U -> "U";
+            case GLFW.GLFW_KEY_I -> "I";
+            case GLFW.GLFW_KEY_O -> "O";
+            case GLFW.GLFW_KEY_M -> "M";
+            case GLFW.GLFW_KEY_DELETE -> "DEL";
+            case GLFW.GLFW_KEY_RIGHT_SHIFT -> "RShift";
+            default -> {
+                String n = GLFW.glfwGetKeyName(keyBind, 0);
+                yield n != null ? n.toUpperCase() : "#" + keyBind;
+            }
+        };
+    }
 
     public enum Category {
         COMBAT("Combat"),
