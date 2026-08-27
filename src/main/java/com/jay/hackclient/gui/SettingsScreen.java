@@ -3,6 +3,7 @@ package com.jay.hackclient.gui;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Hitboxes;
+import com.jay.hackclient.module.modules.Reach;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
@@ -11,7 +12,7 @@ import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
-/** Module settings — mockup style (Reach/Aura rows removed). */
+/** Settings — target priority + all combat sliders persist on change. */
 public class SettingsScreen extends Screen {
 
     private static final int BG_OVERLAY = 0x99000000;
@@ -39,6 +40,8 @@ public class SettingsScreen extends Screen {
             "aimRange",
             "aimFov",
             "aimSmooth",
+            "auraRange",
+            "reachDistance",
             "hitboxExpand",
             "missChance",
             "velHorizontal",
@@ -73,7 +76,7 @@ public class SettingsScreen extends Screen {
 
     private boolean isSlider(String key) {
         return switch (key) {
-            case "aimRange", "aimFov", "aimSmooth",
+            case "aimRange", "aimFov", "aimSmooth", "auraRange", "reachDistance",
                  "hitboxExpand", "missChance", "velHorizontal",
                  "potSlotMin", "potSlotMax" -> true;
             default -> false;
@@ -85,9 +88,11 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> 3.0;
             case "aimFov" -> 40;
             case "aimSmooth" -> 0.08;
+            case "auraRange" -> 3.0;
+            case "reachDistance" -> 3.0;
             case "hitboxExpand" -> 0.0;
             case "missChance" -> 0;
-            case "velHorizontal" -> 0.25;
+            case "velHorizontal" -> 0.40;
             case "potSlotMin", "potSlotMax" -> 0;
             default -> 0;
         };
@@ -98,7 +103,9 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> 6.0;
             case "aimFov" -> 180;
             case "aimSmooth" -> 0.55;
-            case "hitboxExpand" -> 0.35;
+            case "auraRange" -> 4.5;
+            case "reachDistance" -> 3.45;
+            case "hitboxExpand" -> 0.40;
             case "missChance" -> 20;
             case "velHorizontal" -> 0.90;
             case "potSlotMin", "potSlotMax" -> 8;
@@ -111,6 +118,8 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> 0.25;
             case "aimFov" -> 5;
             case "aimSmooth" -> 0.02;
+            case "auraRange" -> 0.1;
+            case "reachDistance" -> 0.05;
             case "hitboxExpand" -> 0.02;
             case "missChance" -> 1;
             case "velHorizontal" -> 0.05;
@@ -124,6 +133,8 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> ClientSettings.aimRange;
             case "aimFov" -> ClientSettings.aimFov;
             case "aimSmooth" -> ClientSettings.aimSmooth;
+            case "auraRange" -> ClientSettings.auraRange;
+            case "reachDistance" -> ClientSettings.reachDistance;
             case "hitboxExpand" -> ClientSettings.hitboxExpand;
             case "missChance" -> ClientSettings.missChance;
             case "velHorizontal" -> ClientSettings.velocityHorizontal;
@@ -134,17 +145,14 @@ public class SettingsScreen extends Screen {
     }
 
     private void setNum(String key, double v) {
-        double min = minOf(key);
-        double max = maxOf(key);
-        v = Math.max(min, Math.min(max, v));
+        v = Math.max(minOf(key), Math.min(maxOf(key), v));
         switch (key) {
             case "aimRange" -> ClientSettings.aimRange = v;
             case "aimFov" -> ClientSettings.aimFov = (float) v;
             case "aimSmooth" -> ClientSettings.aimSmooth = (float) v;
-            case "hitboxExpand" -> {
-                ClientSettings.hitboxExpand = v;
-                Hitboxes.setExpand(v);
-            }
+            case "auraRange" -> ClientSettings.auraRange = v;
+            case "reachDistance" -> Reach.setReach(v);
+            case "hitboxExpand" -> Hitboxes.setExpand(v);
             case "missChance" -> ClientSettings.missChance = (int) Math.round(v);
             case "velHorizontal" -> ClientSettings.velocityHorizontal = v;
             case "potSlotMin" -> ClientSettings.potSlotMin = (int) Math.round(v);
@@ -161,6 +169,8 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> "Aim range";
             case "aimFov" -> "Aim FOV";
             case "aimSmooth" -> "Aim smooth";
+            case "auraRange" -> "KillAura range";
+            case "reachDistance" -> "Reach distance";
             case "hitboxExpand" -> "Hitbox expand";
             case "missChance" -> "Miss chance";
             case "velHorizontal" -> "Velocity horizontal";
@@ -181,6 +191,8 @@ public class SettingsScreen extends Screen {
             case "aimRange" -> String.format("%.2f", ClientSettings.aimRange);
             case "aimFov" -> String.format("%.0f", ClientSettings.aimFov);
             case "aimSmooth" -> String.format("%.2f", ClientSettings.aimSmooth);
+            case "auraRange" -> String.format("%.2f", ClientSettings.auraRange);
+            case "reachDistance" -> String.format("%.2f", ClientSettings.reachDistance);
             case "hitboxExpand" -> String.format("%.2f", ClientSettings.hitboxExpand);
             case "missChance" -> String.valueOf(ClientSettings.missChance);
             case "velHorizontal" -> String.format("%.2f", ClientSettings.velocityHorizontal);
@@ -232,11 +244,9 @@ public class SettingsScreen extends Screen {
     }
 
     private void applySliderDrag(String key, double mouseX, int trackX, int trackW) {
-        double t = (mouseX - trackX) / (double) trackW;
+        double t = (mouseX - trackX) / (double) Math.max(1, trackW);
         t = Math.max(0, Math.min(1, t));
-        double min = minOf(key);
-        double max = maxOf(key);
-        double v = min + t * (max - min);
+        double v = minOf(key) + t * (maxOf(key) - minOf(key));
         double step = stepOf(key);
         v = Math.round(v / step) * step;
         setNum(key, v);
@@ -254,8 +264,6 @@ public class SettingsScreen extends Screen {
 
         String title = module != null ? module.getName() : "Settings";
         ctx.drawTextWithShadow(textRenderer, "§b← §f" + title, x + 12, y + (headerH / 2) - 4, TEXT);
-        ctx.drawTextWithShadow(textRenderer, "§8settings", x + 12 + textRenderer.getWidth("← " + title) + 6,
-                y + (headerH / 2) - 4, TEXT_DIM);
 
         int closeX = x + winW - 22;
         int closeY = y + (headerH / 2) - 6;
@@ -293,22 +301,16 @@ public class SettingsScreen extends Screen {
                 ctx.drawTextWithShadow(textRenderer, label, x + 16, ry + 8, TEXT);
                 ctx.drawTextWithShadow(textRenderer, val, x + winW - 16 - textRenderer.getWidth(val),
                         ry + 8, ACCENT);
-
                 int trackX = x + 16;
                 int trackW = winW - 32;
                 int trackY = ry + rowH - 14;
-                int trackH = 4;
-                ctx.fill(trackX, trackY, trackX + trackW, trackY + trackH, TRACK);
-
-                double min = minOf(key);
-                double max = maxOf(key);
-                double t = (getNum(key) - min) / (max - min);
+                ctx.fill(trackX, trackY, trackX + trackW, trackY + 4, TRACK);
+                double t = (getNum(key) - minOf(key)) / (maxOf(key) - minOf(key));
                 t = Math.max(0, Math.min(1, t));
                 int fillW = (int) (trackW * t);
-                ctx.fill(trackX, trackY, trackX + fillW, trackY + trackH, ACCENT);
-
+                ctx.fill(trackX, trackY, trackX + fillW, trackY + 4, ACCENT);
                 int knobX = trackX + fillW - 3;
-                ctx.fill(knobX, trackY - 3, knobX + 6, trackY + trackH + 3, 0xFFFFFFFF);
+                ctx.fill(knobX, trackY - 3, knobX + 6, trackY + 7, 0xFFFFFFFF);
             } else {
                 ctx.drawTextWithShadow(textRenderer, label, x + 16, ry + rowH / 2 - 4, TEXT);
                 int vw = textRenderer.getWidth(val);
@@ -317,37 +319,29 @@ public class SettingsScreen extends Screen {
                 fillRound(ctx, px, py, x + winW - 12, py + 14, 0xFF1A2A32);
                 ctx.drawTextWithShadow(textRenderer, val, px + 5, py + 3, ACCENT);
             }
-
             ctx.fill(x + 16, ry + rowH - 1, x + winW - 16, ry + rowH, DIVIDER);
         }
 
-        ctx.drawTextWithShadow(textRenderer, "§8Click cycle · drag sliders · Esc back",
+        ctx.drawTextWithShadow(textRenderer, "§8Click cycle · drag sliders · auto-saves",
                 x + 12, y + winH - 11, 0xFF555566);
-
         super.render(ctx, mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
         if (click.button() != 0) return super.mouseClicked(click, doubled);
-
         computeLayout();
-        int x = winX;
-        int y = winY;
-        double mx = click.x();
-        double my = click.y();
-
+        double mx = click.x(), my = click.y();
+        int x = winX, y = winY;
         int closeX = x + winW - 22;
         int closeY = y + (headerH / 2) - 6;
         if (my >= y && my <= y + headerH) {
             if (mx >= x && mx <= x + 80) { close(); return true; }
             if (mx >= closeX - 4 && mx <= closeX + 12) { close(); return true; }
         }
-
         int listTop = y + headerH + 4;
         int listBottom = y + winH - 12;
         int maxRows = Math.max(1, (listBottom - listTop) / rowH);
-
         for (int i = 0; i < ROWS.length; i++) {
             if (i < scroll) continue;
             int di = i - scroll;
@@ -356,12 +350,10 @@ public class SettingsScreen extends Screen {
             if (mx >= x + 8 && mx <= x + winW - 8 && my >= ry && my < ry + rowH) {
                 String key = ROWS[i];
                 if (isSlider(key)) {
-                    int trackX = x + 16;
-                    int trackW = winW - 32;
                     int trackY = ry + rowH - 14;
                     if (my >= trackY - 6 && my <= trackY + 10) {
                         dragging = i;
-                        applySliderDrag(key, mx, trackX, trackW);
+                        applySliderDrag(key, mx, x + 16, winW - 32);
                         if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                         return true;
                     }
@@ -397,14 +389,12 @@ public class SettingsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double h, double v) {
         computeLayout();
-        int listTop = winY + headerH + 4;
-        int listBottom = winY + winH - 12;
-        int maxRows = Math.max(1, (listBottom - listTop) / rowH);
+        int maxRows = Math.max(1, (winH - headerH - 16) / rowH);
         int maxScroll = Math.max(0, ROWS.length - maxRows);
-        if (verticalAmount > 0) scroll = Math.max(0, scroll - 1);
-        else if (verticalAmount < 0) scroll = Math.min(maxScroll, scroll + 1);
+        if (v > 0) scroll = Math.max(0, scroll - 1);
+        else if (v < 0) scroll = Math.min(maxScroll, scroll + 1);
         return true;
     }
 
@@ -416,6 +406,7 @@ public class SettingsScreen extends Screen {
 
     @Override
     public void close() {
+        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
         if (client != null) client.setScreen(parent);
     }
 
