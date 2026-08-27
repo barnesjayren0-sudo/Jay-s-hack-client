@@ -9,9 +9,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
 import org.lwjgl.glfw.GLFW;
 
+/** Highest hotbar priority — steals slot from AutoSword / PotRefill. */
 public class ShieldBreak extends Module {
 
     private long lastSwap = 0;
@@ -19,7 +19,7 @@ public class ShieldBreak extends Module {
     private long restoreAt = 0;
 
     public ShieldBreak() {
-        super("ShieldBreak", "Axe-swap vs shields — key V", Category.COMBAT);
+        super("ShieldBreak", "Axe-swap vs shields — [V]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_V);
     }
 
@@ -45,7 +45,8 @@ public class ShieldBreak extends Module {
 
         int axe = findAxe();
         if (axe < 0) return;
-        if (!SlotLock.tryAcquire("ShieldBreak", 400)) return;
+        // Priority 30 — always wins over AutoSword / PotRefill
+        if (!SlotLock.tryAcquire("ShieldBreak", 450, 30)) return;
 
         if (savedSlot < 0) savedSlot = mc.player.getInventory().getSelectedSlot();
         if (mc.player.getInventory().getSelectedSlot() != axe) {

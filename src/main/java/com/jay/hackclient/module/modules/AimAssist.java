@@ -13,6 +13,9 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
+/**
+ * AimAssist [J] — classic soft FOV cone, sword/axe only, less stutter.
+ */
 public class AimAssist extends Module {
 
     private long lastSilentHit = 0;
@@ -20,7 +23,7 @@ public class AimAssist extends Module {
     private int tickCounter = 0;
 
     public AimAssist() {
-        super("AimAssist", "Soft aim — bind [J]", Category.COMBAT);
+        super("AimAssist", "Soft aim FOV cone — [J]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_J);
     }
 
@@ -38,11 +41,12 @@ public class AimAssist extends Module {
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Mobile.shouldThrottle()) return;
 
+        // Half-rate — cuts camera fight / stutter
         tickCounter++;
         if ((tickCounter & 1) != 0) return;
 
         double range = ClientSettings.aimRange;
-        if (Reach.isActive()) range = Math.max(range, Reach.getReach() + 0.8);
+        if (Reach.isActive()) range = Math.max(range, Reach.getReach() + 0.6);
 
         PlayerEntity target = TargetUtil.findCombatTarget(range, ClientSettings.aimFov);
         if (target == null) return;
@@ -59,21 +63,29 @@ public class AimAssist extends Module {
         if (ang == null) return;
 
         float dyaw = Math.abs(MathHelper.wrapDegrees(ang[0] - mc.player.getYaw()));
+        // Hard FOV cone — outside = no pull
         if (dyaw > ClientSettings.aimFov) return;
 
         boolean attacking = mc.options.attackKey.isPressed();
+
         if (ClientSettings.requireAttackKey && !attacking) {
-            if (dyaw > 22f) return;
-            RotationUtil.lookAt(target, 0.10f);
+            // Idle: only tiny correction if already almost on target
+            if (dyaw > 18f) return;
+            if (Humanizer.chance(40)) return;
+            RotationUtil.lookAt(target, 0.08f);
             return;
         }
 
-        float strength = Math.min(0.30f, ClientSettings.aimSmooth * 0.72f);
-        if (attacking) strength = Math.min(0.34f, strength + 0.05f);
+        // Soft strength — avoid sticky snap
+        float strength = Math.min(0.28f, ClientSettings.aimSmooth * 0.68f);
+        if (attacking) strength = Math.min(0.33f, strength + 0.05f);
 
-        // Distance scale — stronger when closer
         double dist = mc.player.distanceTo(target);
-        if (dist < 2.5) strength = Math.min(0.36f, strength + 0.04f);
+        if (dist < 2.4) strength = Math.min(0.35f, strength + 0.03f);
+        if (dist > 3.5) strength *= 0.85f;
+
+        // Deadzone — stop micro jitter when already aimed
+        if (dyaw < ClientSettings.aimDeadzone) return;
 
         if (Humanizer.shouldSkipTick()) return;
         RotationUtil.lookAt(target, strength);

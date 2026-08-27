@@ -8,7 +8,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 
-/** Refills splash pots into configured hotbar slot range. */
+/** Refills splash pots. Priority 20 — loses only to ShieldBreak. */
 public class PotRefill extends Module {
 
     private long last;
@@ -22,6 +22,7 @@ public class PotRefill extends Module {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
         if (SlotLock.isLockedByOther("PotRefill")) return;
+        if ("ShieldBreak".equals(SlotLock.currentOwner())) return;
 
         long now = System.currentTimeMillis();
         if (now - last < Humanizer.swapDelay() + 100) return;
@@ -37,7 +38,7 @@ public class PotRefill extends Module {
             int inv = findPotInInv();
             if (inv < 0) return;
 
-            if (!SlotLock.tryAcquire("PotRefill", 200)) return;
+            if (!SlotLock.tryAcquire("PotRefill", 220, 20)) return;
 
             try {
                 int sync = mc.player.playerScreenHandler.syncId;
