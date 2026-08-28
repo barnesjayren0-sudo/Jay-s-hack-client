@@ -29,7 +29,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.22.0";
+    public static final String VERSION = "1.23.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -101,10 +101,14 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PearlAssist());
         moduleManager.register(new InvManager());
 
+        // World / find — loaded chunks only
         moduleManager.register(new BaseFinder());
+        moduleManager.register(new StorageFinder());
+        moduleManager.register(new BuildFinder());
+        moduleManager.register(new BeaconFinder());
         moduleManager.register(new SpawnerFinder());
-        moduleManager.register(new PlayerRadar());
         moduleManager.register(new PortalFinder());
+        moduleManager.register(new PlayerRadar());
         moduleManager.register(new PathToBase());
         moduleManager.register(new BaritoneControl());
         moduleManager.register(new Scaffold());
@@ -209,7 +213,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .profile .fav .sword .b #goto");
+            msg("§f.gui .scan .radar .storage .build .path .goto x y z");
             return;
         }
 
@@ -255,7 +259,41 @@ public class JayHackClient implements ClientModInitializer {
             case "off" -> { moduleManager.disableAll(); BaritoneCompat.cancel(); configManager.save(); msg("§eOff"); }
             case "panic" -> { moduleManager.panic(); BaritoneCompat.cancel(); configManager.save(); msg("§cPANIC"); }
             case "unpanic" -> { moduleManager.unfreeze(); msg("§aOK"); }
-            case "path" -> toggle("PathToBase");
+
+            // Find / path
+            case "scan", "base" -> {
+                Module bf = moduleManager.getModuleByName("BaseFinder");
+                if (bf instanceof BaseFinder f) f.scan(true);
+            }
+            case "radar", "players" -> {
+                Module pr = moduleManager.getModuleByName("PlayerRadar");
+                if (pr instanceof PlayerRadar r) r.report(true);
+            }
+            case "storage", "store" -> {
+                Module sf = moduleManager.getModuleByName("StorageFinder");
+                if (sf instanceof StorageFinder s) s.scan(true);
+            }
+            case "build" -> {
+                Module bf = moduleManager.getModuleByName("BuildFinder");
+                if (bf instanceof BuildFinder b) b.scan(true);
+            }
+            case "path" -> PathToBase.runPath(PathToBase.lastTarget);
+            case "goto", "tp" -> {
+                if (args.length < 5) { msg("§f.jay goto <x> <y> <z>"); return; }
+                try {
+                    int x = Integer.parseInt(args[2]);
+                    int y = Integer.parseInt(args[3]);
+                    int z = Integer.parseInt(args[4]);
+                    PathToBase.runPath(x, y, z);
+                } catch (NumberFormatException e) {
+                    msg("§cNumbers only");
+                }
+            }
+            case "stoppath", "cancel" -> {
+                BaritoneCompat.cancel();
+                msg("§ePath cancelled");
+            }
+
             case "baritone", "b" -> {
                 if (args.length >= 3) {
                     StringBuilder sb = new StringBuilder("#");
@@ -269,11 +307,7 @@ public class JayHackClient implements ClientModInitializer {
                     toggle("Baritone");
                 }
             }
-            case "scan" -> {
-                Module bf = moduleManager.getModuleByName("BaseFinder");
-                if (bf instanceof BaseFinder f) f.scan(true);
-            }
-            case "binds" -> msg("§7RShift GUI · profiles in GUI · RMB module = settings/keybind");
+            case "binds" -> msg("§7RShift GUI · .scan .radar .storage .build .path .goto x y z");
             default -> msg("§c?");
         }
     }
