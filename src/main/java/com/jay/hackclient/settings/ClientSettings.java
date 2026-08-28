@@ -52,12 +52,12 @@ public final class ClientSettings {
 
     public static final Set<String> favorites = new HashSet<>();
 
-    /** Utility-first default */
-    public static String mode = "utility";
-    public static String lastProfile = "scout";
+    /** Dual client: pvp + utility */
+    public static String mode = "dual";
+    public static String lastProfile = "sword";
 
     public static final String[] PROFILE_CYCLE = {
-            "scout", "builder", "explore", "utility", "legit"
+            "scout", "builder", "explore", "sword", "nethpot", "legit"
     };
     public static int profileCycleIndex = 0;
 
@@ -93,12 +93,19 @@ public final class ClientSettings {
 
     public static void applyUtilityConfig() {
         mode = "utility";
-        lastProfile = "utility";
+        lastProfile = "scout";
         aimMode = "classic";
         targetPriority = "crosshair";
         hideHudOnScreenshot = true;
         hideHudInDebug = true;
         arrayListColor = 0x3DDCFF;
+    }
+
+    public static void applyDualConfig() {
+        mode = "dual";
+        lastProfile = "sword";
+        applySwordConfig();
+        mode = "dual";
     }
 
     public static void applySwordConfig() {
@@ -219,8 +226,6 @@ public final class ClientSettings {
     }
 
     public static String summarize() {
-        return String.format(
-                "mode=%s profile=%s aim=%s",
-                mode, lastProfile, aimMode);
+        return String.format("mode=%s profile=%s aim=%s", mode, lastProfile, aimMode);
     }
 }

@@ -1,35 +1,35 @@
-# Jay's Utility Client v1.24.0
+# Jay's Client v1.25.0
 
-Fabric **Minecraft 1.21.11** · **utility-first** (world find, pathing, QoL)
+Fabric **Minecraft 1.21.11** · **PvP + server utility**
 
-Combat modules still exist but are optional — defaults and profiles target exploration / server utility, not PvP.
+Sword / nethpot combat · loaded-chunk finders · Baritone pathing · QoL
 
-> **Disclaimer:** Private / educational use only. Unauthorized cheats on public servers can get you banned. You are responsible for use.
+> **Disclaimer:** Private / educational use only. Cheats on public servers can get you banned. You are responsible for use.
 
 ---
 
-## Focus (1.24)
+## Dual focus
 
-| Area | Tools |
+| Side | Tools |
 |------|--------|
-| **World** | BaseFinder · StorageFinder · BuildFinder · BeaconFinder · SpawnerFinder · PortalFinder · PlayerRadar |
-| **Path** | PathToBase · Baritone bridge · `.jay goto x y z` |
-| **QoL** | FullBright · ESP · Nametags · AutoTool · Scaffold · SafeWalk · AutoSprint · Inv helpers |
-| **Optional** | Combat tab still available if you enable it |
+| **PvP** | KillAura · AimAssist · TriggerBot · Velocity · WTap/STap · ShieldBreak · Hitboxes · Reach · profiles sword/nethpot/legit |
+| **Server utility** | BaseFinder · StorageFinder · BuildFinder · BeaconFinder · PlayerRadar · PathToBase · `.jay goto` · ESP · FullBright |
 
-**Not included:** Randar / seed-RNG locate — only **loaded chunks** and render-distance players.
+Finders only scan **loaded chunks** / render distance — not seed/RNG locate.
 
 ---
 
-## Requirements
+## Profiles (GUI bottom or `.jay profile`)
 
-| Item | Version |
-|------|---------|
-| Minecraft | **1.21.11** |
-| Loader | Fabric ≥ 0.16 |
-| Java | **21+** |
-| Mods | Fabric API + fabric-language-kotlin |
-| Optional | Baritone (pathing) |
+| Profile | Use |
+|---------|-----|
+| **sword** | PvP sword stack |
+| **nethpot** | Pot PvP |
+| **scout** | Finders + radar + ESP |
+| **builder** | Scaffold / AutoTool / SafeWalk |
+| **explore** | Travel + radar + portals |
+
+Cycle: **P** key · `scout → builder → explore → sword → nethpot → legit`
 
 ---
 
@@ -38,9 +38,8 @@ Combat modules still exist but are optional — defaults and profiles target exp
 ```bash
 cd ~/Jay-s-hack-client
 git fetch origin && git reset --hard origin/main
-export GRADLE_OPTS="-Xmx1536m"
 ./gradlew clean build --no-daemon
-cp build/libs/jays-hack-client-1.24.0.jar /sdcard/Download/
+cp build/libs/jays-hack-client-1.25.0.jar /sdcard/Download/
 ```
 
 ---
@@ -49,13 +48,11 @@ cp build/libs/jays-hack-client-1.24.0.jar /sdcard/Download/
 
 | Key | Action |
 |-----|--------|
-| **Right Shift** | ClickGUI (opens on **World** tab) |
-| **Delete** | Panic (all off) |
-| **P** | Cycle utility profiles |
+| **Right Shift** | ClickGUI |
+| **Delete** | Panic |
+| **P** | Cycle profile |
 
-### ClickGUI
-Bottom profiles: **scout** · **builder** · **explore**  
-LMB toggle · RMB settings/keybind · Friends · search
+LMB toggle · RMB settings/keybind · Friends tab
 
 ---
 
@@ -63,17 +60,12 @@ LMB toggle · RMB settings/keybind · Friends · search
 
 ```text
 .jay gui
+.jay sword | nethpot | scout | builder | explore
 .jay scan | storage | build | radar
-.jay path | goto <x> <y> <z> | stoppath
-.jay profile scout|builder|explore|utility
-.jay friend add|del|list <name>
-.jay config save|load
-.jay panic | unpanic | off
+.jay path | goto x y z | stoppath
+.jay friend add|del|list
+.jay panic | off
 ```
 
-Config: `.minecraft/config/jayhackclient.txt`
-
----
-
 **Repo:** https://github.com/barnesjayren0-sudo/Jay-s-hack-client  
-**Version:** 1.24.0 (utility client)
+**Version:** 1.25.0
