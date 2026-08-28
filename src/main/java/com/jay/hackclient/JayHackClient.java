@@ -28,8 +28,8 @@ import com.jay.hackclient.settings.ClientSettings;
 
 public class JayHackClient implements ClientModInitializer {
 
-    public static final String NAME = "Jay's Hack Client";
-    public static final String VERSION = "1.23.0";
+    public static final String NAME = "Jay's Utility Client";
+    public static final String VERSION = "1.24.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -55,8 +55,9 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        ClientSettings.applySwordConfig();
+        ClientSettings.applyUtilityConfig();
 
+        // Combat optional
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
@@ -101,7 +102,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PearlAssist());
         moduleManager.register(new InvManager());
 
-        // World / find — loaded chunks only
+        // Utility core
         moduleManager.register(new BaseFinder());
         moduleManager.register(new StorageFinder());
         moduleManager.register(new BuildFinder());
@@ -120,8 +121,6 @@ public class JayHackClient implements ClientModInitializer {
         if (hud != null) hud.setEnabled(true);
         Module ab = moduleManager.getModuleByName("AntiBot");
         if (ab != null) ab.setEnabled(true);
-        Module mcf = moduleManager.getModuleByName("MiddleClickFriend");
-        if (mcf != null) mcf.setEnabled(true);
 
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.jayhackclient.clickgui", InputUtil.Type.KEYSYM,
@@ -187,7 +186,11 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " Baritone=" + BaritoneCompat.isPresent());
+        // Fresh install → scout utility stack
+        if ("scout".equals(ClientSettings.lastProfile) || "utility".equals(ClientSettings.mode)) {
+            // keep loaded toggles; don't force overwrite every launch
+        }
+        System.out.println("[" + NAME + "] v" + VERSION + " utility · Baritone=" + BaritoneCompat.isPresent());
     }
 
     private void cycleProfile() {
@@ -213,17 +216,19 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .scan .radar .storage .build .path .goto x y z");
+            msg("§f.gui .scan .radar .storage .build .path .goto · profile scout|builder|explore");
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
-            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
-            case "swordaggro", "aggro" -> { LegitProfile.applySwordAggressive(); configManager.save(); msg("§6Aggro"); }
+            case "scout" -> { LegitProfile.applyScout(); configManager.save(); msg("§aScout"); }
+            case "builder" -> { LegitProfile.applyBuilder(); configManager.save(); msg("§aBuilder"); }
+            case "explore" -> { LegitProfile.applyExplore(); configManager.save(); msg("§aExplore"); }
+            case "utility", "util" -> { LegitProfile.applyUtility(); configManager.save(); msg("§aUtility"); }
+            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§6Sword (optional)"); }
             case "nethpot", "pot" -> { LegitProfile.applyNethpot(); configManager.save(); msg("§dNethpot"); }
-            case "kit" -> { LegitProfile.applyKit(); configManager.save(); msg("§aKit"); }
             case "profile" -> {
                 if (args.length >= 3) { applyProfile(args[2]); configManager.save(); }
                 else cycleProfile();
@@ -235,24 +240,6 @@ public class JayHackClient implements ClientModInitializer {
                 msg((ClientSettings.isFavorite(args[2]) ? "§a★ " : "§7☆ ") + args[2]);
             }
             case "settings" -> msg("§f" + ClientSettings.summarize());
-            case "velmode", "velocity" -> {
-                if (args.length < 3) { msg("§fsoft|medium|strong"); return; }
-                ClientSettings.applyVelocityMode(args[2]);
-                configManager.save();
-                msg("§aVel " + ClientSettings.velocityMode);
-            }
-            case "aimmode" -> {
-                if (args.length < 3) return;
-                ClientSettings.aimMode = args[2].equalsIgnoreCase("silent") ? "silent" : "classic";
-                configManager.save();
-                msg("§a" + ClientSettings.aimMode);
-            }
-            case "priority", "prio" -> {
-                if (args.length < 3) return;
-                ClientSettings.targetPriority = args[2].toLowerCase();
-                configManager.save();
-                msg("§a" + ClientSettings.targetPriority);
-            }
             case "set" -> handleSet(args);
             case "friend", "friends" -> handleFriend(args);
             case "config", "cfg" -> handleConfig(args);
@@ -260,7 +247,6 @@ public class JayHackClient implements ClientModInitializer {
             case "panic" -> { moduleManager.panic(); BaritoneCompat.cancel(); configManager.save(); msg("§cPANIC"); }
             case "unpanic" -> { moduleManager.unfreeze(); msg("§aOK"); }
 
-            // Find / path
             case "scan", "base" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
@@ -281,18 +267,10 @@ public class JayHackClient implements ClientModInitializer {
             case "goto", "tp" -> {
                 if (args.length < 5) { msg("§f.jay goto <x> <y> <z>"); return; }
                 try {
-                    int x = Integer.parseInt(args[2]);
-                    int y = Integer.parseInt(args[3]);
-                    int z = Integer.parseInt(args[4]);
-                    PathToBase.runPath(x, y, z);
-                } catch (NumberFormatException e) {
-                    msg("§cNumbers only");
-                }
+                    PathToBase.runPath(Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]));
+                } catch (NumberFormatException e) { msg("§cNumbers only"); }
             }
-            case "stoppath", "cancel" -> {
-                BaritoneCompat.cancel();
-                msg("§ePath cancelled");
-            }
+            case "stoppath", "cancel" -> { BaritoneCompat.cancel(); msg("§ePath cancelled"); }
 
             case "baritone", "b" -> {
                 if (args.length >= 3) {
@@ -304,32 +282,26 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else {
                     msg("§f" + BaritoneCompat.status());
-                    toggle("Baritone");
                 }
             }
-            case "binds" -> msg("§7RShift GUI · .scan .radar .storage .build .path .goto x y z");
+            case "binds" -> msg("§7RShift GUI · P profile · .scan .radar .path .goto");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set velh|aimrange|miss|hitbox|reach <n>");
+            msg("§f.set aimrange|hitbox|reach <n>");
             return;
         }
         try {
             double v = Double.parseDouble(args[3]);
             switch (args[2].toLowerCase()) {
                 case "velh", "vel" -> ClientSettings.velocityHorizontal = Math.max(0.4, Math.min(0.95, v));
-                case "velv" -> ClientSettings.velocityVertical = Math.max(0.65, Math.min(1.0, v));
                 case "aimrange" -> ClientSettings.aimRange = v;
                 case "aimfov" -> ClientSettings.aimFov = (float) v;
-                case "aimsmooth" -> ClientSettings.aimSmooth = (float) v;
                 case "hitbox", "hb" -> Hitboxes.setExpand(v);
                 case "reach" -> Reach.setReach(v);
-                case "miss" -> ClientSettings.missChance = (int) v;
-                case "potmin" -> ClientSettings.potSlotMin = Math.max(0, Math.min(8, (int) v));
-                case "potmax" -> ClientSettings.potSlotMax = Math.max(0, Math.min(8, (int) v));
                 default -> { msg("§cUnknown"); return; }
             }
             configManager.save();
@@ -339,6 +311,10 @@ public class JayHackClient implements ClientModInitializer {
 
     private void applyProfile(String name) {
         switch (name.toLowerCase()) {
+            case "scout" -> LegitProfile.applyScout();
+            case "builder" -> LegitProfile.applyBuilder();
+            case "explore" -> LegitProfile.applyExplore();
+            case "utility", "util" -> LegitProfile.applyUtility();
             case "legit" -> LegitProfile.applyLegit();
             case "semi" -> LegitProfile.applySemi();
             case "sword" -> LegitProfile.applySword();
@@ -348,8 +324,7 @@ public class JayHackClient implements ClientModInitializer {
             case "uhc" -> LegitProfile.applyUhc();
             case "kit" -> LegitProfile.applyKit();
             case "crystal" -> LegitProfile.applyCrystal();
-            case "scout" -> LegitProfile.applyScout();
-            default -> { msg("§c?"); return; }
+            default -> { msg("§cUnknown profile"); return; }
         }
         ClientSettings.lastProfile = name.toLowerCase();
         msg("§a" + name);
