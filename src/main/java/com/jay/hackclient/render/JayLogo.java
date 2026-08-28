@@ -1,7 +1,9 @@
 package com.jay.hackclient.render;
 
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
@@ -11,7 +13,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-/** Jay logo texture for ClickGUI — loads base64 from mod resources. */
+/** Jay logo texture for ClickGUI — 1.21.11 texture + DrawContext APIs. */
 public final class JayLogo {
 
     private static Identifier id;
@@ -32,12 +34,11 @@ public final class JayLogo {
             in.close();
             byte[] data = Base64.getDecoder().decode(b64);
             NativeImage image = NativeImage.read(new ByteArrayInputStream(data));
-            NativeImageBackedTexture tex;
-            try {
-                tex = new NativeImageBackedTexture(() -> "jay_logo", image);
-            } catch (Throwable t) {
-                tex = new NativeImageBackedTexture(image);
-            }
+
+            // 1.21.11 requires name supplier
+            NativeImageBackedTexture tex =
+                    new NativeImageBackedTexture(() -> "jay_logo", image);
+
             id = Identifier.of("jayhackclient", "logo_embedded");
             MinecraftClient.getInstance().getTextureManager().registerTexture(id, tex);
         } catch (Throwable t) {
@@ -51,14 +52,12 @@ public final class JayLogo {
         Identifier tex = texture();
         if (tex == null) return;
         try {
-            ctx.drawTexture(
-                    net.minecraft.client.render.RenderLayer::getGuiTextured,
-                    tex, x, y, 0f, 0f, size, size, size, size);
+            // 1.21.11: first arg is RenderPipeline (GUI_TEXTURED)
+            RenderPipeline pipeline = RenderPipelines.GUI_TEXTURED;
+            ctx.drawTexture(pipeline, tex, x, y, 0f, 0f, size, size, size, size);
         } catch (Throwable t) {
-            try {
-                ctx.drawTexture(tex, x, y, 0f, 0f, size, size, size, size);
-            } catch (Throwable ignored) {
-            }
+            // Logo is optional — GUI still works without it
+            System.err.println("[Jay] logo draw failed: " + t.getMessage());
         }
     }
 }

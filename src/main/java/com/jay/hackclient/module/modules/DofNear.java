@@ -13,31 +13,13 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * DofNear — client-side "nearby" detector for utility testing.
- *
- * Scope:
- *   - Only entities the client has already loaded (render / entity tracking range).
- *   - Does NOT locate players outside loaded data (not seed/RNG / Randar-style).
- *
- * Education (client vs server):
- *   - Client distance is computed from local entity positions (interpolation / last tick).
- *   - The server has its own authoritative positions; what you see can lag by ping.
- *   - Anti-cheats often validate movement using server-side deltas per tick, reach
- *     on attack packets, and packet rate. Spamming position packets or claiming
- *     impossible distances is what gets flagged — this module only READS locals.
+ * DofNear — client-side nearby detector (loaded entities only).
  */
 public class DofNear extends Module {
 
-    /** Max distance (blocks) to consider "near". Tunable for local testing. */
     public static double range = 48.0;
-
-    /** Minimum milliseconds between chat reports (avoids spam). */
     public static int reportDelayMs = 3000;
-
-    /** If true, print a chat line when someone enters range. */
     public static boolean chatAlert = true;
-
-    /** If true, include non-player living entities (mobs). Default: players only. */
     public static boolean includeMobs = false;
 
     private long lastReportMs;
@@ -73,22 +55,16 @@ public class DofNear extends Module {
         scanAndReport(false);
     }
 
-    /**
-     * Core targeting: distance from local player eye/pos to each loaded entity.
-     *
-     * Client-side math:
-     *   distance = localPlayer.pos.distanceTo(other.pos)
-     * Server-side reality:
-     *   The server may still treat that player as slightly elsewhere until the
-     *   next movement packet is processed. Never assume client distance == hit validation.
-     */
+    /** 1.21.11: use getX/Y/Z — getPos() is not mapped on Entity. */
+    private static Vec3d pos(Entity e) {
+        return new Vec3d(e.getX(), e.getY(), e.getZ());
+    }
+
     private void scanAndReport(boolean force) {
         if (mc.player == null || mc.world == null) return;
 
-        Vec3d origin = mc.player.getPos();
+        Vec3d origin = pos(mc.player);
         double r = Math.max(1.0, Math.min(128.0, range));
-
-        // Optional AABB pre-filter — cheaper than full world iterate on weak phones
         Box searchBox = mc.player.getBoundingBox().expand(r);
 
         List<Hit> hits = new ArrayList<>();
@@ -103,17 +79,23 @@ public class DofNear extends Module {
                 if (JayHackClient.friendManager != null
                         && JayHackClient.friendManager.isFriend(name)) continue;
 
-                double dist = origin.distanceTo(player.getPos());
+                double dist = origin.distanceTo(pos(player));
                 if (dist > r) continue;
 
-                hits.add(new Hit(name, dist, player.getBlockPos().getX(),
-                        player.getBlockPos().getY(), player.getBlockPos().getZ(), true));
+                hits.add(new Hit(name, dist,
+                        player.getBlockPos().getX(),
+                        player.getBlockPos().getY(),
+                        player.getBlockPos().getZ(),
+                        true));
             } else if (includeMobs) {
-                double dist = origin.distanceTo(entity.getPos());
+                double dist = origin.distanceTo(pos(entity));
                 if (dist > r) continue;
                 String label = entity.getName().getString();
-                hits.add(new Hit(label, dist, entity.getBlockPos().getX(),
-                        entity.getBlockPos().getY(), entity.getBlockPos().getZ(), false));
+                hits.add(new Hit(label, dist,
+                        entity.getBlockPos().getX(),
+                        entity.getBlockPos().getY(),
+                        entity.getBlockPos().getZ(),
+                        false));
             }
         }
 
@@ -132,7 +114,6 @@ public class DofNear extends Module {
             return;
         }
 
-        // Alert only on new names if not forced full dump
         if (!force && chatAlert) {
             for (Hit h : hits) {
                 if (!lastNames.contains(h.name)) {
@@ -157,40 +138,9 @@ public class DofNear extends Module {
         for (Hit h : hits) lastNames.add(h.name);
     }
 
-    /** Manual scan from command / GUI if you wire one. */
     public void forceScan() {
         scanAndReport(true);
     }
-
-    /*
-     * -------------------------------------------------------------------------
-     * PACKET NOTES (educational template — READ ONLY in this module)
-     * -------------------------------------------------------------------------
-     * Modern Yarn / Fabric does not use legacy names like "CPacketPlayer".
-     * Client → server movement is typically carried by packets such as:
-     *   - PlayerMoveC2SPacket (and subclasses: Full, PositionAndOnGround, ...)
-     *   - PlayerActionC2SPacket / HandSwingC2SPacket for actions
-     *
-     * What anti-cheats commonly inspect:
-     *   1) Packet rate — too many moves per second vs vanilla cap
-     *   2) Delta per tick — distance traveled vs max speed (sprint/fly/vehicle)
-     *  3) Reach — attack packet target distance vs server positions
-     *   4) Order / timing — impossible sequences (e.g. dig + attack + blink)
-     *
-     * Safe local testing pattern:
-     *   - Observe packets with a logger mixin (debug builds only)
-     *   - Do NOT inject forged positions to "teleport" or extend reach on live servers
-     *
-     * Example skeleton (NOT enabled here — documentation only):
-     *
-     *   // @Mixin(ClientConnection.class)
-     *   // on send(Packet<?>):
-     *   //   if (packet instanceof PlayerMoveC2SPacket move) { log(move); }
-     *
-     * Sending custom payloads requires a registered CustomPayload id on both
-     * client and server; random Serverbound payloads will be ignored or kick.
-     * -------------------------------------------------------------------------
-     */
 
     private static final class Hit {
         final String name;
