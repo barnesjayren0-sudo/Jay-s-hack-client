@@ -17,9 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Jay ClickGUI — profiles, mobile compact layout, keybind tags.
- */
+/** Utility-first ClickGUI — opens on World, profiles scout/builder/explore. */
 public class ClickGuiScreen extends Screen {
 
     private static final int BG_OVERLAY = 0x99000000;
@@ -34,9 +32,9 @@ public class ClickGuiScreen extends Screen {
     private static final int PILL_BG = 0xFF1A1A24;
     private static final int PILL_ON = 0xFF1A2A32;
 
-    private static final String[] PROFILES = { "sword", "nethpot", "legit" };
+    private static final String[] PROFILES = { "scout", "builder", "explore" };
 
-    private Module.Category selected = Module.Category.COMBAT;
+    private Module.Category selected = Module.Category.WORLD;
     private boolean friendsTab = false;
     private int scroll;
     private String search = "";
@@ -53,7 +51,9 @@ public class ClickGuiScreen extends Screen {
 
     public ClickGuiScreen() {
         super(Text.literal("Jay"));
-        if (JayHackClient.moduleManager != null) {
+        selected = Module.Category.WORLD;
+        if (JayHackClient.moduleManager != null
+                && JayHackClient.moduleManager.getByCategory(Module.Category.WORLD).isEmpty()) {
             for (Module.Category c : Module.Category.values()) {
                 if (!JayHackClient.moduleManager.getByCategory(c).isEmpty()) {
                     selected = c;
@@ -115,7 +115,12 @@ public class ClickGuiScreen extends Screen {
     private List<Module.Category> visibleCategories() {
         List<Module.Category> out = new ArrayList<>();
         if (JayHackClient.moduleManager == null) return out;
+        // World first for utility client
+        if (!JayHackClient.moduleManager.getByCategory(Module.Category.WORLD).isEmpty()) {
+            out.add(Module.Category.WORLD);
+        }
         for (Module.Category c : Module.Category.values()) {
+            if (c == Module.Category.WORLD) continue;
             if (!JayHackClient.moduleManager.getByCategory(c).isEmpty()) out.add(c);
         }
         return out;
@@ -140,9 +145,9 @@ public class ClickGuiScreen extends Screen {
 
     private void applyProfile(String name) {
         switch (name.toLowerCase(Locale.ROOT)) {
-            case "sword" -> LegitProfile.applySword();
-            case "nethpot" -> LegitProfile.applyNethpot();
-            case "legit" -> LegitProfile.applyLegit();
+            case "scout" -> LegitProfile.applyScout();
+            case "builder" -> LegitProfile.applyBuilder();
+            case "explore" -> LegitProfile.applyExplore();
             default -> { return; }
         }
         if (JayHackClient.configManager != null) JayHackClient.configManager.save();
@@ -163,7 +168,7 @@ public class ClickGuiScreen extends Screen {
 
         int logoSize = mobile ? 18 : 20;
         JayLogo.draw(ctx, x + 10, y + (headerH - logoSize) / 2, logoSize);
-        ctx.drawTextWithShadow(textRenderer, "§fJay", x + 12 + logoSize, y + (headerH / 2) - 4, TEXT);
+        ctx.drawTextWithShadow(textRenderer, "§fJay §8util", x + 12 + logoSize, y + (headerH / 2) - 4, TEXT);
 
         boolean frozen = JayHackClient.moduleManager != null && JayHackClient.moduleManager.isFrozen();
         String status = frozen ? "FROZEN" : "READY";
@@ -191,7 +196,7 @@ public class ClickGuiScreen extends Screen {
             searchShown = friendInput.isEmpty() && !searchFocused ? "§8Add friend..."
                     : "§f" + friendInput + (searchFocused ? "§7|" : "");
         } else {
-            searchShown = search.isEmpty() && !searchFocused ? "§8Search..."
+            searchShown = search.isEmpty() && !searchFocused ? "§8Search utility..."
                     : "§f" + search + (searchFocused ? "§7|" : "");
         }
         ctx.drawTextWithShadow(textRenderer, searchShown, searchX + 8, searchY + 5, TEXT);
@@ -235,7 +240,6 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // Profile buttons strip (bottom)
         int profileY = y + winH - profileH - 6;
         int listBottom = profileY - 4;
         int listTop = tabY + tabH;
@@ -329,7 +333,6 @@ public class ClickGuiScreen extends Screen {
             return true;
         }
 
-        // Profile buttons
         int profileY = y + winH - profileH - 6;
         if (button == 0 && mouseY >= profileY && mouseY < profileY + profileH) {
             int px = x + 10;
