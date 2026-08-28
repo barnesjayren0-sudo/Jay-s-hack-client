@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Utility-first ClickGUI — opens on World, profiles scout/builder/explore. */
+/** PvP + server utility ClickGUI — dual profiles. */
 public class ClickGuiScreen extends Screen {
 
     private static final int BG_OVERLAY = 0x99000000;
@@ -32,9 +32,10 @@ public class ClickGuiScreen extends Screen {
     private static final int PILL_BG = 0xFF1A1A24;
     private static final int PILL_ON = 0xFF1A2A32;
 
-    private static final String[] PROFILES = { "scout", "builder", "explore" };
+    /** PvP + utility quick profiles */
+    private static final String[] PROFILES = { "sword", "scout", "nethpot" };
 
-    private Module.Category selected = Module.Category.WORLD;
+    private Module.Category selected = Module.Category.COMBAT;
     private boolean friendsTab = false;
     private int scroll;
     private String search = "";
@@ -51,9 +52,15 @@ public class ClickGuiScreen extends Screen {
 
     public ClickGuiScreen() {
         super(Text.literal("Jay"));
-        selected = Module.Category.WORLD;
+        // Prefer last profile side: utility → World, else Combat
+        String lp = ClientSettings.lastProfile;
+        if (lp != null && (lp.equals("scout") || lp.equals("builder") || lp.equals("explore") || lp.equals("utility"))) {
+            selected = Module.Category.WORLD;
+        } else {
+            selected = Module.Category.COMBAT;
+        }
         if (JayHackClient.moduleManager != null
-                && JayHackClient.moduleManager.getByCategory(Module.Category.WORLD).isEmpty()) {
+                && JayHackClient.moduleManager.getByCategory(selected).isEmpty()) {
             for (Module.Category c : Module.Category.values()) {
                 if (!JayHackClient.moduleManager.getByCategory(c).isEmpty()) {
                     selected = c;
@@ -115,13 +122,12 @@ public class ClickGuiScreen extends Screen {
     private List<Module.Category> visibleCategories() {
         List<Module.Category> out = new ArrayList<>();
         if (JayHackClient.moduleManager == null) return out;
-        // World first for utility client
-        if (!JayHackClient.moduleManager.getByCategory(Module.Category.WORLD).isEmpty()) {
-            out.add(Module.Category.WORLD);
-        }
-        for (Module.Category c : Module.Category.values()) {
-            if (c == Module.Category.WORLD) continue;
-            if (!JayHackClient.moduleManager.getByCategory(c).isEmpty()) out.add(c);
+        // Combat + World first (dual client)
+        for (Module.Category prefer : new Module.Category[]{
+                Module.Category.COMBAT, Module.Category.WORLD,
+                Module.Category.MOVEMENT, Module.Category.RENDER,
+                Module.Category.PLAYER, Module.Category.MISC}) {
+            if (!JayHackClient.moduleManager.getByCategory(prefer).isEmpty()) out.add(prefer);
         }
         return out;
     }
@@ -145,10 +151,17 @@ public class ClickGuiScreen extends Screen {
 
     private void applyProfile(String name) {
         switch (name.toLowerCase(Locale.ROOT)) {
+            case "sword" -> LegitProfile.applySword();
             case "scout" -> LegitProfile.applyScout();
+            case "nethpot" -> LegitProfile.applyNethpot();
             case "builder" -> LegitProfile.applyBuilder();
             case "explore" -> LegitProfile.applyExplore();
             default -> { return; }
+        }
+        if (name.equalsIgnoreCase("scout") || name.equalsIgnoreCase("builder") || name.equalsIgnoreCase("explore")) {
+            selected = Module.Category.WORLD;
+        } else {
+            selected = Module.Category.COMBAT;
         }
         if (JayHackClient.configManager != null) JayHackClient.configManager.save();
         if (client != null && client.player != null) {
@@ -168,7 +181,7 @@ public class ClickGuiScreen extends Screen {
 
         int logoSize = mobile ? 18 : 20;
         JayLogo.draw(ctx, x + 10, y + (headerH - logoSize) / 2, logoSize);
-        ctx.drawTextWithShadow(textRenderer, "§fJay §8util", x + 12 + logoSize, y + (headerH / 2) - 4, TEXT);
+        ctx.drawTextWithShadow(textRenderer, "§fJay", x + 12 + logoSize, y + (headerH / 2) - 4, TEXT);
 
         boolean frozen = JayHackClient.moduleManager != null && JayHackClient.moduleManager.isFrozen();
         String status = frozen ? "FROZEN" : "READY";
@@ -196,7 +209,7 @@ public class ClickGuiScreen extends Screen {
             searchShown = friendInput.isEmpty() && !searchFocused ? "§8Add friend..."
                     : "§f" + friendInput + (searchFocused ? "§7|" : "");
         } else {
-            searchShown = search.isEmpty() && !searchFocused ? "§8Search utility..."
+            searchShown = search.isEmpty() && !searchFocused ? "§8Search modules..."
                     : "§f" + search + (searchFocused ? "§7|" : "");
         }
         ctx.drawTextWithShadow(textRenderer, searchShown, searchX + 8, searchY + 5, TEXT);
@@ -402,8 +415,7 @@ public class ClickGuiScreen extends Screen {
                 if (di >= maxRows) break;
                 int ry = listTop + di * rowH;
                 if (mouseX >= x + 8 && mouseX < x + winW - 8 && mouseY >= ry && mouseY < ry + rowH) {
-                    String name = friends.get(i);
-                    JayHackClient.friendManager.remove(name);
+                    JayHackClient.friendManager.remove(friends.get(i));
                     if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                     return true;
                 }

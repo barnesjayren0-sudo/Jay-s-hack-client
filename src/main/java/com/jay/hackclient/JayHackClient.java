@@ -28,8 +28,8 @@ import com.jay.hackclient.settings.ClientSettings;
 
 public class JayHackClient implements ClientModInitializer {
 
-    public static final String NAME = "Jay's Utility Client";
-    public static final String VERSION = "1.24.0";
+    public static final String NAME = "Jay's Client";
+    public static final String VERSION = "1.25.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -55,9 +55,9 @@ public class JayHackClient implements ClientModInitializer {
         friendManager = new FriendManager();
         configManager = new ConfigManager();
 
-        ClientSettings.applyUtilityConfig();
+        ClientSettings.applyDualConfig();
 
-        // Combat optional
+        // PvP
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
@@ -102,7 +102,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PearlAssist());
         moduleManager.register(new InvManager());
 
-        // Utility core
+        // Server utility
         moduleManager.register(new BaseFinder());
         moduleManager.register(new StorageFinder());
         moduleManager.register(new BuildFinder());
@@ -186,11 +186,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        // Fresh install → scout utility stack
-        if ("scout".equals(ClientSettings.lastProfile) || "utility".equals(ClientSettings.mode)) {
-            // keep loaded toggles; don't force overwrite every launch
-        }
-        System.out.println("[" + NAME + "] v" + VERSION + " utility · Baritone=" + BaritoneCompat.isPresent());
+        System.out.println("[" + NAME + "] v" + VERSION + " PvP+Utility · Baritone=" + BaritoneCompat.isPresent());
     }
 
     private void cycleProfile() {
@@ -216,19 +212,19 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui .scan .radar .storage .build .path .goto · profile scout|builder|explore");
+            msg("§f.gui · sword|scout|nethpot · scan|radar|path|goto");
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
+            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
             case "scout" -> { LegitProfile.applyScout(); configManager.save(); msg("§aScout"); }
             case "builder" -> { LegitProfile.applyBuilder(); configManager.save(); msg("§aBuilder"); }
             case "explore" -> { LegitProfile.applyExplore(); configManager.save(); msg("§aExplore"); }
-            case "utility", "util" -> { LegitProfile.applyUtility(); configManager.save(); msg("§aUtility"); }
-            case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§6Sword (optional)"); }
             case "nethpot", "pot" -> { LegitProfile.applyNethpot(); configManager.save(); msg("§dNethpot"); }
+            case "utility", "util" -> { LegitProfile.applyUtility(); configManager.save(); msg("§aUtility"); }
             case "profile" -> {
                 if (args.length >= 3) { applyProfile(args[2]); configManager.save(); }
                 else cycleProfile();
@@ -280,18 +276,16 @@ public class JayHackClient implements ClientModInitializer {
                         sb.append(args[i]);
                     }
                     BaritoneCommands.tryHandle(sb.toString());
-                } else {
-                    msg("§f" + BaritoneCompat.status());
-                }
+                } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · P profile · .scan .radar .path .goto");
+            case "binds" -> msg("§7RShift GUI · P profile · sword/scout/nethpot");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set aimrange|hitbox|reach <n>");
+            msg("§f.set aimrange|hitbox|reach|velh <n>");
             return;
         }
         try {
