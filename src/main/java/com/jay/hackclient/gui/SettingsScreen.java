@@ -12,7 +12,7 @@ import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
-/** Settings — target priority + all combat sliders persist on change. */
+/** Settings — target priority, keybind editor, combat sliders. */
 public class SettingsScreen extends Screen {
 
     private static final int BG_OVERLAY = 0x99000000;
@@ -28,12 +28,14 @@ public class SettingsScreen extends Screen {
     private final Module module;
     private int scroll;
     private int dragging = -1;
+    private boolean listeningKey;
 
     private int winX, winY, winW, winH;
     private int headerH = 36;
     private int rowH = 40;
 
     private static final String[] ROWS = {
+            "keybind",
             "aimMode",
             "targetPriority",
             "velocityMode",
@@ -61,8 +63,8 @@ public class SettingsScreen extends Screen {
     private void computeLayout() {
         boolean small = this.width < 480 || this.height < 340;
         winW = small ? Math.max(this.width - 12, 220) : Math.min(340, this.width - 40);
-        winH = small ? Math.max(this.height - 12, 220) : Math.min(420, this.height - 40);
-        rowH = small ? 44 : 40;
+        winH = small ? Math.max(this.height - 12, 220) : Math.min(440, this.height - 40);
+        rowH = small ? 42 : 40;
         headerH = 36;
         winX = (this.width - winW) / 2;
         winY = (this.height - winH) / 2;
@@ -163,6 +165,7 @@ public class SettingsScreen extends Screen {
 
     private String labelOf(String key) {
         return switch (key) {
+            case "keybind" -> "Keybind";
             case "aimMode" -> "Aim mode";
             case "targetPriority" -> "Target priority";
             case "velocityMode" -> "Velocity mode";
@@ -185,6 +188,12 @@ public class SettingsScreen extends Screen {
 
     private String valueOf(String key) {
         return switch (key) {
+            case "keybind" -> {
+                if (listeningKey) yield "PRESS KEY...";
+                if (module == null) yield "none";
+                String lab = module.getKeyLabel();
+                yield lab.isEmpty() ? "none" : lab;
+            }
             case "aimMode" -> ClientSettings.aimMode;
             case "targetPriority" -> ClientSettings.targetPriority;
             case "velocityMode" -> ClientSettings.velocityMode;
@@ -208,6 +217,10 @@ public class SettingsScreen extends Screen {
 
     private void cycle(String key) {
         switch (key) {
+            case "keybind" -> {
+                listeningKey = true;
+                return;
+            }
             case "aimMode" ->
                     ClientSettings.aimMode =
                             "silent".equalsIgnoreCase(ClientSettings.aimMode) ? "classic" : "silent";
@@ -284,10 +297,11 @@ public class SettingsScreen extends Screen {
             int ry = listTop + di * rowH;
             boolean hover = mouseX >= x + 8 && mouseX < x + winW - 8 && mouseY >= ry && mouseY < ry + rowH;
             boolean saveRow = key.equals("Save & Back");
+            boolean keyRow = key.equals("keybind") && listeningKey;
 
-            if (hover || saveRow) {
+            if (hover || saveRow || keyRow) {
                 fillRound(ctx, x + 8, ry + 1, x + winW - 8, ry + rowH - 2,
-                        saveRow ? 0xFF122018 : BG_ROW);
+                        saveRow ? 0xFF122018 : (keyRow ? 0xFF1A2830 : BG_ROW));
             }
 
             String label = labelOf(key);
@@ -316,20 +330,24 @@ public class SettingsScreen extends Screen {
                 int vw = textRenderer.getWidth(val);
                 int px = x + winW - 16 - vw - 10;
                 int py = ry + rowH / 2 - 7;
-                fillRound(ctx, px, py, x + winW - 12, py + 14, 0xFF1A2A32);
-                ctx.drawTextWithShadow(textRenderer, val, px + 5, py + 3, ACCENT);
+                fillRound(ctx, px, py, x + winW - 12, py + 14, keyRow ? 0xFF204050 : 0xFF1A2A32);
+                ctx.drawTextWithShadow(textRenderer, val, px + 5, py + 3, keyRow ? 0xFFFFCC66 : ACCENT);
             }
             ctx.fill(x + 16, ry + rowH - 1, x + winW - 16, ry + rowH, DIVIDER);
         }
 
-        ctx.drawTextWithShadow(textRenderer, "§8Click cycle · drag sliders · auto-saves",
-                x + 12, y + winH - 11, 0xFF555566);
+        String hint = listeningKey
+                ? "§ePress any key · Esc cancel · Del unbind"
+                : "§8Click keybind · drag sliders · auto-saves";
+        ctx.drawTextWithShadow(textRenderer, hint, x + 12, y + winH - 11, 0xFF555566);
         super.render(ctx, mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
         if (click.button() != 0) return super.mouseClicked(click, doubled);
+        if (listeningKey) return true;
+
         computeLayout();
         double mx = click.x(), my = click.y();
         int x = winX, y = winY;
@@ -400,12 +418,37 @@ public class SettingsScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyInput input) {
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
+        int key = input.key();
+
+        if (listeningKey && module != null) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                listeningKey = false;
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_DELETE || key == GLFW.GLFW_KEY_BACKSPACE) {
+                module.setKeyBind(-1);
+                listeningKey = false;
+                if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+                return true;
+            }
+            // Block reserved keys
+            if (key == GLFW.GLFW_KEY_RIGHT_SHIFT || key == GLFW.GLFW_KEY_ENTER) {
+                listeningKey = false;
+                return true;
+            }
+            module.setKeyBind(key);
+            listeningKey = false;
+            if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+            return true;
+        }
+
+        if (key == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
         return super.keyPressed(input);
     }
 
     @Override
     public void close() {
+        listeningKey = false;
         if (JayHackClient.configManager != null) JayHackClient.configManager.save();
         if (client != null) client.setScreen(parent);
     }

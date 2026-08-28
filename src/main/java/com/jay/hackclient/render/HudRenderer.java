@@ -17,6 +17,8 @@ import java.util.List;
 
 public final class HudRenderer {
 
+    private static final int CYAN = 0xFF3DDCFF;
+
     private HudRenderer() {}
 
     public static void render(DrawContext context) {
@@ -42,7 +44,7 @@ public final class HudRenderer {
         int screenW = mc.getWindow().getScaledWidth();
         int screenH = mc.getWindow().getScaledHeight();
 
-        int accent = 0xFF000000 | (ClientSettings.arrayListColor & 0xFFFFFF);
+        int accent = CYAN;
         if (ClientSettings.arrayListRainbow) {
             float hue = (System.currentTimeMillis() % 3000) / 3000f;
             accent = 0xFF000000 | java.awt.Color.HSBtoRGB(hue, 0.7f, 1f);
@@ -52,18 +54,20 @@ public final class HudRenderer {
         int ww = mc.textRenderer.getWidth("Jay " + ver) + 14;
         context.fill(4, 4, 4 + ww, 17, 0x990A0A10);
         context.fill(4, 4, 6, 17, accent);
-        context.drawTextWithShadow(mc.textRenderer, "§dJ§fay §8" + ver, 10, 7, 0xFFFFFF);
+        context.drawTextWithShadow(mc.textRenderer, "§bJ§fay §8" + ver, 10, 7, 0xFFFFFF);
 
         String prof = ClientSettings.lastProfile;
         context.drawTextWithShadow(mc.textRenderer, "§8" + prof, 10, 18, 0x888888);
 
-        // Baritone path status under profile
+        // Baritone path status
         String bLine = BaritoneCompat.hudLine();
         if (bLine != null) {
-            context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, 28, 0xFFFFFF);
+            context.fill(4, 27, 4 + mc.textRenderer.getWidth(bLine) + 18, 38, 0x990A0A10);
+            context.fill(4, 27, 6, 38, CYAN);
+            context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, 29, 0xFFFFFF);
         }
 
-        int y = bLine != null ? 40 : 28;
+        int y = bLine != null ? 42 : 28;
         int shown = 0;
         for (Module m : enabled) {
             if (shown >= maxList) break;
@@ -80,30 +84,40 @@ public final class HudRenderer {
 
         Module th = JayHackClient.moduleManager.getModuleByName("TargetHUD");
         if (th != null && th.isEnabled() && TargetHUD.currentTarget != null) {
-            drawTarget(context, mc, TargetHUD.currentTarget, screenW, screenH, phone, accent);
+            drawTarget(context, mc, TargetHUD.currentTarget, screenW, screenH, phone);
         }
     }
 
     private static void drawTarget(DrawContext context, MinecraftClient mc, PlayerEntity target,
-                                   int sw, int sh, boolean phone, int accent) {
+                                   int sw, int sh, boolean phone) {
         String name = target.getName().getString();
         float hp = target.getHealth() + target.getAbsorptionAmount();
         float max = Math.max(1f, target.getMaxHealth());
         float pct = Math.min(1f, hp / max);
-        int boxW = phone ? 100 : 120;
+        int boxW = phone ? 110 : 130;
+        int boxH = 32;
         int bx = sw / 2 - boxW / 2;
-        int by = sh / 2 + (phone ? 24 : 30);
-        context.fill(bx, by, bx + boxW, by + 28, 0xCC0A0A10);
-        context.fill(bx, by, bx + 2, by + 28, accent);
-        String info = String.format("%s  %.1fm", name, TargetHUD.currentDistance);
-        context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 4, 0xFFFFFF);
+        int by = sh / 2 + (phone ? 22 : 28);
+
+        // Cyan GUI style panel
+        context.fill(bx + 2, by + 2, bx + boxW + 2, by + boxH + 2, 0x44000000);
+        context.fill(bx, by, bx + boxW, by + boxH, 0xEE0E0E14);
+        context.fill(bx, by, bx + 2, by + boxH, CYAN);
+        context.fill(bx, by, bx + boxW, by + 1, 0x553DDCFF);
+
+        String info = String.format("%s  §7%.1fm", name, TargetHUD.currentDistance);
+        context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 5, 0xFFF0F0F8);
+
         int barW = boxW - 16;
-        context.fill(bx + 8, by + 16, bx + 8 + barW, by + 22, 0xFF222228);
-        int fill = (int) (barW * pct);
-        int col = pct > 0.5f ? 0xFF44CC66 : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
-        context.fill(bx + 8, by + 16, bx + 8 + fill, by + 22, col);
-        // avoid hard dependency on ComboAssist class at runtime
-        String hpText = String.format("%.1f HP", hp);
-        context.drawTextWithShadow(mc.textRenderer, hpText, bx + 8, by + 24, 0xFFD0D0D8);
+        int barY = by + 18;
+        context.fill(bx + 8, barY, bx + 8 + barW, barY + 5, 0xFF1A1A24);
+        int fill = Math.max(1, (int) (barW * pct));
+        // Cyan → green health blend
+        int col = pct > 0.5f ? 0xFF3DDCFF : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
+        context.fill(bx + 8, barY, bx + 8 + fill, barY + 5, col);
+
+        String hpText = String.format("%.1f", hp);
+        context.drawTextWithShadow(mc.textRenderer, hpText,
+                bx + boxW - 8 - mc.textRenderer.getWidth(hpText), by + 5, CYAN);
     }
 }

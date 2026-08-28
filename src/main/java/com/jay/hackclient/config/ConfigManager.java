@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Full combat settings persistence — aim, hitbox, reach, vel, delays. */
+/** Full combat settings + keybinds persistence. */
 public class ConfigManager {
 
     private Path path() {
@@ -24,7 +24,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Hack Client config v1.21\n");
+            sb.append("# Jay Hack Client config v1.22\n");
             sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
             sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
@@ -64,6 +64,7 @@ public class ConfigManager {
             if (JayHackClient.moduleManager != null) {
                 for (Module m : JayHackClient.moduleManager.getModules()) {
                     sb.append("mod.").append(m.getName()).append('=').append(m.isEnabled()).append('\n');
+                    sb.append("key.").append(m.getName()).append('=').append(m.getKeyBind()).append('\n');
                 }
             }
             if (JayHackClient.friendManager != null) {
@@ -134,6 +135,11 @@ public class ConfigManager {
                         if (k.startsWith("mod.") && JayHackClient.moduleManager != null) {
                             Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
                             if (m != null) m.setEnabled(Boolean.parseBoolean(v));
+                        } else if (k.startsWith("key.") && JayHackClient.moduleManager != null) {
+                            Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
+                            if (m != null) {
+                                try { m.setKeyBind(Integer.parseInt(v)); } catch (Exception ignored) {}
+                            }
                         } else if (k.startsWith("friend.") && JayHackClient.friendManager != null) {
                             JayHackClient.friendManager.add(k.substring(7));
                         } else if (k.startsWith("fav.")) {
