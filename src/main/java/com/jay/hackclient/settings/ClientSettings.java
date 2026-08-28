@@ -21,7 +21,6 @@ public final class ClientSettings {
     public static boolean auraMultiTarget = false;
     public static double hitboxExpand = 0.10;
 
-    /** Entity attack reach when Reach module is on (vanilla = 3.0). */
     public static double reachDistance = 3.12;
     public static String reachMode = "soft";
 
@@ -48,16 +47,17 @@ public final class ClientSettings {
     public static int potSlotMin = 0;
     public static int potSlotMax = 2;
 
-    public static int arrayListColor = 0xB24BF3;
+    public static int arrayListColor = 0x3DDCFF;
     public static boolean arrayListRainbow = false;
 
     public static final Set<String> favorites = new HashSet<>();
 
-    public static String mode = "sword";
-    public static String lastProfile = "sword";
+    /** Utility-first default */
+    public static String mode = "utility";
+    public static String lastProfile = "scout";
 
     public static final String[] PROFILE_CYCLE = {
-            "sword", "swordaggro", "nethpot", "uhc", "kit", "legit"
+            "scout", "builder", "explore", "utility", "legit"
     };
     public static int profileCycleIndex = 0;
 
@@ -89,6 +89,16 @@ public final class ClientSettings {
             }
         }
         velocityVertical = 1.0;
+    }
+
+    public static void applyUtilityConfig() {
+        mode = "utility";
+        lastProfile = "utility";
+        aimMode = "classic";
+        targetPriority = "crosshair";
+        hideHudOnScreenshot = true;
+        hideHudInDebug = true;
+        arrayListColor = 0x3DDCFF;
     }
 
     public static void applySwordConfig() {
@@ -210,8 +220,7 @@ public final class ClientSettings {
 
     public static String summarize() {
         return String.format(
-                "mode=%s aim=%s reach=%.2f vel=%s h=%.2f pots=%d-%d",
-                mode, aimMode, reachDistance, velocityMode, velocityHorizontal,
-                potSlotMin, potSlotMax);
+                "mode=%s profile=%s aim=%s",
+                mode, lastProfile, aimMode);
     }
 }

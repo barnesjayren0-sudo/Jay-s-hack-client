@@ -5,9 +5,76 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Hitboxes;
 import com.jay.hackclient.settings.ClientSettings;
 
+/** Profiles — utility-first. Combat profiles kept optional. */
 public final class LegitProfile {
 
     private LegitProfile() {}
+
+    /** Finders + radar + light visuals */
+    public static void applyScout() {
+        off();
+        ClientSettings.applyUtilityConfig();
+        ClientSettings.lastProfile = "scout";
+        ClientSettings.mode = "scout";
+        on("BaseFinder");
+        on("StorageFinder");
+        on("BuildFinder");
+        on("BeaconFinder");
+        on("SpawnerFinder");
+        on("PortalFinder");
+        on("PlayerRadar");
+        on("ESP");
+        on("Nametags");
+        on("FullBright");
+        on("StorageESP");
+        on("HUD");
+        on("AntiBot");
+    }
+
+    /** Building / bridging QoL */
+    public static void applyBuilder() {
+        off();
+        ClientSettings.applyUtilityConfig();
+        ClientSettings.lastProfile = "builder";
+        ClientSettings.mode = "builder";
+        on("Scaffold");
+        on("AutoTool");
+        on("SafeWalk");
+        on("AutoSprint");
+        on("FullBright");
+        on("ESP");
+        on("HUD");
+        on("AntiBot");
+    }
+
+    /** Explore + path */
+    public static void applyExplore() {
+        off();
+        ClientSettings.applyUtilityConfig();
+        ClientSettings.lastProfile = "explore";
+        ClientSettings.mode = "explore";
+        on("BaseFinder");
+        on("PlayerRadar");
+        on("PortalFinder");
+        on("FullBright");
+        on("ESP");
+        on("Nametags");
+        on("AutoSprint");
+        on("NoFall");
+        on("HUD");
+        on("AntiBot");
+    }
+
+    /** Minimal utility HUD stack */
+    public static void applyUtility() {
+        off();
+        ClientSettings.applyUtilityConfig();
+        on("FullBright");
+        on("AutoSprint");
+        on("AutoTool");
+        on("HUD");
+        on("AntiBot");
+    }
 
     public static void applyLegit() {
         off();
@@ -22,7 +89,7 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AutoSprint"); on("AutoSword"); on("TriggerBot"); on("AimAssist");
         on("Velocity"); on("WTap"); on("JumpReset"); on("ShieldBreak");
-        on("NoJumpDelay"); on("ComboAssist"); on("HUD"); on("TargetHUD"); on("AntiBot");
+        on("NoJumpDelay"); on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
     public static void applySword() {
@@ -31,7 +98,7 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
         on("AutoSprint"); on("WTap"); on("JumpReset");
-        on("NoJumpDelay"); on("ComboAssist"); on("Hitboxes");
+        on("NoJumpDelay"); on("Hitboxes");
         on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
@@ -41,7 +108,7 @@ public final class LegitProfile {
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("AimAssist"); on("TriggerBot"); on("AutoSword"); on("ShieldBreak");
         on("AutoSprint"); on("Velocity"); on("WTap"); on("JumpReset");
-        on("NoJumpDelay"); on("ComboAssist"); on("Hitboxes");
+        on("NoJumpDelay"); on("Hitboxes");
         on("HUD"); on("TargetHUD"); on("AntiBot");
     }
 
@@ -53,12 +120,6 @@ public final class LegitProfile {
         on("WTap"); on("JumpReset"); on("NoJumpDelay"); on("Hitboxes"); on("ShieldBreak");
         on("ESP"); on("Nametags"); on("FullBright"); on("AutoTotem");
         on("HUD"); on("TargetHUD"); on("AntiBot");
-    }
-
-    public static void applyScout() {
-        off();
-        on("BaseFinder"); on("SpawnerFinder"); on("PlayerRadar"); on("PortalFinder");
-        on("ESP"); on("Nametags"); on("FullBright"); on("HUD"); on("AntiBot");
     }
 
     public static void applyNethpot() {
