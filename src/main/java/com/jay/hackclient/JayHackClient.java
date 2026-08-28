@@ -29,7 +29,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Client";
-    public static final String VERSION = "1.25.0";
+    public static final String VERSION = "1.25.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -57,7 +57,6 @@ public class JayHackClient implements ClientModInitializer {
 
         ClientSettings.applyDualConfig();
 
-        // PvP
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
         moduleManager.register(new TriggerBot());
@@ -102,7 +101,6 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PearlAssist());
         moduleManager.register(new InvManager());
 
-        // Server utility
         moduleManager.register(new BaseFinder());
         moduleManager.register(new StorageFinder());
         moduleManager.register(new BuildFinder());
@@ -110,6 +108,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new SpawnerFinder());
         moduleManager.register(new PortalFinder());
         moduleManager.register(new PlayerRadar());
+        moduleManager.register(new DofNear());
         moduleManager.register(new PathToBase());
         moduleManager.register(new BaritoneControl());
         moduleManager.register(new Scaffold());
@@ -212,7 +211,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui · sword|scout|nethpot · scan|radar|path|goto");
+            msg("§f.gui · sword|scout|nethpot · scan|radar|near|path|goto");
             return;
         }
 
@@ -251,6 +250,10 @@ public class JayHackClient implements ClientModInitializer {
                 Module pr = moduleManager.getModuleByName("PlayerRadar");
                 if (pr instanceof PlayerRadar r) r.report(true);
             }
+            case "near", "dofnear" -> {
+                Module dn = moduleManager.getModuleByName("DofNear");
+                if (dn instanceof DofNear d) d.forceScan();
+            }
             case "storage", "store" -> {
                 Module sf = moduleManager.getModuleByName("StorageFinder");
                 if (sf instanceof StorageFinder s) s.scan(true);
@@ -278,14 +281,14 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · P profile · sword/scout/nethpot");
+            case "binds" -> msg("§7RShift GUI · .near .radar");
             default -> msg("§c?");
         }
     }
 
     private void handleSet(String[] args) {
         if (args.length < 4) {
-            msg("§f.set aimrange|hitbox|reach|velh <n>");
+            msg("§f.set aimrange|hitbox|reach|velh|dofrange <n>");
             return;
         }
         try {
@@ -296,6 +299,12 @@ public class JayHackClient implements ClientModInitializer {
                 case "aimfov" -> ClientSettings.aimFov = (float) v;
                 case "hitbox", "hb" -> Hitboxes.setExpand(v);
                 case "reach" -> Reach.setReach(v);
+                case "dofrange", "nearrange" -> {
+                    DofNear.range = Math.max(1.0, Math.min(128.0, v));
+                    msg("§aDofNear.range=" + DofNear.range);
+                    configManager.save();
+                    return;
+                }
                 default -> { msg("§cUnknown"); return; }
             }
             configManager.save();
