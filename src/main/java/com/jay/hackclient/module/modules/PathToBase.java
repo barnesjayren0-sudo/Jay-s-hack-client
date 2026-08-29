@@ -5,15 +5,13 @@ import com.jay.hackclient.module.Module;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
-/**
- * Baritone path to last BaseFinder / StorageFinder hit, or set coords via .jay goto x y z
- */
+/** Path to last finder target via Baritone. */
 public class PathToBase extends Module {
 
-    public static BlockPos lastTarget = null;
+    public static BlockPos lastTarget;
 
     public PathToBase() {
-        super("PathToBase", "Baritone → last find / coords", Category.WORLD);
+        super("PathToBase", "Baritone path to last scan hit", Category.WORLD);
     }
 
     @Override
@@ -22,30 +20,30 @@ public class PathToBase extends Module {
         setEnabled(false);
     }
 
-    public static boolean runPath(BlockPos target) {
-        var mc = net.minecraft.client.MinecraftClient.getInstance();
-        if (mc.player == null) return false;
-
-        if (!BaritoneCompat.isPresent()) {
-            mc.player.sendMessage(Text.literal(
-                    "§8[§bPath§8] §cBaritone not installed — drop jar in mods/"), false);
-            return false;
-        }
+    public static void runPath(BlockPos target) {
         if (target == null) {
-            mc.player.sendMessage(Text.literal(
-                    "§8[§bPath§8] §eNo target — scan first or .jay goto x y z"), false);
-            return false;
+            msg("§cNo target — run a finder first");
+            return;
         }
-
         lastTarget = target;
         boolean ok = BaritoneCompat.pathTo(target);
-        mc.player.sendMessage(Text.literal(ok
-                ? "§8[§bPath§8] §aPathing to §f" + target.getX() + " " + target.getY() + " " + target.getZ()
-                : "§8[§bPath§8] §cPath failed · " + BaritoneCompat.lastError()), false);
-        return ok;
+        if (ok) {
+            msg("§aPath → " + target.getX() + " " + target.getY() + " " + target.getZ());
+        } else if (!BaritoneCompat.isPresent()) {
+            msg("§cBaritone not installed");
+        } else {
+            msg("§cPath failed " + BaritoneCompat.lastError());
+        }
     }
 
-    public static boolean runPath(int x, int y, int z) {
-        return runPath(new BlockPos(x, y, z));
+    public static void runPath(int x, int y, int z) {
+        runPath(new BlockPos(x, y, z));
+    }
+
+    private static void msg(String s) {
+        var mc = net.minecraft.client.MinecraftClient.getInstance();
+        if (mc.player != null) {
+            mc.player.sendMessage(Text.literal("§8[§bJay§8] " + s), false);
+        }
     }
 }

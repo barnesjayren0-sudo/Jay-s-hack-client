@@ -4,10 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
 import net.minecraft.util.math.Vec3d;
 
-/**
- * Soft blink / fake-lag style pulse — short client hold after taking or dealing hits.
- * Not full packet queue (safer, shorter). Max 200ms.
- */
+/** Soft blink pulse — short hold after combat. */
 public class SoftBlink extends Module {
 
     public final NumberSetting holdMs = new NumberSetting("HoldMs", "Hold duration", 80, 40, 200, 5);
@@ -35,7 +32,6 @@ public class SoftBlink extends Module {
         long now = System.currentTimeMillis();
 
         if (now < pulseUntil && holdPos != null) {
-            // Soft hold: damp velocity, stay near hold point
             mc.player.setVelocity(mc.player.getVelocity().multiply(0.35, 1.0, 0.35));
             double dx = holdPos.x - mc.player.getX();
             double dz = holdPos.z - mc.player.getZ();
@@ -49,12 +45,11 @@ public class SoftBlink extends Module {
             return;
         }
 
-        // Trigger on hurt or recent attack swing
         boolean combat = mc.player.hurtTime > 0 || mc.player.getAttackCooldownProgress(0.5f) < 0.3f;
         if (!combat) return;
         if (now - lastPulse < cooldown.getInt()) return;
 
-        holdPos = mc.player.getPos();
+        holdPos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
         pulseUntil = now + holdMs.getInt();
         lastPulse = now;
     }

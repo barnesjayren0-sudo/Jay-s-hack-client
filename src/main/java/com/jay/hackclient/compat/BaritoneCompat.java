@@ -1,5 +1,6 @@
 package com.jay.hackclient.compat;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.BlockPos;
 
 /**
@@ -13,6 +14,7 @@ public final class BaritoneCompat {
     private static String lastAction = "idle";
     private static long lastActionMs = 0;
     private static long combatPauseUntil;
+    private static boolean pathingHint;
 
     private BaritoneCompat() {}
 
@@ -52,6 +54,7 @@ public final class BaritoneCompat {
     }
 
     public static void cancel() {
+        pathingHint = false;
         if (!isPresent()) return;
         try {
             Object provider = Class.forName("baritone.api.BaritoneAPI")
@@ -65,7 +68,6 @@ public final class BaritoneCompat {
         }
     }
 
-    /** Soft-pause pathing while taking damage. */
     public static void pauseCombat() {
         long now = System.currentTimeMillis();
         if (now < combatPauseUntil) return;
@@ -77,8 +79,35 @@ public final class BaritoneCompat {
         } catch (Throwable ignored) {}
     }
 
-    public static void pathTo(BlockPos pos) {
-        if (!isPresent() || pos == null) return;
+    public static void pause() {
+        cancel();
+        ok("paused");
+    }
+
+    public static void resume() {
+        ok("resumed");
+        // Baritone has no universal resume; user re-issues goal
+    }
+
+    public static boolean isPathing() {
+        if (!isPresent()) return false;
+        try {
+            Object provider = Class.forName("baritone.api.BaritoneAPI")
+                    .getMethod("getProvider").invoke(null);
+            Object baritone = provider.getClass().getMethod("getPrimaryBaritone").invoke(provider);
+            Object behavior = baritone.getClass().getMethod("getPathingBehavior").invoke(baritone);
+            Object path = behavior.getClass().getMethod("isPathing").invoke(behavior);
+            if (path instanceof Boolean b) {
+                pathingHint = b;
+                return b;
+            }
+        } catch (Throwable ignored) {}
+        return pathingHint && System.currentTimeMillis() - lastActionMs < 30000
+                && !"stopped".equals(lastAction) && !"idle".equals(lastAction);
+    }
+
+    public static boolean pathTo(BlockPos pos) {
+        if (!isPresent() || pos == null) return false;
         try {
             Object provider = Class.forName("baritone.api.BaritoneAPI")
                     .getMethod("getProvider").invoke(null);
@@ -89,14 +118,40 @@ public final class BaritoneCompat {
                     .newInstance(pos.getX(), pos.getY(), pos.getZ());
             goalProcess.getClass().getMethod("setGoalAndPath", Class.forName("baritone.api.pathing.goals.Goal"))
                     .invoke(goalProcess, goal);
+            pathingHint = true;
             ok("goto " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+            return true;
         } catch (Throwable t) {
             fail(t);
+            return false;
         }
     }
 
-    public static void executeCommand(String cmd) {
-        if (!isPresent() || cmd == null || cmd.isBlank()) return;
+    public static boolean pathTo(int x, int y, int z) {
+        return pathTo(new BlockPos(x, y, z));
+    }
+
+    public static boolean pathToXZ(int x, int z) {
+        int y = 64;
+        try {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.player != null) y = (int) Math.floor(mc.player.getY());
+        } catch (Throwable ignored) {}
+        return pathTo(new BlockPos(x, y, z));
+    }
+
+    public static boolean mine(String[] blocks) {
+        if (blocks == null || blocks.length == 0) return false;
+        StringBuilder sb = new StringBuilder("mine");
+        for (String b : blocks) {
+            if (b == null || b.isBlank()) continue;
+            sb.append(' ').append(b.trim());
+        }
+        return executeCommand(sb.toString());
+    }
+
+    public static boolean executeCommand(String cmd) {
+        if (!isPresent() || cmd == null || cmd.isBlank()) return false;
         try {
             Object provider = Class.forName("baritone.api.BaritoneAPI")
                     .getMethod("getProvider").invoke(null);
@@ -104,15 +159,18 @@ public final class BaritoneCompat {
             Object cmdMgr = baritone.getClass().getMethod("getCommandManager").invoke(baritone);
             String c = cmd.startsWith("#") ? cmd.substring(1).trim() : cmd.trim();
             cmdMgr.getClass().getMethod("execute", String.class).invoke(cmdMgr, c);
+            pathingHint = true;
             ok(c);
+            return true;
         } catch (Throwable t) {
             fail(t);
+            return false;
         }
     }
 
     public static String status() {
         if (!isPresent()) return "Baritone not present";
-        return lastAction + (lastError != null ? " err=" + lastError : "");
+        return lastAction + (lastError != null && !lastError.isEmpty() ? " err=" + lastError : "");
     }
 
     public static String hudLine() {
