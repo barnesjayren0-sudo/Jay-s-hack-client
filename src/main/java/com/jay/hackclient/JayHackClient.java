@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.31.0";
+    public static final String VERSION = "1.32.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -132,6 +132,11 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Fly());
         moduleManager.register(new Step());
         moduleManager.register(new YClip());
+        moduleManager.register(new HoleESP());
+        moduleManager.register(new AutoTrap());
+        moduleManager.register(new Burrow());
+        moduleManager.register(new Jesus());
+        moduleManager.register(new BoatFly());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
@@ -300,7 +305,7 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · G Fly · 2 Freecam · V YClip · Del Panic");
+            case "binds" -> msg("§7RShift GUI · G Fly · B Burrow · 2 Freecam · V YClip · Del Panic");
             default -> msg("§c?");
         }
     }
