@@ -2,35 +2,29 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
 
-/** Reduces right-click delay for placing blocks (QoL). */
+/** Reduce right-click delay for blocks / crystals. */
 public class FastPlace extends Module {
 
     public final NumberSetting delay = new NumberSetting("Delay", "Ticks between places", 0, 0, 4, 1);
+    public final NumberSetting blocksOnly = new NumberSetting("BlocksOnly", "1=blocks only", 1, 0, 1, 1);
 
     public FastPlace() {
         super("FastPlace", "Faster block place", Category.PLAYER);
         addSetting(delay);
+        addSetting(blocksOnly);
     }
 
     @Override
     public void onTick() {
-        if (mc == null) return;
+        if (mc.player == null) return;
+        ItemStack stack = mc.player.getMainHandStack();
+        if (blocksOnly.getInt() == 1 && !(stack.getItem() instanceof BlockItem)) return;
         try {
-            // itemUseCooldown field on MinecraftClient — set low when holding use
-            var field = mc.getClass().getDeclaredField("itemUseCooldown");
-            field.setAccessible(true);
-            int cur = field.getInt(mc);
-            int want = delay.getInt();
-            if (cur > want) field.setInt(mc, want);
-        } catch (Throwable t) {
-            try {
-                // Yarn alternate name
-                var field = mc.getClass().getDeclaredField("field_1752");
-                field.setAccessible(true);
-                int cur = field.getInt(mc);
-                if (cur > delay.getInt()) field.setInt(mc, delay.getInt());
-            } catch (Throwable ignored) {}
-        }
+            // Yarn 1.21: itemUseCooldown on MinecraftClient
+            mc.itemUseCooldown = Math.min(mc.itemUseCooldown, delay.getInt());
+        } catch (Throwable ignored) {}
     }
 }
