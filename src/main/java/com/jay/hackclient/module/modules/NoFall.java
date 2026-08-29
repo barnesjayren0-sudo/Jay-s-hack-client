@@ -18,13 +18,8 @@ public class NoFall extends Module {
 
         if (mc.player.fallDistance > 2.5f) {
             try {
-                // 1.21.x OnGroundOnly(onGround, horizontalCollision)
                 mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.OnGroundOnly(true, false));
-            } catch (Throwable t) {
-                try {
-                    mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.OnGroundOnly(true));
-                } catch (Throwable ignored) {}
-            }
+            } catch (Throwable ignored) {}
             mc.player.fallDistance = 0;
         }
     }
