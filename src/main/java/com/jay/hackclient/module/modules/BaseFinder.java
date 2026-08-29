@@ -9,6 +9,8 @@ import net.minecraft.block.entity.BarrelBlockEntity;
 import net.minecraft.block.entity.BeaconBlockEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
+import net.minecraft.block.entity.DispenserBlockEntity;
+import net.minecraft.block.entity.DropperBlockEntity;
 import net.minecraft.block.entity.HopperBlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.block.entity.ShulkerBoxBlockEntity;
@@ -23,14 +25,13 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Loaded-chunk base / farm / storage scanner + ESP hit list.
+ * Loaded-chunk scanner: storage, farms, utility + colored ESP hits.
  */
 public class BaseFinder extends Module {
 
     private long lastScan;
     private long lastAuto;
 
-    /** Thread-safe list for ESP renderer */
     public static final List<Hit> lastHits = new CopyOnWriteArrayList<>();
 
     public static boolean drawBoxes = true;
@@ -38,9 +39,22 @@ public class BaseFinder extends Module {
     public static boolean findFarms = true;
     public static boolean findStorage = true;
     public static boolean findUtility = true;
+    public static double espRange = 96.0;
+    public static int maxEsp = 80;
+
+    public static final int COL_CHEST = 0xFFFFC84A;
+    public static final int COL_SHULKER = 0xFFE060FF;
+    public static final int COL_HOPPER = 0xFFB0B0B0;
+    public static final int COL_SPAWNER = 0xFFFF3030;
+    public static final int COL_BEACON = 0xFF40FFFF;
+    public static final int COL_FARM = 0xFF40FF60;
+    public static final int COL_KELP = 0xFF20C080;
+    public static final int COL_UTIL = 0xFF3DDCFF;
+    public static final int COL_OBBY = 0xFF555577;
+    public static final int COL_DISP = 0xFFFF8840;
 
     public BaseFinder() {
-        super("BaseFinder", "Chests, farms, builds + ESP", Category.WORLD);
+        super("BaseFinder", "Chests, farms, builds + box/tracer ESP", Category.WORLD);
     }
 
     public static class Hit {
@@ -48,7 +62,6 @@ public class BaseFinder extends Module {
         public final String label;
         public final int score;
         public final double dist;
-        /** ARGB color for ESP */
         public final int color;
 
         public Hit(BlockPos pos, String label, int score, double dist, int color) {
@@ -60,34 +73,29 @@ public class BaseFinder extends Module {
         }
     }
 
-    // Colors (ARGB)
-    public static final int COL_CHEST = 0xFFFFC84A;
-    public static final int COL_SHULKER = 0xFFE060FF;
-    public static final int COL_HOPPER = 0xFFAAAAAA;
-    public static final int COL_SPAWNER = 0xFFFF3030;
-    public static final int COL_BEACON = 0xFF40FFFF;
-    public static final int COL_FARM = 0xFF40FF60;
-    public static final int COL_UTIL = 0xFF3DDCFF;
-    public static final int COL_OBBY = 0xFF555577;
+    @Override
+    public void onEnable() {
+        scan(true);
+    }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
         long now = System.currentTimeMillis();
-        if (now - lastAuto < 8000) return;
+        if (now - lastAuto < 7000) return;
         lastAuto = now;
         scan(false);
     }
 
     @Override
     public void onDisable() {
-        lastHits.clear();
+        // keep lastHits so StorageESP/FarmFinder can still draw briefly
     }
 
     public void scan(boolean force) {
         if (mc.player == null || mc.world == null) return;
         long now = System.currentTimeMillis();
-        if (!force && now - lastScan < 3500) return;
+        if (!force && now - lastScan < 3000) return;
         lastScan = now;
 
         List<Hit> found = new ArrayList<>();
@@ -104,13 +112,11 @@ public class BaseFinder extends Module {
             }
         }
 
-        // Merge close farm blocks into fewer ESP markers
         found = mergeFarmClusters(found);
-
         found.sort(Comparator.comparingInt((Hit h) -> -h.score).thenComparingDouble(h -> h.dist));
 
         lastHits.clear();
-        int cap = Mobile.isSmallScreen() ? 40 : 80;
+        int cap = Mobile.isSmallScreen() ? 48 : 100;
         for (int i = 0; i < Math.min(cap, found.size()); i++) {
             lastHits.add(found.get(i));
         }
@@ -128,7 +134,7 @@ public class BaseFinder extends Module {
             if (!lastHits.isEmpty()) {
                 PathToBase.lastTarget = lastHits.get(0).pos;
                 mc.player.sendMessage(Text.literal(
-                        "§8[§bBase§8] §f" + lastHits.size() + " hits · ESP on · .jay path"), false);
+                        "§8[§bBase§8] §f" + lastHits.size() + " hits · ESP boxes/tracers · .jay path"), false);
             } else {
                 mc.player.sendMessage(Text.literal("§8[§bBase§8] §7No hits in loaded chunks"), false);
             }
@@ -144,15 +150,18 @@ public class BaseFinder extends Module {
             String label = null;
             int score = 0;
             int color = COL_UTIL;
+
             if (findStorage) {
-                if (be instanceof ChestBlockEntity) { label = "Chest"; score = 14; color = COL_CHEST; }
-                else if (be instanceof BarrelBlockEntity) { label = "Barrel"; score = 12; color = COL_CHEST; }
-                else if (be instanceof ShulkerBoxBlockEntity) { label = "Shulker"; score = 20; color = COL_SHULKER; }
-                else if (be instanceof HopperBlockEntity) { label = "Hopper"; score = 16; color = COL_HOPPER; }
+                if (be instanceof ChestBlockEntity) { label = "Chest"; score = 15; color = COL_CHEST; }
+                else if (be instanceof BarrelBlockEntity) { label = "Barrel"; score = 13; color = COL_CHEST; }
+                else if (be instanceof ShulkerBoxBlockEntity) { label = "Shulker"; score = 22; color = COL_SHULKER; }
+                else if (be instanceof HopperBlockEntity) { label = "Hopper"; score = 17; color = COL_HOPPER; }
+                else if (be instanceof DispenserBlockEntity) { label = "Dispenser"; score = 14; color = COL_DISP; }
+                else if (be instanceof DropperBlockEntity) { label = "Dropper"; score = 13; color = COL_DISP; }
             }
             if (label == null && findUtility) {
-                if (be instanceof MobSpawnerBlockEntity) { label = "Spawner"; score = 24; color = COL_SPAWNER; }
-                else if (be instanceof BeaconBlockEntity) { label = "Beacon"; score = 32; color = COL_BEACON; }
+                if (be instanceof MobSpawnerBlockEntity) { label = "Spawner"; score = 26; color = COL_SPAWNER; }
+                else if (be instanceof BeaconBlockEntity) { label = "Beacon"; score = 34; color = COL_BEACON; }
             }
             if (label == null) continue;
             double dist = Math.sqrt(origin.getSquaredDistance(pos));
@@ -163,8 +172,8 @@ public class BaseFinder extends Module {
 
     private void scanChunkBlocks(WorldChunk chunk, BlockPos origin, List<Hit> out) {
         ChunkPos cp = chunk.getPos();
-        int minY = Math.max(mc.world.getBottomY(), origin.getY() - 48);
-        int maxY = Math.min(mc.world.getTopYInclusive(), origin.getY() + 48);
+        int minY = Math.max(mc.world.getBottomY(), origin.getY() - 56);
+        int maxY = Math.min(mc.world.getTopYInclusive(), origin.getY() + 56);
 
         for (int x = 0; x < 16; x += 2) {
             for (int z = 0; z < 16; z += 2) {
@@ -179,50 +188,63 @@ public class BaseFinder extends Module {
                     if (findUtility) {
                         if (b == Blocks.CRAFTING_TABLE) { label = "Craft"; score = 8; }
                         else if (b == Blocks.FURNACE || b == Blocks.BLAST_FURNACE || b == Blocks.SMOKER) {
-                            label = "Furnace"; score = 9;
-                        } else if (b == Blocks.ENCHANTING_TABLE) { label = "Enchant"; score = 16; color = COL_BEACON; }
+                            label = "Furnace"; score = 10;
+                        } else if (b == Blocks.ENCHANTING_TABLE) { label = "Enchant"; score = 17; color = COL_BEACON; }
                         else if (b == Blocks.ANVIL || b == Blocks.CHIPPED_ANVIL || b == Blocks.DAMAGED_ANVIL) {
-                            label = "Anvil"; score = 11;
-                        } else if (b == Blocks.ENDER_CHEST) { label = "EnderChest"; score = 16; color = COL_SHULKER; }
-                        else if (isBed(b)) { label = "Bed"; score = 10; }
+                            label = "Anvil"; score = 12;
+                        } else if (b == Blocks.ENDER_CHEST) { label = "EnderChest"; score = 17; color = COL_SHULKER; }
+                        else if (isBed(b)) { label = "Bed"; score = 11; }
                         else if (b == Blocks.OBSIDIAN && densityAround(pos, Blocks.OBSIDIAN, 3) >= 5) {
-                            label = "Obby"; score = 13; color = COL_OBBY;
-                        } else if (b == Blocks.CRYING_OBSIDIAN) { label = "CryingObby"; score = 12; color = COL_OBBY; }
-                        else if (b == Blocks.RESPAWN_ANCHOR) { label = "Anchor"; score = 14; color = COL_SPAWNER; }
-                        else if (b == Blocks.NETHERITE_BLOCK) { label = "Netherite"; score = 22; color = COL_CHEST; }
+                            label = "Obby"; score = 14; color = COL_OBBY;
+                        } else if (b == Blocks.CRYING_OBSIDIAN) { label = "CryingObby"; score = 13; color = COL_OBBY; }
+                        else if (b == Blocks.RESPAWN_ANCHOR) { label = "Anchor"; score = 15; color = COL_SPAWNER; }
+                        else if (b == Blocks.NETHERITE_BLOCK) { label = "Netherite"; score = 24; color = COL_CHEST; }
+                        else if (b == Blocks.LODESTONE) { label = "Lodestone"; score = 12; color = COL_UTIL; }
                     }
 
                     if (label == null && findFarms) {
-                        // Farms: kelp, cane, bamboo, wart, crops, melon/pumpkin
                         if (b == Blocks.KELP || b == Blocks.KELP_PLANT) {
-                            if (densityAround(pos, Blocks.KELP, 4) + densityAround(pos, Blocks.KELP_PLANT, 4) >= 6) {
-                                label = "KelpFarm"; score = 15; color = COL_FARM;
-                            }
+                            int d = densityAround(pos, Blocks.KELP, 4) + densityAround(pos, Blocks.KELP_PLANT, 4);
+                            if (d >= 5) { label = "KelpFarm"; score = 16 + Math.min(8, d / 3); color = COL_KELP; }
                         } else if (b == Blocks.SUGAR_CANE) {
                             if (densityAround(pos, Blocks.SUGAR_CANE, 3) >= 5) {
-                                label = "CaneFarm"; score = 14; color = COL_FARM;
+                                label = "CaneFarm"; score = 15; color = COL_FARM;
                             }
                         } else if (b == Blocks.BAMBOO) {
                             if (densityAround(pos, Blocks.BAMBOO, 3) >= 5) {
-                                label = "BambooFarm"; score = 14; color = COL_FARM;
+                                label = "BambooFarm"; score = 15; color = COL_FARM;
+                            }
+                        } else if (b == Blocks.CACTUS) {
+                            if (densityAround(pos, Blocks.CACTUS, 3) >= 3) {
+                                label = "CactusFarm"; score = 14; color = COL_FARM;
                             }
                         } else if (b == Blocks.NETHER_WART) {
                             if (densityAround(pos, Blocks.NETHER_WART, 3) >= 4) {
-                                label = "WartFarm"; score = 15; color = COL_FARM;
+                                label = "WartFarm"; score = 16; color = COL_FARM;
                             }
                         } else if (b == Blocks.WHEAT || b == Blocks.CARROTS || b == Blocks.POTATOES
                                 || b == Blocks.BEETROOTS) {
                             if (densityAround(pos, b, 3) >= 6) {
-                                label = "CropFarm"; score = 12; color = COL_FARM;
+                                label = "CropFarm"; score = 13; color = COL_FARM;
                             }
                         } else if (b == Blocks.MELON || b == Blocks.PUMPKIN) {
-                            label = "MelonPump"; score = 11; color = COL_FARM;
+                            label = "MelonPump"; score = 12; color = COL_FARM;
                         } else if (b == Blocks.FARMLAND) {
                             if (densityAround(pos, Blocks.FARMLAND, 3) >= 6) {
-                                label = "Farmland"; score = 10; color = COL_FARM;
+                                label = "Farmland"; score = 11; color = COL_FARM;
                             }
                         } else if (b == Blocks.COMPOSTER) {
-                            label = "Composter"; score = 9; color = COL_FARM;
+                            label = "Composter"; score = 10; color = COL_FARM;
+                        } else if (b == Blocks.COCOA) {
+                            if (densityAround(pos, Blocks.COCOA, 3) >= 3) {
+                                label = "CocoaFarm"; score = 13; color = COL_FARM;
+                            }
+                        } else if (b == Blocks.SWEET_BERRY_BUSH) {
+                            if (densityAround(pos, Blocks.SWEET_BERRY_BUSH, 3) >= 4) {
+                                label = "BerryFarm"; score = 12; color = COL_FARM;
+                            }
+                        } else if (b == Blocks.BROWN_MUSHROOM_BLOCK || b == Blocks.RED_MUSHROOM_BLOCK) {
+                            label = "Mushroom"; score = 11; color = COL_FARM;
                         }
                     }
 
@@ -234,14 +256,16 @@ public class BaseFinder extends Module {
         }
     }
 
-    /** Collapse dense farm hits so ESP is readable */
     private List<Hit> mergeFarmClusters(List<Hit> in) {
         List<Hit> out = new ArrayList<>();
         boolean[] used = new boolean[in.size()];
         for (int i = 0; i < in.size(); i++) {
             if (used[i]) continue;
             Hit a = in.get(i);
-            if (!a.label.contains("Farm") && !a.label.equals("Farmland") && !a.label.equals("MelonPump")) {
+            boolean farmish = a.label.contains("Farm") || a.label.equals("Farmland")
+                    || a.label.equals("MelonPump") || a.label.equals("Composter")
+                    || a.label.equals("Mushroom");
+            if (!farmish) {
                 out.add(a);
                 used[i] = true;
                 continue;
@@ -254,7 +278,7 @@ public class BaseFinder extends Module {
                 if (used[j]) continue;
                 Hit b = in.get(j);
                 if (!b.label.equals(a.label)) continue;
-                if (!a.pos.isWithinDistance(b.pos, 10)) continue;
+                if (!a.pos.isWithinDistance(b.pos, 12)) continue;
                 used[j] = true;
                 count++;
                 if (b.score > bestScore) {
@@ -275,7 +299,7 @@ public class BaseFinder extends Module {
         for (Hit h : list) {
             if (h.pos.isWithinDistance(pos, r)) n++;
         }
-        return Math.min(10, n * 2);
+        return Math.min(12, n * 2);
     }
 
     private int densityAround(BlockPos pos, Block block, int r) {
