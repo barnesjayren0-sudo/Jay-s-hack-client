@@ -29,8 +29,8 @@ import com.jay.hackclient.settings.ClientSettings;
 
 public class JayHackClient implements ClientModInitializer {
 
-    public static final String NAME = "Jay's Client";
-    public static final String VERSION = "1.28.0";
+    public static final String NAME = "JAY CLIENT";
+    public static final String VERSION = "1.29.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -287,7 +287,7 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · drag panels · RMB settings");
+            case "binds" -> msg("§7RShift GUI · RMB settings · profiles in footer");
             default -> msg("§c?");
         }
     }
