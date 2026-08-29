@@ -22,7 +22,8 @@ public class Freecam extends Module {
 
     public Freecam() {
         super("Freecam", "Fly camera without moving your body", Category.RENDER);
-        setKeyBind(GLFW.GLFW_KEY_U);
+        // '@' is not a GLFW key. On US keyboards it is Shift+2 — bind physical 2.
+        setKeyBind(GLFW.GLFW_KEY_2);
         addSetting(speed);
     }
 
@@ -53,7 +54,6 @@ public class Freecam extends Module {
     public void onTick() {
         if (!active || mc.player == null || mc.world == null) return;
 
-        // Freeze body at enable position; mouse still aims freecam via player look
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setPosition(startX, startY, startZ);
 
@@ -64,7 +64,7 @@ public class Freecam extends Module {
         float spd = speed.getFloat();
         if (opt.sprintKey.isPressed()) spd *= 2.0f;
 
-        float yawRad = yaw * MathHelper.RADIANS_PER_DEGREE;
+        float yawRad = yaw * ((float) Math.PI / 180f);
         double forward = 0, strafe = 0, up = 0;
 
         if (opt.forwardKey.isPressed()) forward += 1;
@@ -74,7 +74,6 @@ public class Freecam extends Module {
         if (opt.jumpKey.isPressed()) up += 1;
         if (opt.sneakKey.isPressed()) up -= 1;
 
-        // Stop vanilla walking while freecam is on
         try {
             mc.player.input.movementForward = 0;
             mc.player.input.movementSideways = 0;
