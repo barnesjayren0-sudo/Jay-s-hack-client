@@ -24,12 +24,13 @@ import com.jay.hackclient.module.ModuleManager;
 import com.jay.hackclient.module.modules.*;
 import com.jay.hackclient.profile.LegitProfile;
 import com.jay.hackclient.render.HudRenderer;
+import com.jay.hackclient.render.WorldEspRenderer;
 import com.jay.hackclient.settings.ClientSettings;
 
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Client";
-    public static final String VERSION = "1.25.1";
+    public static final String VERSION = "1.26.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -56,6 +57,7 @@ public class JayHackClient implements ClientModInitializer {
         configManager = new ConfigManager();
 
         ClientSettings.applyDualConfig();
+        WorldEspRenderer.register();
 
         moduleManager.register(new KillAura());
         moduleManager.register(new AimAssist());
@@ -211,7 +213,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui · sword|scout|nethpot · scan|radar|near|path|goto");
+            msg("§f.gui · scan · radar · near · path");
             return;
         }
 
@@ -281,7 +283,7 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · .near .radar");
+            case "binds" -> msg("§7RShift GUI · drag panels · RMB settings");
             default -> msg("§c?");
         }
     }
