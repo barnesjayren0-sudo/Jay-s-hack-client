@@ -4,6 +4,7 @@ import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.event.events.ModuleToggleEvent;
 import com.jay.hackclient.module.setting.Setting;
 import com.jay.hackclient.util.Notifications;
+import com.jay.hackclient.util.ToggleSounds;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
@@ -55,10 +56,12 @@ public abstract class Module {
             onEnable();
             notify("enabled");
             Notifications.push(name, "enabled");
+            ToggleSounds.play(true);
         } else {
             onDisable();
             notify("disabled");
             Notifications.push(name, "disabled");
+            ToggleSounds.play(false);
         }
         if (JayHackClient.EVENT_BUS != null) {
             try {
@@ -96,7 +99,6 @@ public abstract class Module {
     public boolean isChatFeedback() { return chatFeedback; }
     public void setChatFeedback(boolean chatFeedback) { this.chatFeedback = chatFeedback; }
 
-    /** Meteor-style category accent for arraylist. */
     public int getCategoryColor() {
         return switch (category) {
             case COMBAT -> 0xFFFF5555;
