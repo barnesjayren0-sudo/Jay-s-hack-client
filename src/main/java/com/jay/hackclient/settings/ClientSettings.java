@@ -57,7 +57,7 @@ public final class ClientSettings {
     public static String lastProfile = "sword";
 
     public static final String[] PROFILE_CYCLE = {
-            "scout", "builder", "explore", "sword", "nethpot", "legit"
+            "scout", "builder", "explore", "anarchy", "sword", "nethpot", "legit"
     };
     public static int profileCycleIndex = 0;
 
