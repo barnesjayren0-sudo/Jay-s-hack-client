@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.37.0";
+    public static final String VERSION = "1.38.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -130,6 +130,8 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PathToBase());
         moduleManager.register(new BaritoneControl());
         moduleManager.register(new Scaffold());
+        moduleManager.register(new LogoutSpots());
+        moduleManager.register(new NewChunks());
         moduleManager.register(new AutoTool());
 
         moduleManager.register(new MiddleClickFriend());
@@ -189,6 +191,9 @@ public class JayHackClient implements ClientModInitializer {
             wasAlive = alive;
 
             EVENT_BUS.post(TickEvent.INSTANCE);
+            if (client.player.hurtTime > 0) {
+                try { BaritoneCompat.pauseCombat(); } catch (Throwable ignored) {}
+            }
             if (panicKey.wasPressed()) {
                 moduleManager.panic();
                 BaritoneCompat.cancel();
