@@ -5,7 +5,6 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.profile.LegitProfile;
 import com.jay.hackclient.render.JayLogo;
 import com.jay.hackclient.settings.ClientSettings;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -20,9 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Floating category panels (Meteor-inspired) with premium dark glass styling.
- */
+/** Floating category panels (Meteor-inspired) — positions saved to config. */
 public class ClickGuiScreen extends Screen {
 
     private static final int PANEL_W = 118;
@@ -30,14 +27,10 @@ public class ClickGuiScreen extends Screen {
     private static final int ROW_H = 14;
     private static final int MAX_VISIBLE = 12;
 
-    private static final Map<Module.Category, float[]> POS = new EnumMap<>(Module.Category.class);
-    private static boolean positioned;
-
     private Module.Category dragCat;
     private double dragOx, dragOy;
 
     private final Map<Module.Category, Integer> scroll = new EnumMap<>(Module.Category.class);
-    private Module.Category settingsHover;
 
     private String search = "";
     private boolean searchFocused;
@@ -48,18 +41,10 @@ public class ClickGuiScreen extends Screen {
     }
 
     private void ensurePositions() {
-        if (positioned && !POS.isEmpty()) return;
-        Module.Category[] cats = Module.Category.values();
-        int gap = 8;
-        int startX = 12;
-        int startY = 28;
-        for (int i = 0; i < cats.length; i++) {
-            float x = startX + (i % 4) * (PANEL_W + gap);
-            float y = startY + (i / 4) * 160;
-            POS.put(cats[i], new float[]{x, y});
-            scroll.putIfAbsent(cats[i], 0);
+        GuiLayout.ensureDefaults();
+        for (Module.Category cat : Module.Category.values()) {
+            scroll.putIfAbsent(cat, 0);
         }
-        positioned = true;
     }
 
     private float openAnim() {
@@ -83,16 +68,12 @@ public class ClickGuiScreen extends Screen {
     }
 
     private void panelBg(DrawContext ctx, int x, int y, int w, int h) {
-        // soft shadow
         ctx.fill(x + 2, y + 3, x + w + 2, y + h + 3, 0x55000000);
-        // glass body
         ctx.fill(x, y, x + w, y + h, GuiTheme.BG);
-        // border
         ctx.fill(x, y, x + w, y + 1, GuiTheme.BORDER);
         ctx.fill(x, y + h - 1, x + w, y + h, GuiTheme.BORDER);
         ctx.fill(x, y, x + 1, y + h, GuiTheme.BORDER);
         ctx.fill(x + w - 1, y, x + w, y + h, GuiTheme.BORDER);
-        // accent top
         ctx.fill(x + 1, y + 1, x + w - 1, y + 2, GuiTheme.ACCENT);
     }
 
@@ -101,17 +82,14 @@ public class ClickGuiScreen extends Screen {
         ensurePositions();
         float anim = openAnim();
 
-        // Light dim — keep world visible (Meteor vibe)
         ctx.fill(0, 0, width, height, GuiTheme.withAlpha(0x000000, (int) (0x55 * anim)));
 
-        // Top bar: logo + search + profiles
         int barH = 22;
         ctx.fill(0, 0, width, barH, GuiTheme.PANEL);
         ctx.fill(0, barH, width, barH + 1, GuiTheme.BORDER);
         JayLogo.draw(ctx, 6, 3, 16);
         ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 26, 7, GuiTheme.TEXT);
 
-        // Search pill
         int sx = width / 2 - 70;
         int sw = 140;
         ctx.fill(sx, 3, sx + sw, 19, GuiTheme.PANEL2);
@@ -119,7 +97,6 @@ public class ClickGuiScreen extends Screen {
         String ph = search.isEmpty() && !searchFocused ? "§8Search..." : "§f" + search + (searchFocused ? "§7|" : "");
         ctx.drawTextWithShadow(textRenderer, ph, sx + 6, 7, GuiTheme.TEXT);
 
-        // Profile chips
         String[] profiles = {"anarchy", "sword", "scout", "nethpot"};
         int px = width - 8;
         for (int i = profiles.length - 1; i >= 0; i--) {
@@ -132,13 +109,12 @@ public class ClickGuiScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, p, px + 5, 7, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
         }
 
-        // Floating panels
         int yOff = (int) ((1f - anim) * 8);
         for (Module.Category cat : Module.Category.values()) {
             List<Module> list = mods(cat);
             if (list.isEmpty() && !search.isBlank()) continue;
 
-            float[] pos = POS.computeIfAbsent(cat, c -> new float[]{20, 40});
+            float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0];
             int y = (int) pos[1] + yOff;
 
@@ -148,12 +124,9 @@ public class ClickGuiScreen extends Screen {
 
             panelBg(ctx, x, y, PANEL_W, h);
 
-            // Header
             ctx.fill(x + 1, y + 2, x + PANEL_W - 1, y + HEADER_H, GuiTheme.PANEL);
-            String title = cat.displayName;
-            ctx.drawTextWithShadow(textRenderer, title, x + 6, y + 5, GuiTheme.ACCENT);
-            int count = list.size();
-            String cstr = String.valueOf(count);
+            ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 6, y + 5, GuiTheme.ACCENT);
+            String cstr = String.valueOf(list.size());
             ctx.drawTextWithShadow(textRenderer, cstr,
                     x + PANEL_W - 6 - textRenderer.getWidth(cstr), y + 5, GuiTheme.TEXT_DIM);
 
@@ -185,8 +158,7 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // Hint
-        ctx.drawTextWithShadow(textRenderer, "§8LMB toggle · RMB settings · drag headers",
+        ctx.drawTextWithShadow(textRenderer, "§8LMB toggle · RMB settings · drag headers (saved)",
                 8, height - 12, GuiTheme.TEXT_DIM);
 
         super.render(ctx, mouseX, mouseY, delta);
@@ -194,8 +166,7 @@ public class ClickGuiScreen extends Screen {
 
     private Module.Category headerAt(double mx, double my) {
         for (Module.Category cat : Module.Category.values()) {
-            float[] pos = POS.get(cat);
-            if (pos == null) continue;
+            float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
             if (mx >= x && mx < x + PANEL_W && my >= y && my < y + HEADER_H) return cat;
         }
@@ -205,8 +176,7 @@ public class ClickGuiScreen extends Screen {
     private Module moduleAt(double mx, double my) {
         for (Module.Category cat : Module.Category.values()) {
             List<Module> list = mods(cat);
-            float[] pos = POS.get(cat);
-            if (pos == null) continue;
+            float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
             int sc = scroll.getOrDefault(cat, 0);
             int row = 0;
@@ -230,14 +200,12 @@ public class ClickGuiScreen extends Screen {
         int button = click.button();
         ensurePositions();
 
-        // Search bar
         int sx = width / 2 - 70;
         if (button == 0 && mx >= sx && mx <= sx + 140 && my >= 3 && my <= 19) {
             searchFocused = true;
             return true;
         }
 
-        // Profiles
         if (button == 0 && my >= 4 && my <= 18) {
             String[] profiles = {"anarchy", "sword", "scout", "nethpot"};
             int px = width - 8;
@@ -252,12 +220,11 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // Drag header
         if (button == 0) {
             Module.Category head = headerAt(mx, my);
             if (head != null) {
                 dragCat = head;
-                float[] pos = POS.get(head);
+                float[] pos = GuiLayout.get(head);
                 dragOx = mx - pos[0];
                 dragOy = my - pos[1];
                 searchFocused = false;
@@ -290,14 +257,11 @@ public class ClickGuiScreen extends Screen {
     @Override
     public boolean mouseDragged(Click click, double deltaX, double deltaY) {
         if (dragCat != null) {
-            float[] pos = POS.get(dragCat);
-            if (pos != null) {
-                pos[0] = (float) (click.x() - dragOx);
-                pos[1] = (float) (click.y() - dragOy);
-                // clamp lightly
-                pos[0] = Math.max(0, Math.min(width - PANEL_W, pos[0]));
-                pos[1] = Math.max(24, Math.min(height - 40, pos[1]));
-            }
+            float[] pos = GuiLayout.get(dragCat);
+            pos[0] = (float) (click.x() - dragOx);
+            pos[1] = (float) (click.y() - dragOy);
+            pos[0] = Math.max(0, Math.min(width - PANEL_W, pos[0]));
+            pos[1] = Math.max(24, Math.min(height - 40, pos[1]));
             return true;
         }
         return super.mouseDragged(click, deltaX, deltaY);
@@ -305,6 +269,9 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseReleased(Click click) {
+        if (dragCat != null && JayHackClient.configManager != null) {
+            JayHackClient.configManager.save();
+        }
         dragCat = null;
         return super.mouseReleased(click);
     }
@@ -313,8 +280,7 @@ public class ClickGuiScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double hAmount, double vAmount) {
         ensurePositions();
         for (Module.Category cat : Module.Category.values()) {
-            float[] pos = POS.get(cat);
-            if (pos == null) continue;
+            float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
             List<Module> list = mods(cat);
             int h = HEADER_H + Math.min(MAX_VISIBLE, Math.max(1, list.size())) * ROW_H + 4;
