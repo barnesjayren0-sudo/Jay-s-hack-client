@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.38.0";
+    public static final String VERSION = "1.40.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -249,8 +249,9 @@ public class JayHackClient implements ClientModInitializer {
         var client = MinecraftClient.getInstance();
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
-        if (args.length < 2) {
-            msg("§f.gui · anarchy · scan · freecam");
+        if (args.length < 2 || args[1].equalsIgnoreCase("help")) {
+            msg("§f.jay gui|toggle|profile|friend|config|set|scan|radar|panic|off|binds");
+            msg("§7RMB module = settings · profiles in GUI · config auto-saves");
             return;
         }
 
@@ -320,8 +321,8 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · G Fly · B Burrow · 2 Freecam · V YClip · Del Panic");
-            default -> msg("§c?");
+            case "binds" -> msg("§7RShift GUI · R Aura · J Aim · T Trigger · N Vel · X ESP · Del Panic");
+            default -> msg("§c? · .jay help");
         }
     }
 
@@ -386,6 +387,7 @@ public class JayHackClient implements ClientModInitializer {
         if (args.length < 3) return;
         if (args[2].equalsIgnoreCase("save")) { configManager.save(); msg("§aSaved"); }
         else if (args[2].equalsIgnoreCase("load")) { configManager.load(); msg("§aLoaded"); }
+        else if (args[2].equalsIgnoreCase("reset")) { configManager.resetDefaults(); msg("§eDefaults restored"); }
     }
 
     private void msg(String s) {
