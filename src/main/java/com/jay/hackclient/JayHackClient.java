@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.34.0";
+    public static final String VERSION = "1.35.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -93,6 +93,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new StorageESP());
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
+        moduleManager.register(new InfoHUD());
         moduleManager.register(new HitParticles());
         moduleManager.register(new Freecam());
 
@@ -108,6 +109,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new FastPlace());
         moduleManager.register(new NoBreakDelay());
         moduleManager.register(new InvSort());
+        moduleManager.register(new AutoReplenish());
 
         moduleManager.register(new BaseFinder());
         moduleManager.register(new FarmFinder());
@@ -139,6 +141,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Jesus());
         moduleManager.register(new BoatFly());
         moduleManager.register(new AutoCrystal());
+        moduleManager.register(new HoleFill());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
