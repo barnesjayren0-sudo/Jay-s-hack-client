@@ -1,23 +1,34 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.ModeSetting;
+import com.jay.hackclient.module.setting.BoolSetting;
 
+/** Prefer critical hits — packet or jump assist. */
 public class Criticals extends Module {
 
+    public final ModeSetting mode = new ModeSetting("Mode", "Crit style", "Jump", "Jump", "Off");
+    public final BoolSetting onlyWeapon = new BoolSetting("OnlyWeapon", "Sword/axe only", true);
+
     public Criticals() {
-        super("Criticals", "Helps land critical-style hits", Category.COMBAT);
+        super("Criticals", "Help land critical hits", Category.COMBAT);
+        addSetting(mode);
+        addSetting(onlyWeapon);
+    }
+
+    @Override
+    public void onEnable() {
+        // Share flag with CritAssist path
+        com.jay.hackclient.settings.ClientSettings.critTiming = !"Off".equals(mode.get());
+    }
+
+    @Override
+    public void onDisable() {
+        com.jay.hackclient.settings.ClientSettings.critTiming = false;
     }
 
     @Override
     public void onTick() {
-        // Full packet crits need attack-event mixins.
-        // Lightweight assist: small hop when on ground and swinging at players is handled elsewhere.
-    }
-
-    /** Call from attack hooks when mixins are added. */
-    public void doCrit() {
-        if (mc.player == null || mc.getNetworkHandler() == null) return;
-        if (!mc.player.isOnGround()) return;
-        // Placeholder — packet shape varies by MC version; keep safe for compile.
+        com.jay.hackclient.settings.ClientSettings.critTiming = isEnabled() && !"Off".equals(mode.get());
     }
 }

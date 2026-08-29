@@ -22,9 +22,9 @@ public class AutoSprint extends Module {
         if (mc.player.isSneaking() || mc.player.isUsingItem()) return;
         if (hunger.get() && mc.player.getHungerManager().getFoodLevel() <= 6) return;
 
-        boolean move = omni.get()
-                ? mc.player.input.hasForwardMovement() || Math.abs(mc.player.sidewaysSpeed) > 0.01f
-                : mc.player.input.hasForwardMovement();
+        boolean forward = mc.options.forwardKey.isPressed();
+        boolean side = mc.options.leftKey.isPressed() || mc.options.rightKey.isPressed();
+        boolean move = omni.get() ? (forward || side) : forward;
 
         if (move && !mc.player.isSprinting()) {
             mc.player.setSprinting(true);
