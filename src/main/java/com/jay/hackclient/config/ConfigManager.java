@@ -24,7 +24,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Hack Client config v1.34\n");
+            sb.append("# Jay Hack Client config v1.36\n");
             sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
             sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
@@ -60,6 +60,8 @@ public class ConfigManager {
             sb.append("potSlotMax=").append(ClientSettings.potSlotMax).append('\n');
             sb.append("arrayListColor=").append(ClientSettings.arrayListColor).append('\n');
             sb.append("arrayListRainbow=").append(ClientSettings.arrayListRainbow).append('\n');
+            sb.append("toggleSounds=").append(ClientSettings.toggleSounds).append('\n');
+            sb.append("showActiveCount=").append(ClientSettings.showActiveCount).append('\n');
 
             if (JayHackClient.moduleManager != null) {
                 for (Module m : JayHackClient.moduleManager.getModules()) {
@@ -139,6 +141,8 @@ public class ConfigManager {
                     case "potSlotMax" -> ClientSettings.potSlotMax = (int) dbl(v, ClientSettings.potSlotMax);
                     case "arrayListColor" -> ClientSettings.arrayListColor = (int) dbl(v, ClientSettings.arrayListColor);
                     case "arrayListRainbow" -> ClientSettings.arrayListRainbow = Boolean.parseBoolean(v);
+                    case "toggleSounds" -> ClientSettings.toggleSounds = Boolean.parseBoolean(v);
+                    case "showActiveCount" -> ClientSettings.showActiveCount = Boolean.parseBoolean(v);
                     default -> {
                         if (k.startsWith("mod.") && JayHackClient.moduleManager != null) {
                             Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
