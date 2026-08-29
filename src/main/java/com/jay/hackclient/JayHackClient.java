@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.33.0";
+    public static final String VERSION = "1.34.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -81,6 +81,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AntiBot());
 
         moduleManager.register(new AutoSprint());
+        moduleManager.register(new KeepSprint());
         moduleManager.register(new NoSlow());
         moduleManager.register(new Speed());
         moduleManager.register(new NoFall());
@@ -124,7 +125,6 @@ public class JayHackClient implements ClientModInitializer {
 
         moduleManager.register(new MiddleClickFriend());
 
-        // Anarchy
         moduleManager.register(new AutoLog());
         moduleManager.register(new AntiVoid());
         moduleManager.register(new Surround());
@@ -267,7 +267,6 @@ public class JayHackClient implements ClientModInitializer {
             case "off" -> { moduleManager.disableAll(); BaritoneCompat.cancel(); configManager.save(); msg("§eOff"); }
             case "panic" -> { moduleManager.panic(); BaritoneCompat.cancel(); configManager.save(); msg("§cPANIC"); }
             case "unpanic" -> { moduleManager.unfreeze(); msg("§aOK"); }
-
             case "scan", "base" -> {
                 Module bf = moduleManager.getModuleByName("BaseFinder");
                 if (bf instanceof BaseFinder f) f.scan(true);
@@ -296,7 +295,6 @@ public class JayHackClient implements ClientModInitializer {
                 } catch (NumberFormatException e) { msg("§cNumbers only"); }
             }
             case "stoppath", "cancel" -> { BaritoneCompat.cancel(); msg("§ePath cancelled"); }
-
             case "baritone", "b" -> {
                 if (args.length >= 3) {
                     StringBuilder sb = new StringBuilder("#");
