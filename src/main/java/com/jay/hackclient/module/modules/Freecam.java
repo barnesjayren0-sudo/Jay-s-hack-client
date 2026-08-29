@@ -17,7 +17,6 @@ public class Freecam extends Module {
     public static float yaw, pitch;
 
     private double startX, startY, startZ;
-    private float startYaw, startPitch;
 
     public final NumberSetting speed = new NumberSetting("Speed", "Fly speed", 1.2, 0.2, 5.0, 0.1);
 
@@ -36,59 +35,25 @@ public class Freecam extends Module {
         startX = mc.player.getX();
         startY = mc.player.getY();
         startZ = mc.player.getZ();
-        startYaw = mc.player.getYaw();
-        startPitch = mc.player.getPitch();
 
         x = startX;
         y = startY + mc.player.getStandingEyeHeight();
         z = startZ;
-        yaw = startYaw;
-        pitch = startPitch;
+        yaw = mc.player.getYaw();
+        pitch = mc.player.getPitch();
         active = true;
     }
 
     @Override
     public void onDisable() {
         active = false;
-        if (mc.player != null) {
-            mc.player.setYaw(startYaw);
-            mc.player.setPitch(startPitch);
-        }
     }
 
     @Override
     public void onTick() {
         if (!active || mc.player == null || mc.world == null) return;
 
-        // Keep body frozen at enable position (client-side)
-        mc.player.setVelocity(Vec3d.ZERO);
-        mc.player.setPosition(startX, startY, startZ);
-        mc.player.setYaw(startYaw);
-        mc.player.setPitch(startPitch);
-
-        // Camera rotation follows mouse (player look is restored above — use last render angles)
-        // While freecam is on, read current mouse look from options before we overwrite player
-        // Actually we overwrote player yaw/pitch — store look from camera if available
-        if (mc.gameRenderer != null && mc.gameRenderer.getCamera() != null) {
-            // Mouse still updates player look input before we freeze — capture from input
-        }
-
-        // Use key rotation: mouse still rotates "player" briefly each tick before freeze.
-        // Capture intended look from mouse delta by reading player before freeze next frame:
-        // Simpler: freecam yaw/pitch = player look, then re-freeze body angles.
-        yaw = mc.player.getYaw();
-        pitch = mc.player.getPitch();
-        // Wait — we set player to startYaw already. Need to not overwrite look.
-
-        // Correct flow: do NOT overwrite player yaw/pitch; only position/velocity.
-        // Re-apply start only for position.
-    }
-
-    /** Called at start of tick from a fixed order — movement only. */
-    public void updateCamera() {
-        if (!active || mc.player == null) return;
-
-        // Freeze body position & velocity; leave look alone so mouse aims freecam
+        // Freeze body at enable position; mouse still aims freecam via player look
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setPosition(startX, startY, startZ);
 
@@ -109,11 +74,13 @@ public class Freecam extends Module {
         if (opt.jumpKey.isPressed()) up += 1;
         if (opt.sneakKey.isPressed()) up -= 1;
 
-        // Cancel vanilla movement input so body doesn't walk
-        mc.player.input.movementForward = 0;
-        mc.player.input.movementSideways = 0;
-        mc.player.input.jumping = false;
-        mc.player.input.sneaking = false;
+        // Stop vanilla walking while freecam is on
+        try {
+            mc.player.input.movementForward = 0;
+            mc.player.input.movementSideways = 0;
+            mc.player.input.jumping = false;
+            mc.player.input.sneaking = false;
+        } catch (Throwable ignored) {}
 
         if (forward == 0 && strafe == 0 && up == 0) return;
 
@@ -123,10 +90,5 @@ public class Freecam extends Module {
         x += (strafe * cos - forward * sin) * spd;
         z += (forward * cos + strafe * sin) * spd;
         y += up * spd;
-    }
-
-    @Override
-    public void onTick() {
-        updateCamera();
     }
 }
