@@ -44,12 +44,12 @@ public class TriggerBot extends Module {
         if (JayHackClient.friendManager != null
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
-        // Respect reach cap
         double maxDist = Reach.isActive() ? Reach.getReach() + 0.15 : 3.15;
         if (mc.player.distanceTo(player) > maxDist + Hitboxes.getExpand()) return;
 
         if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
         if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)) return;
+        if (!ComboHit.shouldAttack(mc.player, player)) return;
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
@@ -60,6 +60,7 @@ public class TriggerBot extends Module {
             return;
         }
 
+        ReachHUD.recordHit(mc.player.distanceTo(player));
         mc.interactionManager.attackEntity(mc.player, player);
         mc.player.swingHand(Hand.MAIN_HAND);
         lastAttack = now;
