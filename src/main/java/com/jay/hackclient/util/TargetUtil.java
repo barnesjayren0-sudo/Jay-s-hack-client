@@ -5,42 +5,47 @@ import com.jay.hackclient.module.modules.AntiBot;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 
+/** Shared target selection — priority modes inspired by modern clients. */
 public final class TargetUtil {
 
     private TargetUtil() {}
 
-    public static PlayerEntity findCombatTarget(double range, float fov) {
+    public static PlayerEntity find(double range, float fov) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null) return null;
 
-        String prio = ClientSettings.targetPriority;
-
-        if ("crosshair".equals(prio) && mc.crosshairTarget instanceof EntityHitResult ehr) {
-            if (ehr.getEntity() instanceof PlayerEntity pe && isValid(pe, mc, range)) {
-                return pe;
-            }
-        }
-
         PlayerEntity best = null;
         double bestScore = Double.MAX_VALUE;
+        Vec3d eye = mc.player.getEyePos();
+        String prio = ClientSettings.targetPriority == null ? "crosshair" : ClientSettings.targetPriority;
 
         for (PlayerEntity p : mc.world.getPlayers()) {
-            if (!isValid(p, mc, range)) continue;
+            if (p == mc.player || !p.isAlive()) continue;
+            try {
+                if (AntiBot.isBot(p)) continue;
+            } catch (Throwable ignored) {}
+            if (JayHackClient.friendManager != null
+                    && JayHackClient.friendManager.isFriend(p.getName().getString())) continue;
 
-            double d = mc.player.distanceTo(p);
-            float dyaw = yawDiff(mc, p);
-            if (dyaw > fov + 15) continue;
+            double dist = mc.player.distanceTo(p);
+            if (dist > range) continue;
 
-            double score;
-            switch (prio) {
-                case "lowest_hp" -> score = p.getHealth() + p.getAbsorptionAmount() + d * 0.05;
-                case "closest" -> score = d;
-                default -> score = d * 0.5 + dyaw * 0.1; // balanced / crosshair-like
+            float[] rot = rotationsTo(eye, p.getBoundingBox().getCenter());
+            float yawDiff = Math.abs(MathHelper.wrapDegrees(rot[0] - mc.player.getYaw()));
+            float pitchDiff = Math.abs(MathHelper.wrapDegrees(rot[1] - mc.player.getPitch()));
+            if (yawDiff > fov * 0.5f && pitchDiff > fov * 0.5f && fov < 180) {
+                // soft FOV gate for crosshair priority
+                if (prio.equals("crosshair") && yawDiff > fov) continue;
             }
+
+            double score = switch (prio) {
+                case "lowest_hp" -> p.getHealth() + p.getAbsorptionAmount();
+                case "closest" -> dist;
+                default -> yawDiff + pitchDiff * 0.5; // crosshair
+            };
 
             if (score < bestScore) {
                 bestScore = score;
@@ -50,18 +55,13 @@ public final class TargetUtil {
         return best;
     }
 
-    private static boolean isValid(PlayerEntity p, MinecraftClient mc, double range) {
-        if (p == mc.player || !p.isAlive() || p.isSpectator()) return false;
-        if (AntiBot.isBot(p)) return false;
-        if (JayHackClient.friendManager != null
-                && JayHackClient.friendManager.isFriend(p.getName().getString())) return false;
-        return mc.player.distanceTo(p) <= range;
-    }
-
-    private static float yawDiff(MinecraftClient mc, PlayerEntity p) {
-        double dx = p.getX() - mc.player.getX();
-        double dz = p.getZ() - mc.player.getZ();
-        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
-        return Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
+    public static float[] rotationsTo(Vec3d from, Vec3d to) {
+        double dx = to.x - from.x;
+        double dy = to.y - from.y;
+        double dz = to.z - from.z;
+        double dist = Math.sqrt(dx * dx + dz * dz);
+        float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        float pitch = (float) (-Math.toDegrees(Math.atan2(dy, dist)));
+        return new float[]{yaw, pitch};
     }
 }

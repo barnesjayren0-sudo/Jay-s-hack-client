@@ -44,11 +44,7 @@ public class ModuleManager {
 
     public void panic() {
         frozen = true;
-        disableCombat();
         for (Module m : modules) {
-            if (m.isEnabled() && m.getCategory() != Module.Category.RENDER) {
-                // leave pure render; disable rest on panic
-            }
             if (m.isEnabled()) m.setEnabled(false);
         }
     }
@@ -63,7 +59,6 @@ public class ModuleManager {
         }
     }
 
-    /** Combat + inventory combat helpers off (death / world change). */
     public void disableCombat() {
         for (Module m : modules) {
             if (!m.isEnabled()) continue;
@@ -79,6 +74,12 @@ public class ModuleManager {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.getWindow() == null) return;
         if (mc.currentScreen != null) {
+            // release hold-mode modules when GUI opens
+            for (Module m : modules) {
+                if (m.getKeyMode() == Module.KeyMode.HOLD && m.isEnabled() && m.getKeyBind() >= 0) {
+                    m.setEnabled(false);
+                }
+            }
             heldKeys.clear();
             return;
         }
@@ -89,6 +90,14 @@ public class ModuleManager {
             if (key < 0) continue;
 
             boolean down = GLFW.glfwGetKey(handle, key) == GLFW.GLFW_PRESS;
+
+            if (m.getKeyMode() == Module.KeyMode.HOLD) {
+                if (down && !m.isEnabled()) m.setEnabled(true);
+                else if (!down && m.isEnabled()) m.setEnabled(false);
+                continue;
+            }
+
+            // TOGGLE
             if (down && !heldKeys.contains(key)) {
                 heldKeys.add(key);
                 m.toggle();

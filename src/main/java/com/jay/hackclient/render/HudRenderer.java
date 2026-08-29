@@ -14,11 +14,16 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public final class HudRenderer {
 
     private static final int CYAN = 0xFF3DDCFF;
+    /** Slide animation progress 0..1 per module name. */
+    private static final Map<String, Float> slide = new HashMap<>();
 
     private HudRenderer() {}
 
@@ -32,17 +37,37 @@ public final class HudRenderer {
             if (GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F2) == GLFW.GLFW_PRESS) return;
         }
 
-        // BaseFinder / StorageESP screen markers
         WorldEspRenderer.drawHudOverlay(context);
 
         boolean phone = Mobile.isSmallScreen();
         List<Module> enabled = new ArrayList<>();
         for (Module m : JayHackClient.moduleManager.getModules()) {
-            if (m.isEnabled() && !m.getName().equalsIgnoreCase("HUD")) enabled.add(m);
+            if (m.isEnabled() && m.isDrawn() && !m.getName().equalsIgnoreCase("HUD")) {
+                enabled.add(m);
+            }
         }
         enabled.sort(Comparator
                 .comparing((Module m) -> !ClientSettings.isFavorite(m.getName()))
                 .thenComparingInt(m -> -mc.textRenderer.getWidth(m.getName())));
+
+        // animate slide
+        for (Module m : enabled) {
+            float cur = slide.getOrDefault(m.getName(), 0f);
+            slide.put(m.getName(), Math.min(1f, cur + 0.18f));
+        }
+        Iterator<Map.Entry<String, Float>> it = slide.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Float> e = it.next();
+            boolean still = false;
+            for (Module m : enabled) {
+                if (m.getName().equals(e.getKey())) { still = true; break; }
+            }
+            if (!still) {
+                float v = e.getValue() - 0.2f;
+                if (v <= 0) it.remove();
+                else e.setValue(v);
+            }
+        }
 
         int maxList = phone ? 8 : 24;
         int screenW = mc.getWindow().getScaledWidth();
@@ -74,10 +99,12 @@ public final class HudRenderer {
         int shown = 0;
         for (Module m : enabled) {
             if (shown >= maxList) break;
+            float s = slide.getOrDefault(m.getName(), 1f);
             String star = ClientSettings.isFavorite(m.getName()) ? "§e★ " : "";
             String label = star + m.getName();
-            int w = mc.textRenderer.getWidth(m.getName()) + (ClientSettings.isFavorite(m.getName()) ? 12 : 0);
-            int x = screenW - w - 10;
+            int textW = mc.textRenderer.getWidth(m.getName()) + (ClientSettings.isFavorite(m.getName()) ? 12 : 0);
+            int slidePx = (int) ((1f - s) * (textW + 16));
+            int x = screenW - textW - 10 + slidePx;
             context.fill(x - 5, y - 1, screenW - 2, y + 10, 0x990A0A10);
             context.fill(screenW - 2, y - 1, screenW, y + 10, accent);
             context.drawTextWithShadow(mc.textRenderer, label, x, y, 0xE8E8F0);

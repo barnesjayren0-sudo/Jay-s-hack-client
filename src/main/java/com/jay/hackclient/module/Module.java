@@ -1,6 +1,7 @@
 package com.jay.hackclient.module;
 
 import com.jay.hackclient.JayHackClient;
+import com.jay.hackclient.event.events.ModuleToggleEvent;
 import com.jay.hackclient.module.setting.Setting;
 import com.jay.hackclient.util.Notifications;
 import net.minecraft.client.MinecraftClient;
@@ -15,11 +16,16 @@ public abstract class Module {
 
     protected static final MinecraftClient mc = MinecraftClient.getInstance();
 
+    public enum KeyMode { TOGGLE, HOLD }
+
     private final String name;
     private final String description;
     private final Category category;
     private boolean enabled;
     private int keyBind;
+    private KeyMode keyMode = KeyMode.TOGGLE;
+    /** When false, hidden from arraylist (still works). */
+    private boolean drawn = true;
     private final List<Setting> settings = new ArrayList<>();
 
     public Module(String name, String description, Category category) {
@@ -54,6 +60,11 @@ public abstract class Module {
             notify("disabled");
             Notifications.push(name, "disabled");
         }
+        if (JayHackClient.EVENT_BUS != null) {
+            try {
+                JayHackClient.EVENT_BUS.post(new ModuleToggleEvent(this, state));
+            } catch (Throwable ignored) {}
+        }
         if (JayHackClient.configManager != null) {
             try {
                 JayHackClient.configManager.save();
@@ -77,6 +88,10 @@ public abstract class Module {
     public boolean isEnabled() { return enabled; }
     public int getKeyBind() { return keyBind; }
     public void setKeyBind(int keyBind) { this.keyBind = keyBind; }
+    public KeyMode getKeyMode() { return keyMode; }
+    public void setKeyMode(KeyMode mode) { if (mode != null) this.keyMode = mode; }
+    public boolean isDrawn() { return drawn; }
+    public void setDrawn(boolean drawn) { this.drawn = drawn; }
 
     public String getKeyLabel() {
         if (keyBind < 0) return "";
