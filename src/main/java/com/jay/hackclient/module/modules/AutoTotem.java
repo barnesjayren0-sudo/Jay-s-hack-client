@@ -1,6 +1,7 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.SlotLock;
 import net.minecraft.entity.player.PlayerInventory;
@@ -8,12 +9,16 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 
+/** Restock offhand totem — high priority when low HP. */
 public class AutoTotem extends Module {
 
-    private long lastSwap = 0;
+    public final NumberSetting softHp = new NumberSetting("SoftHP", "Faster under this HP", 12, 4, 20, 1);
+
+    private long lastSwap;
 
     public AutoTotem() {
         super("AutoTotem", "Restock offhand totem", Category.PLAYER);
+        addSetting(softHp);
     }
 
     @Override
@@ -26,11 +31,15 @@ public class AutoTotem extends Module {
         if (off.isOf(Items.TOTEM_OF_UNDYING)) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastSwap < Humanizer.swapDelay()) return;
+        float hp = mc.player.getHealth() + mc.player.getAbsorptionAmount();
+        int delay = hp <= softHp.getFloat() ? 40 : Humanizer.swapDelay();
+        if (now - lastSwap < delay) return;
 
         int slot = findTotemSlot();
         if (slot == -1) return;
-        if (!SlotLock.tryAcquire("AutoTotem", 350)) return;
+
+        // Priority 35 — beats most combat hotbar swaps when popping
+        if (!SlotLock.tryAcquire("AutoTotem", 400, 35)) return;
 
         try {
             int syncId = mc.player.playerScreenHandler.syncId;
