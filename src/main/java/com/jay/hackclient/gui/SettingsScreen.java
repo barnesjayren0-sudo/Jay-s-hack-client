@@ -125,7 +125,7 @@ public class SettingsScreen extends Screen {
             }
         }
 
-        ctx.drawTextWithShadow(textRenderer, "LMB edit · ESC back",
+        ctx.drawTextWithShadow(textRenderer, "LMB edit · drag sliders · ESC back",
                 x + 10, y + h - 14, GuiTheme.TEXT_DIM);
         super.render(ctx, mouseX, mouseY, delta);
     }
@@ -194,6 +194,37 @@ public class SettingsScreen extends Screen {
             ry += rowH;
         }
         return super.mouseClicked(click, doubled);
+    }
+
+    @Override
+    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
+        double mx = click.x();
+        double my = click.y();
+        boolean mobile = width < 480;
+        int w = Math.min(mobile ? width - 20 : 260, width - 20);
+        int rowH = mobile ? 28 : 26;
+        List<Setting> settings = module.getSettings();
+        int rows = 5 + settings.size();
+        int h = Math.min(24 + rows * rowH + 28, height - 24);
+        int x = (width - w) / 2;
+        int y = (height - h) / 2;
+        int ry = y + 28 + rowH * 4;
+        int idx = 0;
+        for (Setting s : settings) {
+            if (idx++ < scroll) continue;
+            if (ry + rowH > y + h - 22) break;
+            if (s instanceof NumberSetting n) {
+                int barX = x + w / 2;
+                int barW = w / 2 - 24;
+                if (my >= ry && my < ry + rowH - 4 && mx >= barX && mx <= barX + barW) {
+                    double pct = (mx - barX) / (double) barW;
+                    n.set(n.getMin() + pct * (n.getMax() - n.getMin()));
+                    return true;
+                }
+            }
+            ry += rowH;
+        }
+        return super.mouseDragged(click, deltaX, deltaY);
     }
 
     @Override
