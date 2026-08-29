@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.29.2";
+    public static final String VERSION = "1.30.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -122,6 +122,13 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoTool());
 
         moduleManager.register(new MiddleClickFriend());
+
+        // Anarchy
+        moduleManager.register(new AutoLog());
+        moduleManager.register(new AntiVoid());
+        moduleManager.register(new Surround());
+        moduleManager.register(new SelfTrap());
+        moduleManager.register(new MiddleClickPearl());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
