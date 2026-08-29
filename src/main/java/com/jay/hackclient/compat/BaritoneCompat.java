@@ -3,8 +3,8 @@ package com.jay.hackclient.compat;
 import net.minecraft.util.math.BlockPos;
 
 /**
- * Polished runtime bridge to official Baritone (baritone-fabric-1.21.11).
- * Soft-fail everything — never crash the client if Baritone is missing or API shifts.
+ * Runtime bridge to official Baritone (baritone-fabric-1.21.11).
+ * Soft-fail everything — never crash if Baritone is missing.
  */
 public final class BaritoneCompat {
 
@@ -12,6 +12,7 @@ public final class BaritoneCompat {
     private static String lastError = null;
     private static String lastAction = "idle";
     private static long lastActionMs = 0;
+    private static long combatPauseUntil;
 
     private BaritoneCompat() {}
 
@@ -48,200 +49,76 @@ public final class BaritoneCompat {
 
     private static void fail(Throwable t) {
         lastError = t.getClass().getSimpleName();
-        if (t.getMessage() != null && !t.getMessage().isEmpty()) {
-            lastError += ": " + t.getMessage();
-        }
-        if (lastError.length() > 80) lastError = lastError.substring(0, 80);
-    }
-
-    private static Object primary() throws Exception {
-        Class<?> api = Class.forName("baritone.api.BaritoneAPI");
-        Object provider = api.getMethod("getProvider").invoke(null);
-        if (provider == null) throw new IllegalStateException("no provider");
-        Object baritone = provider.getClass().getMethod("getPrimaryBaritone").invoke(provider);
-        if (baritone == null) throw new IllegalStateException("no primary baritone");
-        return baritone;
-    }
-
-    private static Object invoke(Object target, String method, Class<?>[] types, Object... args) throws Exception {
-        return target.getClass().getMethod(method, types).invoke(target, args);
-    }
-
-    private static Object invoke0(Object target, String method) throws Exception {
-        return target.getClass().getMethod(method).invoke(target);
-    }
-
-    private static Class<?> goalIface() throws ClassNotFoundException {
-        return Class.forName("baritone.api.pathing.goals.Goal");
-    }
-
-    private static Object goalBlock(int x, int y, int z) throws Exception {
-        return Class.forName("baritone.api.pathing.goals.GoalBlock")
-                .getConstructor(int.class, int.class, int.class)
-                .newInstance(x, y, z);
-    }
-
-    private static Object goalXZ(int x, int z) throws Exception {
-        return Class.forName("baritone.api.pathing.goals.GoalXZ")
-                .getConstructor(int.class, int.class)
-                .newInstance(x, z);
-    }
-
-    private static boolean setGoalAndPath(Object goal) throws Exception {
-        Object baritone = primary();
-        Object process = invoke0(baritone, "getCustomGoalProcess");
-        process.getClass().getMethod("setGoalAndPath", goalIface()).invoke(process, goal);
-        return true;
-    }
-
-    public static boolean pathTo(BlockPos pos) {
-        return pos != null && pathTo(pos.getX(), pos.getY(), pos.getZ());
-    }
-
-    public static boolean pathTo(int x, int y, int z) {
-        if (!isPresent()) {
-            lastError = "Baritone not installed";
-            return false;
-        }
-        try {
-            setGoalAndPath(goalBlock(x, y, z));
-            ok("goto " + x + " " + y + " " + z);
-            return true;
-        } catch (Throwable t) {
-            fail(t);
-            return false;
-        }
-    }
-
-    public static boolean pathToXZ(int x, int z) {
-        if (!isPresent()) {
-            lastError = "Baritone not installed";
-            return false;
-        }
-        try {
-            setGoalAndPath(goalXZ(x, z));
-            ok("gotoXZ " + x + " " + z);
-            return true;
-        } catch (Throwable t) {
-            fail(t);
-            return false;
-        }
     }
 
     public static void cancel() {
         if (!isPresent()) return;
         try {
-            Object pathing = invoke0(primary(), "getPathingBehavior");
-            try {
-                invoke0(pathing, "cancelEverything");
-            } catch (NoSuchMethodException e) {
-                try {
-                    Object process = invoke0(primary(), "getCustomGoalProcess");
-                    process.getClass().getMethod("setGoalAndPath", goalIface())
-                            .invoke(process, new Object[]{null});
-                } catch (Throwable ignored) {}
-            }
+            Object provider = Class.forName("baritone.api.BaritoneAPI")
+                    .getMethod("getProvider").invoke(null);
+            Object baritone = provider.getClass().getMethod("getPrimaryBaritone").invoke(provider);
+            Object behavior = baritone.getClass().getMethod("getPathingBehavior").invoke(baritone);
+            behavior.getClass().getMethod("cancelEverything").invoke(behavior);
             ok("stopped");
         } catch (Throwable t) {
             fail(t);
         }
     }
 
-    public static void cancelPath() {
-        cancel();
+    /** Soft-pause pathing while taking damage. */
+    public static void pauseCombat() {
+        long now = System.currentTimeMillis();
+        if (now < combatPauseUntil) return;
+        combatPauseUntil = now + 600;
+        try {
+            cancel();
+            lastAction = "combat-pause";
+            lastActionMs = now;
+        } catch (Throwable ignored) {}
     }
 
-    public static void pause() {
-        if (!isPresent()) return;
+    public static void pathTo(BlockPos pos) {
+        if (!isPresent() || pos == null) return;
         try {
-            Object pathing = invoke0(primary(), "getPathingBehavior");
-            try {
-                invoke0(pathing, "requestPause");
-            } catch (NoSuchMethodException e) {
-                // soft ignore
-            }
-            ok("paused");
+            Object provider = Class.forName("baritone.api.BaritoneAPI")
+                    .getMethod("getProvider").invoke(null);
+            Object baritone = provider.getClass().getMethod("getPrimaryBaritone").invoke(provider);
+            Object goalProcess = baritone.getClass().getMethod("getCustomGoalProcess").invoke(baritone);
+            Class<?> goalBlock = Class.forName("baritone.api.pathing.goals.GoalBlock");
+            Object goal = goalBlock.getConstructor(int.class, int.class, int.class)
+                    .newInstance(pos.getX(), pos.getY(), pos.getZ());
+            goalProcess.getClass().getMethod("setGoalAndPath", Class.forName("baritone.api.pathing.goals.Goal"))
+                    .invoke(goalProcess, goal);
+            ok("goto " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
         } catch (Throwable t) {
             fail(t);
         }
     }
 
-    public static void resume() {
-        if (!isPresent()) return;
+    public static void executeCommand(String cmd) {
+        if (!isPresent() || cmd == null || cmd.isBlank()) return;
         try {
-            Object pathing = invoke0(primary(), "getPathingBehavior");
-            for (String name : new String[]{"requestResume", "secretInternalSetGoalAndPath"}) {
-                try {
-                    invoke0(pathing, name);
-                    ok("resumed");
-                    return;
-                } catch (NoSuchMethodException ignored) {}
-            }
-            ok("resume-attempted");
+            Object provider = Class.forName("baritone.api.BaritoneAPI")
+                    .getMethod("getProvider").invoke(null);
+            Object baritone = provider.getClass().getMethod("getPrimaryBaritone").invoke(provider);
+            Object cmdMgr = baritone.getClass().getMethod("getCommandManager").invoke(baritone);
+            String c = cmd.startsWith("#") ? cmd.substring(1).trim() : cmd.trim();
+            cmdMgr.getClass().getMethod("execute", String.class).invoke(cmdMgr, c);
+            ok(c);
         } catch (Throwable t) {
             fail(t);
-        }
-    }
-
-    public static boolean mine(String... blockNames) {
-        if (!isPresent()) {
-            lastError = "Baritone not installed";
-            return false;
-        }
-        if (blockNames == null || blockNames.length == 0) {
-            lastError = "no blocks";
-            return false;
-        }
-        // normalize ids
-        String[] names = new String[blockNames.length];
-        for (int i = 0; i < blockNames.length; i++) {
-            String n = blockNames[i].toLowerCase().replace("minecraft:", "");
-            names[i] = n;
-        }
-        try {
-            Object mine = invoke0(primary(), "getMineProcess");
-            // Prefer mineByName(int, String...)
-            try {
-                mine.getClass().getMethod("mineByName", int.class, String[].class)
-                        .invoke(mine, 0, names);
-                ok("mine " + String.join(",", names));
-                return true;
-            } catch (NoSuchMethodException e) {
-                mine.getClass().getMethod("mineByName", String[].class)
-                        .invoke(mine, (Object) names);
-                ok("mine " + String.join(",", names));
-                return true;
-            }
-        } catch (Throwable t) {
-            fail(t);
-            return false;
-        }
-    }
-
-    public static boolean isPathing() {
-        if (!isPresent()) return false;
-        try {
-            Object pathing = invoke0(primary(), "getPathingBehavior");
-            Object r = invoke0(pathing, "isPathing");
-            return Boolean.TRUE.equals(r);
-        } catch (Throwable t) {
-            return false;
         }
     }
 
     public static String status() {
-        if (!isPresent()) return "offline";
-        if (isPathing()) return "pathing";
-        if ("stopped".equals(lastAction) || "idle".equals(lastAction)) return lastAction;
-        if (System.currentTimeMillis() - lastActionMs < 2000) return lastAction;
-        return "idle";
+        if (!isPresent()) return "Baritone not present";
+        return lastAction + (lastError != null ? " err=" + lastError : "");
     }
 
-    /** Short HUD line */
     public static String hudLine() {
         if (!isPresent()) return null;
-        String s = status();
-        if ("idle".equals(s) || "stopped".equals(s) || "offline".equals(s)) return null;
-        return s;
+        if ("stopped".equals(lastAction) || "idle".equals(lastAction)) return lastAction;
+        if (System.currentTimeMillis() - lastActionMs < 8000) return lastAction;
+        return null;
     }
 }
