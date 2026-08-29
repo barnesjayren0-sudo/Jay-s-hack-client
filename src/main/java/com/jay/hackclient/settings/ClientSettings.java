@@ -50,9 +50,13 @@ public final class ClientSettings {
     public static int arrayListColor = 0x3DDCFF;
     public static boolean arrayListRainbow = false;
 
+    /** Premium UX: soft click on module toggle. */
+    public static boolean toggleSounds = true;
+    /** Show active module count on watermark. */
+    public static boolean showActiveCount = true;
+
     public static final Set<String> favorites = new HashSet<>();
 
-    /** Dual client: pvp + utility */
     public static String mode = "dual";
     public static String lastProfile = "sword";
 
@@ -226,6 +230,7 @@ public final class ClientSettings {
     }
 
     public static String summarize() {
-        return String.format("mode=%s profile=%s aim=%s", mode, lastProfile, aimMode);
+        return String.format("mode=%s profile=%s aim=%s sounds=%s",
+                mode, lastProfile, aimMode, toggleSounds);
     }
 }
