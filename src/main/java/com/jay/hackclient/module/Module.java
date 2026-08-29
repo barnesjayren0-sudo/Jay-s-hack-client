@@ -1,9 +1,15 @@
 package com.jay.hackclient.module;
 
 import com.jay.hackclient.JayHackClient;
+import com.jay.hackclient.module.setting.Setting;
+import com.jay.hackclient.util.Notifications;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public abstract class Module {
 
@@ -14,6 +20,7 @@ public abstract class Module {
     private final Category category;
     private boolean enabled;
     private int keyBind;
+    private final List<Setting> settings = new ArrayList<>();
 
     public Module(String name, String description, Category category) {
         this.name = name;
@@ -21,6 +28,14 @@ public abstract class Module {
         this.category = category;
         this.enabled = false;
         this.keyBind = -1;
+    }
+
+    protected void addSetting(Setting s) {
+        if (s != null) settings.add(s);
+    }
+
+    public List<Setting> getSettings() {
+        return Collections.unmodifiableList(settings);
     }
 
     public void toggle() {
@@ -32,10 +47,12 @@ public abstract class Module {
         this.enabled = state;
         if (state) {
             onEnable();
-            notify("§aenabled");
+            notify("enabled");
+            Notifications.push(name, "enabled");
         } else {
             onDisable();
-            notify("§cdisabled");
+            notify("disabled");
+            Notifications.push(name, "disabled");
         }
         if (JayHackClient.configManager != null) {
             try {
@@ -46,7 +63,7 @@ public abstract class Module {
 
     private void notify(String status) {
         if (mc.player != null) {
-            mc.player.sendMessage(Text.literal("§8[§bJay§8] §f" + name + " " + status), false);
+            mc.player.sendMessage(Text.literal("§8[§bJay§8] §f" + name + " §7" + status), false);
         }
     }
 
@@ -61,7 +78,6 @@ public abstract class Module {
     public int getKeyBind() { return keyBind; }
     public void setKeyBind(int keyBind) { this.keyBind = keyBind; }
 
-    /** Short label like [R] for the GUI. */
     public String getKeyLabel() {
         if (keyBind < 0) return "";
         return switch (keyBind) {
