@@ -4,6 +4,7 @@ import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.InfoHUD;
+import com.jay.hackclient.module.modules.ReachHUD;
 import com.jay.hackclient.module.modules.TargetHUD;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Mobile;
@@ -98,6 +99,13 @@ public final class HudRenderer {
                 context.drawTextWithShadow(mc.textRenderer, "§7Ping §f" + pingMs, 10, leftY, 0xFFFFFF);
                 leftY += 10;
             }
+        }
+
+        Module rh = JayHackClient.moduleManager.getModuleByName("ReachHUD");
+        if (rh != null && rh.isEnabled()) {
+            String r = String.format("§7Reach §f%.2f §8| §7XH §f%.2f", ReachHUD.lastReach, ReachHUD.crosshairDist);
+            context.drawTextWithShadow(mc.textRenderer, r, 10, leftY, 0xFFFFFF);
+            leftY += 10;
         }
 
         String bLine = BaritoneCompat.hudLine();
