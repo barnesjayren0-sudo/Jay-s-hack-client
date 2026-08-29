@@ -49,17 +49,25 @@ public final class HudRenderer {
             accent = 0xFF000000 | java.awt.Color.HSBtoRGB(hue, 0.7f, 1f);
         }
 
-        // Watermark
         String ver = JayHackClient.VERSION;
-        int ww = mc.textRenderer.getWidth("Jay " + ver) + 14;
+        int active = 0;
+        try {
+            for (Module m : JayHackClient.moduleManager.getActive()) {
+                if (m.isDrawn()) active++;
+            }
+        } catch (Throwable ignored) {}
+        String watermark = ClientSettings.showActiveCount
+                ? ("§bJ§fay §8" + ver + " §7[" + active + "]")
+                : ("§bJ§fay §8" + ver);
+        int ww = mc.textRenderer.getWidth(watermark.replace("§b", "").replace("§f", "")
+                .replace("§8", "").replace("§7", "")) + 14;
         context.fill(4, 4, 4 + ww, 17, 0x990A0A10);
         context.fill(4, 4, 6, 17, accent);
-        context.drawTextWithShadow(mc.textRenderer, "§bJ§fay §8" + ver, 10, 7, 0xFFFFFF);
+        context.drawTextWithShadow(mc.textRenderer, watermark, 10, 7, 0xFFFFFF);
         context.drawTextWithShadow(mc.textRenderer, "§8" + ClientSettings.lastProfile, 10, 18, 0x888888);
 
         int leftY = 28;
 
-        // Meteor-style InfoHUD
         Module info = JayHackClient.moduleManager.getModuleByName("InfoHUD");
         if (info != null && info.isEnabled()) {
             if (InfoHUD.coords.get()) {
@@ -100,7 +108,6 @@ public final class HudRenderer {
             leftY += 14;
         }
 
-        // Arraylist
         List<Module> enabled = new ArrayList<>();
         for (Module m : JayHackClient.moduleManager.getActive()) {
             if (m.isDrawn() && !m.getName().equalsIgnoreCase("HUD") && !m.getName().equalsIgnoreCase("InfoHUD"))
