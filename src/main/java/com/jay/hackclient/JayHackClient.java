@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.29.0";
+    public static final String VERSION = "1.29.1";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -93,6 +93,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
         moduleManager.register(new HitParticles());
+        moduleManager.register(new Freecam());
 
         moduleManager.register(new AutoArmor());
         moduleManager.register(new AutoTotem());
@@ -287,7 +288,7 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · RMB settings · profiles in footer");
+            case "binds" -> msg("§7RShift GUI · U Freecam · RMB settings");
             default -> msg("§c?");
         }
     }
