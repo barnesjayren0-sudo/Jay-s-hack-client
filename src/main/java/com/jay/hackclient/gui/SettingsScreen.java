@@ -14,7 +14,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
-/** Premium settings panel for a single module. */
+/** Premium settings panel — keybind, key mode, drawn, module settings. */
 public class SettingsScreen extends Screen {
 
     private final Screen parent;
@@ -42,7 +42,7 @@ public class SettingsScreen extends Screen {
         int w = Math.min(mobile ? width - 20 : 260, width - 20);
         int rowH = mobile ? 28 : 26;
         List<Setting> settings = module.getSettings();
-        int rows = 2 + settings.size(); // title space + keybind + settings
+        int rows = 4 + settings.size();
         int h = Math.min(24 + rows * rowH + 28, height - 24);
         int x = (width - w) / 2;
         int y = (height - h) / 2;
@@ -57,13 +57,26 @@ public class SettingsScreen extends Screen {
 
         int ry = y + 28;
 
-        // Keybind
         panel(ctx, x + 8, ry, x + w - 8, ry + rowH - 4, GuiTheme.PANEL2);
         String keyLab = listeningKey ? "§ePress key..."
                 : (module.getKeyLabel().isEmpty() ? "None" : module.getKeyLabel());
         ctx.drawTextWithShadow(textRenderer, "Keybind", x + 14, ry + 6, GuiTheme.TEXT_DIM);
         ctx.drawTextWithShadow(textRenderer, keyLab,
                 x + w - 14 - textRenderer.getWidth(keyLab), ry + 6, GuiTheme.ACCENT);
+        ry += rowH;
+
+        panel(ctx, x + 8, ry, x + w - 8, ry + rowH - 4, GuiTheme.PANEL2);
+        ctx.drawTextWithShadow(textRenderer, "KeyMode", x + 14, ry + 6, GuiTheme.TEXT_DIM);
+        String km = module.getKeyMode().name();
+        ctx.drawTextWithShadow(textRenderer, km,
+                x + w - 14 - textRenderer.getWidth(km), ry + 6, GuiTheme.ACCENT);
+        ry += rowH;
+
+        panel(ctx, x + 8, ry, x + w - 8, ry + rowH - 4, GuiTheme.PANEL2);
+        ctx.drawTextWithShadow(textRenderer, "Drawn", x + 14, ry + 6, GuiTheme.TEXT_DIM);
+        String dw = module.isDrawn() ? "ON" : "OFF";
+        ctx.drawTextWithShadow(textRenderer, dw,
+                x + w - 14 - textRenderer.getWidth(dw), ry + 6, GuiTheme.ACCENT);
         ry += rowH;
 
         if (settings.isEmpty()) {
@@ -79,7 +92,6 @@ public class SettingsScreen extends Screen {
                 ctx.drawTextWithShadow(textRenderer, s.getName(), x + 14, ry + 6, GuiTheme.TEXT);
 
                 if (s instanceof NumberSetting n) {
-                    // Mini slider bar
                     int barX = x + w / 2;
                     int barW = w / 2 - 24;
                     int barY = ry + rowH / 2 - 2;
@@ -124,7 +136,7 @@ public class SettingsScreen extends Screen {
         int w = Math.min(mobile ? width - 20 : 260, width - 20);
         int rowH = mobile ? 28 : 26;
         List<Setting> settings = module.getSettings();
-        int rows = 2 + settings.size();
+        int rows = 4 + settings.size();
         int h = Math.min(24 + rows * rowH + 28, height - 24);
         int x = (width - w) / 2;
         int y = (height - h) / 2;
@@ -137,6 +149,17 @@ public class SettingsScreen extends Screen {
         int ry = y + 28;
         if (button == 0 && mx >= x + 8 && mx <= x + w - 8 && my >= ry && my < ry + rowH - 4) {
             listeningKey = true;
+            return true;
+        }
+        ry += rowH;
+        if (button == 0 && mx >= x + 8 && mx <= x + w - 8 && my >= ry && my < ry + rowH - 4) {
+            module.setKeyMode(module.getKeyMode() == Module.KeyMode.TOGGLE
+                    ? Module.KeyMode.HOLD : Module.KeyMode.TOGGLE);
+            return true;
+        }
+        ry += rowH;
+        if (button == 0 && mx >= x + 8 && mx <= x + w - 8 && my >= ry && my < ry + rowH - 4) {
+            module.setDrawn(!module.isDrawn());
             return true;
         }
         ry += rowH;
@@ -153,8 +176,7 @@ public class SettingsScreen extends Screen {
                     int barW = w / 2 - 24;
                     if (mx >= barX && mx <= barX + barW) {
                         double pct = (mx - barX) / (double) barW;
-                        double val = n.getMin() + pct * (n.getMax() - n.getMin());
-                        n.set(val);
+                        n.set(n.getMin() + pct * (n.getMax() - n.getMin()));
                     } else if (mx > x + w / 2.0) n.increment();
                     else n.decrement();
                 }
