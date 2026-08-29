@@ -76,6 +76,36 @@ public final class LegitProfile {
         on("AntiBot");
     }
 
+    /** Anarchy survival stack — safety + movement + storage */
+    public static void applyAnarchy() {
+        off();
+        ClientSettings.applyUtilityConfig();
+        ClientSettings.lastProfile = "anarchy";
+        ClientSettings.mode = "anarchy";
+        // Safety
+        on("AutoLog");
+        on("AntiVoid");
+        on("AutoTotem");
+        on("NoFall");
+        // Movement (Fly off by default — toggle with G when needed)
+        on("Step");
+        on("AutoSprint");
+        // Combat soft
+        on("Velocity");
+        on("AutoArmor");
+        // World intel
+        on("BaseFinder");
+        on("StorageFinder");
+        on("StorageESP");
+        on("PlayerRadar");
+        on("ESP");
+        on("Nametags");
+        on("FullBright");
+        on("HUD");
+        on("AntiBot");
+        on("MiddleClickPearl");
+    }
+
     public static void applyLegit() {
         off();
         ClientSettings.applyLegitConfig();
