@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "Jay's Client";
-    public static final String VERSION = "1.27.0";
+    public static final String VERSION = "1.28.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -92,6 +92,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new StorageESP());
         moduleManager.register(new TargetHUD());
         moduleManager.register(new HUD());
+        moduleManager.register(new HitParticles());
 
         moduleManager.register(new AutoArmor());
         moduleManager.register(new AutoTotem());
@@ -102,6 +103,8 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new PearlCatch());
         moduleManager.register(new PearlAssist());
         moduleManager.register(new InvManager());
+        moduleManager.register(new FastPlace());
+        moduleManager.register(new NoBreakDelay());
 
         moduleManager.register(new BaseFinder());
         moduleManager.register(new FarmFinder());
