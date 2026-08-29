@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.30.0";
+    public static final String VERSION = "1.31.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -129,6 +129,9 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new Surround());
         moduleManager.register(new SelfTrap());
         moduleManager.register(new MiddleClickPearl());
+        moduleManager.register(new Fly());
+        moduleManager.register(new Step());
+        moduleManager.register(new YClip());
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
@@ -225,7 +228,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui · scan · radar · near · path · freecam");
+            msg("§f.gui · anarchy · scan · freecam");
             return;
         }
 
@@ -239,6 +242,7 @@ public class JayHackClient implements ClientModInitializer {
             case "explore" -> { LegitProfile.applyExplore(); configManager.save(); msg("§aExplore"); }
             case "nethpot", "pot" -> { LegitProfile.applyNethpot(); configManager.save(); msg("§dNethpot"); }
             case "utility", "util" -> { LegitProfile.applyUtility(); configManager.save(); msg("§aUtility"); }
+            case "anarchy", "anarch" -> { LegitProfile.applyAnarchy(); configManager.save(); msg("§cAnarchy"); }
             case "profile" -> {
                 if (args.length >= 3) { applyProfile(args[2]); configManager.save(); }
                 else cycleProfile();
@@ -296,7 +300,7 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · 2 Freecam · Del Panic");
+            case "binds" -> msg("§7RShift GUI · G Fly · 2 Freecam · V YClip · Del Panic");
             default -> msg("§c?");
         }
     }
@@ -333,6 +337,7 @@ public class JayHackClient implements ClientModInitializer {
             case "builder" -> LegitProfile.applyBuilder();
             case "explore" -> LegitProfile.applyExplore();
             case "utility", "util" -> LegitProfile.applyUtility();
+            case "anarchy", "anarch" -> LegitProfile.applyAnarchy();
             case "legit" -> LegitProfile.applyLegit();
             case "semi" -> LegitProfile.applySemi();
             case "sword" -> LegitProfile.applySword();
