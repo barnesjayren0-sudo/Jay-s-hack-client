@@ -3,15 +3,18 @@ package com.jay.hackclient.render;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.BaseFinder;
+import com.jay.hackclient.module.modules.HoleESP;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Screen-space ESP markers for BaseFinder hits.
- * Uses Hud overlay projection — no WorldRenderEvents on 1.21.11.
+ * Screen-space ESP markers for BaseFinder + HoleESP hits.
  */
 public final class WorldEspRenderer {
 
@@ -24,7 +27,6 @@ public final class WorldEspRenderer {
         registered = true;
     }
 
-    /** Call from HudRenderer while HUD is active. */
     public static void drawHudOverlay(DrawContext ctx) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
@@ -33,14 +35,22 @@ public final class WorldEspRenderer {
         Module bf = JayHackClient.moduleManager.getModuleByName("BaseFinder");
         Module se = JayHackClient.moduleManager.getModuleByName("StorageESP");
         Module ff = JayHackClient.moduleManager.getModuleByName("FarmFinder");
+        Module he = JayHackClient.moduleManager.getModuleByName("HoleESP");
         boolean baseOn = bf != null && bf.isEnabled();
         boolean storageOn = se != null && se.isEnabled();
         boolean farmOn = ff != null && ff.isEnabled();
-        if (!baseOn && !storageOn && !farmOn) return;
-        if (BaseFinder.lastHits.isEmpty()) return;
+        boolean holeOn = he != null && he.isEnabled();
+
+        List<BaseFinder.Hit> hits = new ArrayList<>();
+        if (baseOn || storageOn || farmOn) {
+            hits.addAll(BaseFinder.lastHits);
+        }
+        if (holeOn) {
+            hits.addAll(HoleESP.holes);
+        }
+        if (hits.isEmpty()) return;
 
         Camera cam = mc.gameRenderer.getCamera();
-        // 1.21.11 Yarn: getCameraPos() (getPos was removed)
         Vec3d camPos = cam.getCameraPos();
         int sw = mc.getWindow().getScaledWidth();
         int sh = mc.getWindow().getScaledHeight();
@@ -53,24 +63,27 @@ public final class WorldEspRenderer {
         } catch (Throwable ignored) {}
 
         int drawn = 0;
-        int maxDraw = Math.min(40, BaseFinder.maxEsp == 0 ? 40 : BaseFinder.maxEsp);
+        int maxDraw = Math.min(50, BaseFinder.maxEsp == 0 ? 50 : BaseFinder.maxEsp);
 
-        for (BaseFinder.Hit hit : BaseFinder.lastHits) {
+        for (BaseFinder.Hit hit : hits) {
             if (drawn >= maxDraw) break;
 
-            if (!baseOn) {
+            boolean isHole = hit.label.contains("Hole");
+            if (!isHole && !baseOn) {
                 if (storageOn && farmOn) {
                     if (!isStorageLabel(hit.label) && !isFarmLabel(hit.label)) continue;
                 } else if (storageOn && !isStorageLabel(hit.label)) continue;
                 else if (farmOn && !isFarmLabel(hit.label)) continue;
             }
+            if (isHole && !holeOn) continue;
 
             BlockPos p = hit.pos;
             double wx = p.getX() + 0.5 - camPos.x;
             double wy = p.getY() + 0.5 - camPos.y;
             double wz = p.getZ() + 0.5 - camPos.z;
             double dist = Math.sqrt(wx * wx + wy * wy + wz * wz);
-            if (dist > BaseFinder.espRange || dist < 0.5) continue;
+            double maxR = isHole ? 40 : BaseFinder.espRange;
+            if (dist > maxR || dist < 0.4) continue;
 
             double yawRad = Math.toRadians(yaw);
             double pitchRad = Math.toRadians(pitch);
@@ -83,27 +96,24 @@ public final class WorldEspRenderer {
             double z1 = wx * sinY + wz * cosY;
             double y1 = wy * cosP - z1 * sinP;
             double z2 = wy * sinP + z1 * cosP;
-
             if (z2 <= 0.1) continue;
 
             double scale = (sh / 2.0) / Math.tan(Math.toRadians(fov / 2.0));
             int sx = (int) (sw / 2.0 + (x1 / z2) * scale);
             int sy = (int) (sh / 2.0 - (y1 / z2) * scale);
-
             if (sx < 2 || sx > sw - 2 || sy < 2 || sy > sh - 2) continue;
 
             int color = hit.color | 0xFF000000;
-            int size = Math.max(2, (int) (6 - dist / 20));
+            int size = isHole ? Math.max(3, (int) (8 - dist / 8)) : Math.max(2, (int) (6 - dist / 20));
 
             ctx.fill(sx - size, sy - size, sx + size, sy + size, color);
             ctx.fill(sx - size - 1, sy - size - 1, sx + size + 1, sy - size, 0xAA000000);
             ctx.fill(sx - size - 1, sy + size, sx + size + 1, sy + size + 1, 0xAA000000);
 
-            if (dist < 48 && BaseFinder.drawTracers) {
+            if (dist < 48) {
                 String lab = hit.label.length() > 8 ? hit.label.substring(0, 8) : hit.label;
                 ctx.drawTextWithShadow(mc.textRenderer, lab, sx + size + 2, sy - 4, color);
             }
-
             drawn++;
         }
     }
