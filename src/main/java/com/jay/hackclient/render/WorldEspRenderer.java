@@ -5,17 +5,13 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.BaseFinder;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.client.render.Camera;
-import net.minecraft.util.math.RotationAxis;
-import org.joml.Matrix4f;
-import org.joml.Vector4f;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
 /**
  * Screen-space ESP markers for BaseFinder hits.
- * Uses Hud overlay projection — no WorldRenderEvents (removed/moved on 1.21.11 Fabric).
+ * Uses Hud overlay projection — no WorldRenderEvents on 1.21.11.
  */
 public final class WorldEspRenderer {
 
@@ -26,7 +22,6 @@ public final class WorldEspRenderer {
     public static void register() {
         if (registered) return;
         registered = true;
-        // Drawn from HudRenderer.drawWorldEsp() each frame — no world render API needed.
     }
 
     /** Call from HudRenderer while HUD is active. */
@@ -45,11 +40,11 @@ public final class WorldEspRenderer {
         if (BaseFinder.lastHits.isEmpty()) return;
 
         Camera cam = mc.gameRenderer.getCamera();
-        Vec3d camPos = cam.getPos();
+        // 1.21.11 Yarn: getCameraPos() (getPos was removed)
+        Vec3d camPos = cam.getCameraPos();
         int sw = mc.getWindow().getScaledWidth();
         int sh = mc.getWindow().getScaledHeight();
 
-        // Approximate FOV projection (good enough for markers on mobile)
         float yaw = cam.getYaw();
         float pitch = cam.getPitch();
         float fov = 70f;
@@ -77,7 +72,6 @@ public final class WorldEspRenderer {
             double dist = Math.sqrt(wx * wx + wy * wy + wz * wz);
             if (dist > BaseFinder.espRange || dist < 0.5) continue;
 
-            // Rotate into view space
             double yawRad = Math.toRadians(yaw);
             double pitchRad = Math.toRadians(pitch);
             double cosY = Math.cos(-yawRad);
@@ -90,7 +84,7 @@ public final class WorldEspRenderer {
             double y1 = wy * cosP - z1 * sinP;
             double z2 = wy * sinP + z1 * cosP;
 
-            if (z2 <= 0.1) continue; // behind camera
+            if (z2 <= 0.1) continue;
 
             double scale = (sh / 2.0) / Math.tan(Math.toRadians(fov / 2.0));
             int sx = (int) (sw / 2.0 + (x1 / z2) * scale);
@@ -101,14 +95,11 @@ public final class WorldEspRenderer {
             int color = hit.color | 0xFF000000;
             int size = Math.max(2, (int) (6 - dist / 20));
 
-            // Marker box
             ctx.fill(sx - size, sy - size, sx + size, sy + size, color);
-            // Outline
             ctx.fill(sx - size - 1, sy - size - 1, sx + size + 1, sy - size, 0xAA000000);
             ctx.fill(sx - size - 1, sy + size, sx + size + 1, sy + size + 1, 0xAA000000);
 
             if (dist < 48 && BaseFinder.drawTracers) {
-                // Tiny label
                 String lab = hit.label.length() > 8 ? hit.label.substring(0, 8) : hit.label;
                 ctx.drawTextWithShadow(mc.textRenderer, lab, sx + size + 2, sy - 4, color);
             }
