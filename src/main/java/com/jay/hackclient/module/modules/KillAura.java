@@ -1,6 +1,8 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.BoolSetting;
+import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
@@ -13,9 +15,14 @@ import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * KillAura [R] — FOV cone, target priority, sword/axe only, less stutter.
+ * KillAura [R] — shared TargetUtil + ComboHit gate, FOV cone, sword/axe.
  */
 public class KillAura extends Module {
+
+    public final NumberSetting range = new NumberSetting("Range", "Attack range", 3.2, 2.5, 4.5, 0.05);
+    public final NumberSetting fov = new NumberSetting("FOV", "Cone degrees", 70, 30, 180, 5);
+    public final BoolSetting weaponsOnly = new BoolSetting("WeaponsOnly", "Sword/axe only", true);
+    public final BoolSetting comboHit = new BoolSetting("ComboHit", "Use ComboHit timing", true);
 
     private long lastAttack = 0;
     private int nextDelay = 560;
@@ -26,6 +33,10 @@ public class KillAura extends Module {
     public KillAura() {
         super("KillAura", "Auto attack — bind [R]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_R);
+        addSetting(range);
+        addSetting(fov);
+        addSetting(weaponsOnly);
+        addSetting(comboHit);
     }
 
     @Override
@@ -40,21 +51,24 @@ public class KillAura extends Module {
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
-        // Sword / axe only
-        if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
+        if (weaponsOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Humanizer.shouldSkipTick()) return;
         if (Mobile.shouldThrottle()) return;
 
-        double range = effectiveRange();
-        float fov = ClientSettings.auraFov;
+        double r = effectiveRange();
+        float f = fov.getFloat();
 
-        PlayerEntity target = pickTarget(range, fov);
+        PlayerEntity target = pickTarget(r, f);
         if (target == null) {
             lockedTargetId = -1;
             return;
         }
 
-        // Soft track every other tick (less camera stutter)
+        // ComboHit: crit vs grounded / punish jump
+        if (comboHit.get() && !ComboHit.shouldAttack(mc.player, target)) {
+            return;
+        }
+
         aimTick++;
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
@@ -65,14 +79,19 @@ public class KillAura extends Module {
         }
 
         if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
+        if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)
+                && comboHit.get()) {
+            // allow ComboHit to decide; if CritAssist on and not in window, skip
+            if (!mc.player.isOnGround()) return;
+        }
         if (Humanizer.shouldMiss()) {
             lastAttack = now;
             nextDelay = Humanizer.combatDelay();
             return;
         }
 
-        // One smooth look then hit
         RotationUtil.lookAt(target, Math.min(0.38f, ClientSettings.aimSmooth * 1.05f));
+        ReachHUD.recordHit(mc.player.distanceTo(target));
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -81,7 +100,7 @@ public class KillAura extends Module {
     }
 
     private double effectiveRange() {
-        double r = ClientSettings.auraRange;
+        double r = range.get();
         if (Reach.isActive()) r = Math.min(r, Reach.getReach() + 0.08);
         return r;
     }
@@ -89,7 +108,6 @@ public class KillAura extends Module {
     private PlayerEntity pickTarget(double range, float fov) {
         long now = System.currentTimeMillis();
 
-        // Stick to locked target briefly
         if (lockedTargetId != -1 && now < targetLockedUntil && !ClientSettings.auraMultiTarget) {
             for (PlayerEntity p : mc.world.getPlayers()) {
                 if (p.getId() == lockedTargetId && isInCone(p, range, fov)) {
@@ -99,7 +117,7 @@ public class KillAura extends Module {
             lockedTargetId = -1;
         }
 
-        // Use shared target priority (closest / lowest_hp / crosshair)
+        // Shared target system — closest / lowest_hp / crosshair
         PlayerEntity best = TargetUtil.findCombatTarget(range, fov);
         if (best != null) {
             if (best.getId() != lockedTargetId) {
