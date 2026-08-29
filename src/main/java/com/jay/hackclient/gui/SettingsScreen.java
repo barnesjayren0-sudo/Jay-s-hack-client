@@ -14,7 +14,6 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
-/** Premium settings panel — keybind, key mode, drawn, module settings. */
 public class SettingsScreen extends Screen {
 
     private final Screen parent;
@@ -42,7 +41,7 @@ public class SettingsScreen extends Screen {
         int w = Math.min(mobile ? width - 20 : 260, width - 20);
         int rowH = mobile ? 28 : 26;
         List<Setting> settings = module.getSettings();
-        int rows = 4 + settings.size();
+        int rows = 5 + settings.size();
         int h = Math.min(24 + rows * rowH + 28, height - 24);
         int x = (width - w) / 2;
         int y = (height - h) / 2;
@@ -79,6 +78,13 @@ public class SettingsScreen extends Screen {
                 x + w - 14 - textRenderer.getWidth(dw), ry + 6, GuiTheme.ACCENT);
         ry += rowH;
 
+        panel(ctx, x + 8, ry, x + w - 8, ry + rowH - 4, GuiTheme.PANEL2);
+        ctx.drawTextWithShadow(textRenderer, "ChatFeedback", x + 14, ry + 6, GuiTheme.TEXT_DIM);
+        String cf = module.isChatFeedback() ? "ON" : "OFF";
+        ctx.drawTextWithShadow(textRenderer, cf,
+                x + w - 14 - textRenderer.getWidth(cf), ry + 6, GuiTheme.ACCENT);
+        ry += rowH;
+
         if (settings.isEmpty()) {
             ctx.drawTextWithShadow(textRenderer, "No extra settings",
                     x + 14, ry + 6, GuiTheme.TEXT_DIM);
@@ -87,10 +93,8 @@ public class SettingsScreen extends Screen {
             for (Setting s : settings) {
                 if (idx++ < scroll) continue;
                 if (ry + rowH > y + h - 22) break;
-
                 panel(ctx, x + 8, ry, x + w - 8, ry + rowH - 4, GuiTheme.PANEL2);
                 ctx.drawTextWithShadow(textRenderer, s.getName(), x + 14, ry + 6, GuiTheme.TEXT);
-
                 if (s instanceof NumberSetting n) {
                     int barX = x + w / 2;
                     int barW = w / 2 - 24;
@@ -136,7 +140,7 @@ public class SettingsScreen extends Screen {
         int w = Math.min(mobile ? width - 20 : 260, width - 20);
         int rowH = mobile ? 28 : 26;
         List<Setting> settings = module.getSettings();
-        int rows = 4 + settings.size();
+        int rows = 5 + settings.size();
         int h = Math.min(24 + rows * rowH + 28, height - 24);
         int x = (width - w) / 2;
         int y = (height - h) / 2;
@@ -160,6 +164,11 @@ public class SettingsScreen extends Screen {
         ry += rowH;
         if (button == 0 && mx >= x + 8 && mx <= x + w - 8 && my >= ry && my < ry + rowH - 4) {
             module.setDrawn(!module.isDrawn());
+            return true;
+        }
+        ry += rowH;
+        if (button == 0 && mx >= x + 8 && mx <= x + w - 8 && my >= ry && my < ry + rowH - 4) {
+            module.setChatFeedback(!module.isChatFeedback());
             return true;
         }
         ry += rowH;
