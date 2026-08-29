@@ -3,20 +3,19 @@ package com.jay.hackclient.render;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.BaseFinder;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.VertexRendering;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.render.Camera;
+import net.minecraft.util.math.RotationAxis;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
 /**
- * Colored boxes + tracer lines for BaseFinder / StorageESP / FarmFinder hits.
+ * Screen-space ESP markers for BaseFinder hits.
+ * Uses Hud overlay projection — no WorldRenderEvents (removed/moved on 1.21.11 Fabric).
  */
 public final class WorldEspRenderer {
 
@@ -27,12 +26,13 @@ public final class WorldEspRenderer {
     public static void register() {
         if (registered) return;
         registered = true;
-        WorldRenderEvents.AFTER_ENTITIES.register(WorldEspRenderer::render);
+        // Drawn from HudRenderer.drawWorldEsp() each frame — no world render API needed.
     }
 
-    private static void render(WorldRenderContext ctx) {
+    /** Call from HudRenderer while HUD is active. */
+    public static void drawHudOverlay(DrawContext ctx) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null) return;
+        if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
         if (JayHackClient.moduleManager == null) return;
 
         Module bf = JayHackClient.moduleManager.getModuleByName("BaseFinder");
@@ -44,20 +44,21 @@ public final class WorldEspRenderer {
         if (!baseOn && !storageOn && !farmOn) return;
         if (BaseFinder.lastHits.isEmpty()) return;
 
-        MatrixStack matrices = ctx.matrixStack();
-        if (matrices == null) return;
-        VertexConsumerProvider consumers = ctx.consumers();
-        if (consumers == null) return;
+        Camera cam = mc.gameRenderer.getCamera();
+        Vec3d camPos = cam.getPos();
+        int sw = mc.getWindow().getScaledWidth();
+        int sh = mc.getWindow().getScaledHeight();
 
-        Vec3d cam = ctx.camera().getPos();
-        VertexConsumer lines = consumers.getBuffer(RenderLayer.getLines());
-
-        // Tracer origin: slightly in front of camera (Meteor-style)
-        Vec3d look = Vec3d.fromPolar(mc.player.getPitch(), mc.player.getYaw());
-        Vec3d tracerFrom = mc.player.getEyePos().add(look.multiply(0.35));
+        // Approximate FOV projection (good enough for markers on mobile)
+        float yaw = cam.getYaw();
+        float pitch = cam.getPitch();
+        float fov = 70f;
+        try {
+            fov = (float) mc.options.getFov().getValue();
+        } catch (Throwable ignored) {}
 
         int drawn = 0;
-        int maxDraw = BaseFinder.maxEsp == 0 ? 80 : BaseFinder.maxEsp;
+        int maxDraw = Math.min(40, BaseFinder.maxEsp == 0 ? 40 : BaseFinder.maxEsp);
 
         for (BaseFinder.Hit hit : BaseFinder.lastHits) {
             if (drawn >= maxDraw) break;
@@ -70,33 +71,48 @@ public final class WorldEspRenderer {
             }
 
             BlockPos p = hit.pos;
-            double dist = Math.sqrt(cam.squaredDistanceTo(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5));
-            if (dist > BaseFinder.espRange) continue;
+            double wx = p.getX() + 0.5 - camPos.x;
+            double wy = p.getY() + 0.5 - camPos.y;
+            double wz = p.getZ() + 0.5 - camPos.z;
+            double dist = Math.sqrt(wx * wx + wy * wy + wz * wz);
+            if (dist > BaseFinder.espRange || dist < 0.5) continue;
 
-            float r = ((hit.color >> 16) & 0xFF) / 255f;
-            float g = ((hit.color >> 8) & 0xFF) / 255f;
-            float b = (hit.color & 0xFF) / 255f;
-            // Fade with distance
-            float a = (float) Math.max(0.25, 0.95 - dist / Math.max(16.0, BaseFinder.espRange));
+            // Rotate into view space
+            double yawRad = Math.toRadians(yaw);
+            double pitchRad = Math.toRadians(pitch);
+            double cosY = Math.cos(-yawRad);
+            double sinY = Math.sin(-yawRad);
+            double cosP = Math.cos(-pitchRad);
+            double sinP = Math.sin(-pitchRad);
 
-            Box box = new Box(p).expand(0.002);
+            double x1 = wx * cosY - wz * sinY;
+            double z1 = wx * sinY + wz * cosY;
+            double y1 = wy * cosP - z1 * sinP;
+            double z2 = wy * sinP + z1 * cosP;
 
-            matrices.push();
-            matrices.translate(-cam.x, -cam.y, -cam.z);
+            if (z2 <= 0.1) continue; // behind camera
 
-            if (BaseFinder.drawBoxes) {
-                try {
-                    VertexRendering.drawBox(matrices, lines, box, r, g, b, a);
-                } catch (Throwable ignored) {
-                    drawBoxManual(matrices, lines, box, r, g, b, a);
-                }
+            double scale = (sh / 2.0) / Math.tan(Math.toRadians(fov / 2.0));
+            int sx = (int) (sw / 2.0 + (x1 / z2) * scale);
+            int sy = (int) (sh / 2.0 - (y1 / z2) * scale);
+
+            if (sx < 2 || sx > sw - 2 || sy < 2 || sy > sh - 2) continue;
+
+            int color = hit.color | 0xFF000000;
+            int size = Math.max(2, (int) (6 - dist / 20));
+
+            // Marker box
+            ctx.fill(sx - size, sy - size, sx + size, sy + size, color);
+            // Outline
+            ctx.fill(sx - size - 1, sy - size - 1, sx + size + 1, sy - size, 0xAA000000);
+            ctx.fill(sx - size - 1, sy + size, sx + size + 1, sy + size + 1, 0xAA000000);
+
+            if (dist < 48 && BaseFinder.drawTracers) {
+                // Tiny label
+                String lab = hit.label.length() > 8 ? hit.label.substring(0, 8) : hit.label;
+                ctx.drawTextWithShadow(mc.textRenderer, lab, sx + size + 2, sy - 4, color);
             }
 
-            if (BaseFinder.drawTracers) {
-                drawTracer(matrices, lines, tracerFrom, box.getCenter(), r, g, b, a * 0.75f);
-            }
-
-            matrices.pop();
             drawn++;
         }
     }
@@ -114,44 +130,5 @@ public final class WorldEspRenderer {
                 || l.contains("bamboo") || l.contains("wart") || l.contains("crop")
                 || l.contains("melon") || l.contains("farmland") || l.contains("compost")
                 || l.contains("cactus") || l.contains("cocoa") || l.contains("berry");
-    }
-
-    private static void drawBoxManual(MatrixStack ms, VertexConsumer vc, Box box,
-                                      float r, float g, float b, float a) {
-        float x0 = (float) box.minX, y0 = (float) box.minY, z0 = (float) box.minZ;
-        float x1 = (float) box.maxX, y1 = (float) box.maxY, z1 = (float) box.maxZ;
-        // Bottom
-        line(ms, vc, x0, y0, z0, x1, y0, z0, r, g, b, a);
-        line(ms, vc, x1, y0, z0, x1, y0, z1, r, g, b, a);
-        line(ms, vc, x1, y0, z1, x0, y0, z1, r, g, b, a);
-        line(ms, vc, x0, y0, z1, x0, y0, z0, r, g, b, a);
-        // Top
-        line(ms, vc, x0, y1, z0, x1, y1, z0, r, g, b, a);
-        line(ms, vc, x1, y1, z0, x1, y1, z1, r, g, b, a);
-        line(ms, vc, x1, y1, z1, x0, y1, z1, r, g, b, a);
-        line(ms, vc, x0, y1, z1, x0, y1, z0, r, g, b, a);
-        // Verticals
-        line(ms, vc, x0, y0, z0, x0, y1, z0, r, g, b, a);
-        line(ms, vc, x1, y0, z0, x1, y1, z0, r, g, b, a);
-        line(ms, vc, x1, y0, z1, x1, y1, z1, r, g, b, a);
-        line(ms, vc, x0, y0, z1, x0, y1, z1, r, g, b, a);
-    }
-
-    private static void line(MatrixStack ms, VertexConsumer vc,
-                             float x0, float y0, float z0,
-                             float x1, float y1, float z1,
-                             float r, float g, float b, float a) {
-        var entry = ms.peek();
-        vc.vertex(entry, x0, y0, z0).color(r, g, b, a).normal(entry, 0, 1, 0);
-        vc.vertex(entry, x1, y1, z1).color(r, g, b, a).normal(entry, 0, 1, 0);
-    }
-
-    private static void drawTracer(MatrixStack ms, VertexConsumer vc,
-                                   Vec3d from, Vec3d to, float r, float g, float b, float a) {
-        var entry = ms.peek();
-        vc.vertex(entry, (float) from.x, (float) from.y, (float) from.z)
-                .color(r, g, b, a).normal(entry, 0, 1, 0);
-        vc.vertex(entry, (float) to.x, (float) to.y, (float) to.z)
-                .color(r, g, b, a).normal(entry, 0, 1, 0);
     }
 }

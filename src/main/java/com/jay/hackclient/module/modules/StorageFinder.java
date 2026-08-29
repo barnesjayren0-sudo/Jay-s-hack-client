@@ -51,23 +51,38 @@ public class StorageFinder extends Module {
                     if (be == null) continue;
                     String label;
                     int score;
-                    if (be instanceof ShulkerBoxBlockEntity) { label = "Shulker"; score = 20; }
-                    else if (be instanceof ChestBlockEntity) { label = "Chest"; score = 12; }
-                    else if (be instanceof BarrelBlockEntity) { label = "Barrel"; score = 10; }
-                    else if (be instanceof HopperBlockEntity) { label = "Hopper"; score = 14; }
-                    else continue;
+                    int color;
+                    if (be instanceof ShulkerBoxBlockEntity) {
+                        label = "Shulker"; score = 20; color = BaseFinder.COL_SHULKER;
+                    } else if (be instanceof ChestBlockEntity) {
+                        label = "Chest"; score = 12; color = BaseFinder.COL_CHEST;
+                    } else if (be instanceof BarrelBlockEntity) {
+                        label = "Barrel"; score = 10; color = BaseFinder.COL_CHEST;
+                    } else if (be instanceof HopperBlockEntity) {
+                        label = "Hopper"; score = 14; color = BaseFinder.COL_HOPPER;
+                    } else continue;
                     double dist = Math.sqrt(origin.getSquaredDistance(pos));
-                    hits.add(new BaseFinder.Hit(pos.toImmutable(), label, score, dist));
+                    hits.add(new BaseFinder.Hit(pos.toImmutable(), label, score, dist, color));
                 }
             }
         }
 
         hits.sort(Comparator.comparingDouble(h -> h.dist));
+
+        // Feed BaseFinder ESP list when StorageESP is on
+        if (isEnabled() || chat) {
+            BaseFinder.lastHits.clear();
+            int cap = Mobile.isSmallScreen() ? 30 : 60;
+            for (int i = 0; i < Math.min(cap, hits.size()); i++) {
+                BaseFinder.lastHits.add(hits.get(i));
+            }
+        }
+
         int max = Mobile.isSmallScreen() ? 6 : 15;
         int n = 0;
         for (BaseFinder.Hit h : hits) {
             if (n >= max) break;
-            if (chat || isEnabled()) {
+            if (chat) {
                 mc.player.sendMessage(Text.literal(String.format(
                         "§8[§6Store§8] §e%s §7%.0fm §8@ §f%d %d %d",
                         h.label, h.dist, h.pos.getX(), h.pos.getY(), h.pos.getZ())), false);

@@ -32,6 +32,9 @@ public final class HudRenderer {
             if (GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F2) == GLFW.GLFW_PRESS) return;
         }
 
+        // BaseFinder / StorageESP screen markers
+        WorldEspRenderer.drawHudOverlay(context);
+
         boolean phone = Mobile.isSmallScreen();
         List<Module> enabled = new ArrayList<>();
         for (Module m : JayHackClient.moduleManager.getModules()) {
@@ -87,7 +90,6 @@ public final class HudRenderer {
             drawTarget(context, mc, TargetHUD.currentTarget, screenW, screenH, phone);
         }
 
-        // Toast stack (Cyemer-style notifications)
         Notifications.render(context);
     }
 
