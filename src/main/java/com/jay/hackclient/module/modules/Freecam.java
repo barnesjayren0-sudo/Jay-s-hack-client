@@ -3,12 +3,14 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
 import net.minecraft.client.option.GameOptions;
+import net.minecraft.util.PlayerInput;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Detached free camera — player body stays put; camera flies with WASD + Space/Shift.
+ * Detached free camera — body stays put; camera flies with WASD + Space/Shift.
+ * Default bind: 2 (US layout @ is Shift+2).
  */
 public class Freecam extends Module {
 
@@ -22,7 +24,6 @@ public class Freecam extends Module {
 
     public Freecam() {
         super("Freecam", "Fly camera without moving your body", Category.RENDER);
-        // '@' is not a GLFW key. On US keyboards it is Shift+2 — bind physical 2.
         setKeyBind(GLFW.GLFW_KEY_2);
         addSetting(speed);
     }
@@ -54,8 +55,16 @@ public class Freecam extends Module {
     public void onTick() {
         if (!active || mc.player == null || mc.world == null) return;
 
+        // Freeze body (client-side)
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setPosition(startX, startY, startZ);
+
+        // 1.21.11: Input uses PlayerInput record, not movementForward fields
+        try {
+            if (mc.player.input != null) {
+                mc.player.input.playerInput = PlayerInput.DEFAULT;
+            }
+        } catch (Throwable ignored) {}
 
         yaw = mc.player.getYaw();
         pitch = mc.player.getPitch();
@@ -73,13 +82,6 @@ public class Freecam extends Module {
         if (opt.rightKey.isPressed()) strafe -= 1;
         if (opt.jumpKey.isPressed()) up += 1;
         if (opt.sneakKey.isPressed()) up -= 1;
-
-        try {
-            mc.player.input.movementForward = 0;
-            mc.player.input.movementSideways = 0;
-            mc.player.input.jumping = false;
-            mc.player.input.sneaking = false;
-        } catch (Throwable ignored) {}
 
         if (forward == 0 && strafe == 0 && up == 0) return;
 

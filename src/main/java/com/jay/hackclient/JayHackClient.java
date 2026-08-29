@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.29.1";
+    public static final String VERSION = "1.29.2";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -218,13 +218,14 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2) {
-            msg("§f.gui · scan · radar · near · path");
+            msg("§f.gui · scan · radar · near · path · freecam");
             return;
         }
 
         switch (args[1].toLowerCase()) {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
+            case "freecam", "fc" -> toggle("Freecam");
             case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
             case "scout" -> { LegitProfile.applyScout(); configManager.save(); msg("§aScout"); }
             case "builder" -> { LegitProfile.applyBuilder(); configManager.save(); msg("§aBuilder"); }
@@ -288,7 +289,7 @@ public class JayHackClient implements ClientModInitializer {
                     BaritoneCommands.tryHandle(sb.toString());
                 } else msg("§f" + BaritoneCompat.status());
             }
-            case "binds" -> msg("§7RShift GUI · U Freecam · RMB settings");
+            case "binds" -> msg("§7RShift GUI · 2 Freecam · Del Panic");
             default -> msg("§c?");
         }
     }
