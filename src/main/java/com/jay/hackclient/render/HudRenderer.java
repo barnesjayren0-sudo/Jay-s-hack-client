@@ -6,6 +6,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.TargetHUD;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Mobile;
+import com.jay.hackclient.util.Notifications;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.player.PlayerEntity;
@@ -59,7 +60,6 @@ public final class HudRenderer {
         String prof = ClientSettings.lastProfile;
         context.drawTextWithShadow(mc.textRenderer, "§8" + prof, 10, 18, 0x888888);
 
-        // Baritone path status
         String bLine = BaritoneCompat.hudLine();
         if (bLine != null) {
             context.fill(4, 27, 4 + mc.textRenderer.getWidth(bLine) + 18, 38, 0x990A0A10);
@@ -86,6 +86,9 @@ public final class HudRenderer {
         if (th != null && th.isEnabled() && TargetHUD.currentTarget != null) {
             drawTarget(context, mc, TargetHUD.currentTarget, screenW, screenH, phone);
         }
+
+        // Toast stack (Cyemer-style notifications)
+        Notifications.render(context);
     }
 
     private static void drawTarget(DrawContext context, MinecraftClient mc, PlayerEntity target,
@@ -99,7 +102,6 @@ public final class HudRenderer {
         int bx = sw / 2 - boxW / 2;
         int by = sh / 2 + (phone ? 22 : 28);
 
-        // Cyan GUI style panel
         context.fill(bx + 2, by + 2, bx + boxW + 2, by + boxH + 2, 0x44000000);
         context.fill(bx, by, bx + boxW, by + boxH, 0xEE0E0E14);
         context.fill(bx, by, bx + 2, by + boxH, CYAN);
@@ -112,7 +114,6 @@ public final class HudRenderer {
         int barY = by + 18;
         context.fill(bx + 8, barY, bx + 8 + barW, barY + 5, 0xFF1A1A24);
         int fill = Math.max(1, (int) (barW * pct));
-        // Cyan → green health blend
         int col = pct > 0.5f ? 0xFF3DDCFF : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
         context.fill(bx + 8, barY, bx + 8 + fill, barY + 5, col);
 
