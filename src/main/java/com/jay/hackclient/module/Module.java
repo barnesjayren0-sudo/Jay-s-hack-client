@@ -101,6 +101,7 @@ public abstract class Module {
             case GLFW.GLFW_KEY_I -> "I";
             case GLFW.GLFW_KEY_O -> "O";
             case GLFW.GLFW_KEY_M -> "M";
+            case GLFW.GLFW_KEY_2 -> "2";
             case GLFW.GLFW_KEY_DELETE -> "DEL";
             case GLFW.GLFW_KEY_RIGHT_SHIFT -> "RShift";
             default -> {
@@ -116,6 +117,7 @@ public abstract class Module {
         RENDER("Render"),
         PLAYER("Player"),
         WORLD("World"),
+        ANARCHY("Anarchy"),
         MISC("Misc");
 
         public final String displayName;
