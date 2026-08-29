@@ -24,7 +24,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Hack Client config v1.33\n");
+            sb.append("# Jay Hack Client config v1.34\n");
             sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
             sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
@@ -65,6 +65,8 @@ public class ConfigManager {
                 for (Module m : JayHackClient.moduleManager.getModules()) {
                     sb.append("mod.").append(m.getName()).append('=').append(m.isEnabled()).append('\n');
                     sb.append("key.").append(m.getName()).append('=').append(m.getKeyBind()).append('\n');
+                    sb.append("drawn.").append(m.getName()).append('=').append(m.isDrawn()).append('\n');
+                    sb.append("keymode.").append(m.getName()).append('=').append(m.getKeyMode().name()).append('\n');
                 }
             }
             if (JayHackClient.friendManager != null) {
@@ -145,6 +147,14 @@ public class ConfigManager {
                             Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
                             if (m != null) {
                                 try { m.setKeyBind(Integer.parseInt(v)); } catch (Exception ignored) {}
+                            }
+                        } else if (k.startsWith("drawn.") && JayHackClient.moduleManager != null) {
+                            Module m = JayHackClient.moduleManager.getModuleByName(k.substring(6));
+                            if (m != null) m.setDrawn(Boolean.parseBoolean(v));
+                        } else if (k.startsWith("keymode.") && JayHackClient.moduleManager != null) {
+                            Module m = JayHackClient.moduleManager.getModuleByName(k.substring(8));
+                            if (m != null) {
+                                try { m.setKeyMode(Module.KeyMode.valueOf(v)); } catch (Exception ignored) {}
                             }
                         } else if (k.startsWith("friend.") && JayHackClient.friendManager != null) {
                             JayHackClient.friendManager.add(k.substring(7));
