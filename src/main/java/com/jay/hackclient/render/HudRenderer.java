@@ -3,6 +3,7 @@ package com.jay.hackclient.render;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.modules.InfoHUD;
 import com.jay.hackclient.module.modules.TargetHUD;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Mobile;
@@ -22,7 +23,6 @@ import java.util.Map;
 public final class HudRenderer {
 
     private static final int CYAN = 0xFF3DDCFF;
-    /** Slide animation progress 0..1 per module name. */
     private static final Map<String, Float> slide = new HashMap<>();
 
     private HudRenderer() {}
@@ -40,17 +40,76 @@ public final class HudRenderer {
         WorldEspRenderer.drawHudOverlay(context);
 
         boolean phone = Mobile.isSmallScreen();
-        List<Module> enabled = new ArrayList<>();
-        for (Module m : JayHackClient.moduleManager.getModules()) {
-            if (m.isEnabled() && m.isDrawn() && !m.getName().equalsIgnoreCase("HUD")) {
-                enabled.add(m);
+        int screenW = mc.getWindow().getScaledWidth();
+        int screenH = mc.getWindow().getScaledHeight();
+
+        int accent = CYAN;
+        if (ClientSettings.arrayListRainbow) {
+            float hue = (System.currentTimeMillis() % 3000) / 3000f;
+            accent = 0xFF000000 | java.awt.Color.HSBtoRGB(hue, 0.7f, 1f);
+        }
+
+        // Watermark
+        String ver = JayHackClient.VERSION;
+        int ww = mc.textRenderer.getWidth("Jay " + ver) + 14;
+        context.fill(4, 4, 4 + ww, 17, 0x990A0A10);
+        context.fill(4, 4, 6, 17, accent);
+        context.drawTextWithShadow(mc.textRenderer, "§bJ§fay §8" + ver, 10, 7, 0xFFFFFF);
+        context.drawTextWithShadow(mc.textRenderer, "§8" + ClientSettings.lastProfile, 10, 18, 0x888888);
+
+        int leftY = 28;
+
+        // Meteor-style InfoHUD
+        Module info = JayHackClient.moduleManager.getModuleByName("InfoHUD");
+        if (info != null && info.isEnabled()) {
+            if (InfoHUD.coords.get()) {
+                String c = String.format("§7XYZ §f%.1f §7%.0f §f%.1f",
+                        mc.player.getX(), mc.player.getY(), mc.player.getZ());
+                context.drawTextWithShadow(mc.textRenderer, c, 10, leftY, 0xFFFFFF);
+                leftY += 10;
             }
+            if (InfoHUD.fps.get()) {
+                context.drawTextWithShadow(mc.textRenderer, "§7FPS §f" + mc.getCurrentFps(), 10, leftY, 0xFFFFFF);
+                leftY += 10;
+            }
+            if (InfoHUD.speed.get()) {
+                double dx = mc.player.getX() - mc.player.lastRenderX;
+                double dz = mc.player.getZ() - mc.player.lastRenderZ;
+                double bps = Math.sqrt(dx * dx + dz * dz) * 20.0;
+                context.drawTextWithShadow(mc.textRenderer, String.format("§7BPS §f%.2f", bps), 10, leftY, 0xFFFFFF);
+                leftY += 10;
+            }
+            if (InfoHUD.ping.get()) {
+                int pingMs = 0;
+                try {
+                    if (mc.getNetworkHandler() != null) {
+                        var pe = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
+                        if (pe != null) pingMs = pe.getLatency();
+                    }
+                } catch (Throwable ignored) {}
+                context.drawTextWithShadow(mc.textRenderer, "§7Ping §f" + pingMs, 10, leftY, 0xFFFFFF);
+                leftY += 10;
+            }
+        }
+
+        String bLine = BaritoneCompat.hudLine();
+        if (bLine != null) {
+            context.fill(4, leftY, 4 + mc.textRenderer.getWidth(bLine) + 18, leftY + 11, 0x990A0A10);
+            context.fill(4, leftY, 6, leftY + 11, CYAN);
+            context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, leftY + 2, 0xFFFFFF);
+            leftY += 14;
+        }
+
+        // Arraylist
+        List<Module> enabled = new ArrayList<>();
+        for (Module m : JayHackClient.moduleManager.getActive()) {
+            if (m.isDrawn() && !m.getName().equalsIgnoreCase("HUD") && !m.getName().equalsIgnoreCase("InfoHUD"))
+                enabled.add(m);
         }
         enabled.sort(Comparator
                 .comparing((Module m) -> !ClientSettings.isFavorite(m.getName()))
                 .thenComparingInt(m -> -mc.textRenderer.getWidth(m.getName())));
 
-        // animate slide
         for (Module m : enabled) {
             float cur = slide.getOrDefault(m.getName(), 0f);
             slide.put(m.getName(), Math.min(1f, cur + 0.18f));
@@ -70,32 +129,7 @@ public final class HudRenderer {
         }
 
         int maxList = phone ? 8 : 24;
-        int screenW = mc.getWindow().getScaledWidth();
-        int screenH = mc.getWindow().getScaledHeight();
-
-        int accent = CYAN;
-        if (ClientSettings.arrayListRainbow) {
-            float hue = (System.currentTimeMillis() % 3000) / 3000f;
-            accent = 0xFF000000 | java.awt.Color.HSBtoRGB(hue, 0.7f, 1f);
-        }
-
-        String ver = JayHackClient.VERSION;
-        int ww = mc.textRenderer.getWidth("Jay " + ver) + 14;
-        context.fill(4, 4, 4 + ww, 17, 0x990A0A10);
-        context.fill(4, 4, 6, 17, accent);
-        context.drawTextWithShadow(mc.textRenderer, "§bJ§fay §8" + ver, 10, 7, 0xFFFFFF);
-
-        String prof = ClientSettings.lastProfile;
-        context.drawTextWithShadow(mc.textRenderer, "§8" + prof, 10, 18, 0x888888);
-
-        String bLine = BaritoneCompat.hudLine();
-        if (bLine != null) {
-            context.fill(4, 27, 4 + mc.textRenderer.getWidth(bLine) + 18, 38, 0x990A0A10);
-            context.fill(4, 27, 6, 38, CYAN);
-            context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, 29, 0xFFFFFF);
-        }
-
-        int y = bLine != null ? 42 : 28;
+        int y = 28;
         int shown = 0;
         for (Module m : enabled) {
             if (shown >= maxList) break;
@@ -105,8 +139,9 @@ public final class HudRenderer {
             int textW = mc.textRenderer.getWidth(m.getName()) + (ClientSettings.isFavorite(m.getName()) ? 12 : 0);
             int slidePx = (int) ((1f - s) * (textW + 16));
             int x = screenW - textW - 10 + slidePx;
+            int rowAccent = ClientSettings.arrayListRainbow ? accent : m.getCategoryColor();
             context.fill(x - 5, y - 1, screenW - 2, y + 10, 0x990A0A10);
-            context.fill(screenW - 2, y - 1, screenW, y + 10, accent);
+            context.fill(screenW - 2, y - 1, screenW, y + 10, rowAccent);
             context.drawTextWithShadow(mc.textRenderer, label, x, y, 0xE8E8F0);
             y += 11;
             shown++;

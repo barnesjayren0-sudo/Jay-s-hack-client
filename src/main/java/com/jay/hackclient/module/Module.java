@@ -24,8 +24,8 @@ public abstract class Module {
     private boolean enabled;
     private int keyBind;
     private KeyMode keyMode = KeyMode.TOGGLE;
-    /** When false, hidden from arraylist (still works). */
     private boolean drawn = true;
+    private boolean chatFeedback = true;
     private final List<Setting> settings = new ArrayList<>();
 
     public Module(String name, String description, Category category) {
@@ -73,6 +73,7 @@ public abstract class Module {
     }
 
     private void notify(String status) {
+        if (!chatFeedback) return;
         if (mc.player != null) {
             mc.player.sendMessage(Text.literal("§8[§bJay§8] §f" + name + " §7" + status), false);
         }
@@ -92,37 +93,30 @@ public abstract class Module {
     public void setKeyMode(KeyMode mode) { if (mode != null) this.keyMode = mode; }
     public boolean isDrawn() { return drawn; }
     public void setDrawn(boolean drawn) { this.drawn = drawn; }
+    public boolean isChatFeedback() { return chatFeedback; }
+    public void setChatFeedback(boolean chatFeedback) { this.chatFeedback = chatFeedback; }
+
+    /** Meteor-style category accent for arraylist. */
+    public int getCategoryColor() {
+        return switch (category) {
+            case COMBAT -> 0xFFFF5555;
+            case MOVEMENT -> 0xFF55FF55;
+            case RENDER -> 0xFF55FFFF;
+            case PLAYER -> 0xFFFFFF55;
+            case WORLD -> 0xFFAA55FF;
+            case ANARCHY -> 0xFFFFAA00;
+            case MISC -> 0xFFAAAAAA;
+        };
+    }
 
     public String getKeyLabel() {
         if (keyBind < 0) return "";
+        String n = GLFW.glfwGetKeyName(keyBind, 0);
+        if (n != null) return n.toUpperCase();
         return switch (keyBind) {
-            case GLFW.GLFW_KEY_R -> "R";
-            case GLFW.GLFW_KEY_N -> "N";
-            case GLFW.GLFW_KEY_P -> "P";
-            case GLFW.GLFW_KEY_G -> "G";
-            case GLFW.GLFW_KEY_H -> "H";
-            case GLFW.GLFW_KEY_J -> "J";
-            case GLFW.GLFW_KEY_K -> "K";
-            case GLFW.GLFW_KEY_L -> "L";
-            case GLFW.GLFW_KEY_V -> "V";
-            case GLFW.GLFW_KEY_B -> "B";
-            case GLFW.GLFW_KEY_X -> "X";
-            case GLFW.GLFW_KEY_C -> "C";
-            case GLFW.GLFW_KEY_Z -> "Z";
-            case GLFW.GLFW_KEY_F -> "F";
-            case GLFW.GLFW_KEY_T -> "T";
-            case GLFW.GLFW_KEY_Y -> "Y";
-            case GLFW.GLFW_KEY_U -> "U";
-            case GLFW.GLFW_KEY_I -> "I";
-            case GLFW.GLFW_KEY_O -> "O";
-            case GLFW.GLFW_KEY_M -> "M";
-            case GLFW.GLFW_KEY_2 -> "2";
-            case GLFW.GLFW_KEY_DELETE -> "DEL";
             case GLFW.GLFW_KEY_RIGHT_SHIFT -> "RShift";
-            default -> {
-                String n = GLFW.glfwGetKeyName(keyBind, 0);
-                yield n != null ? n.toUpperCase() : "#" + keyBind;
-            }
+            case GLFW.GLFW_KEY_DELETE -> "DEL";
+            default -> "#" + keyBind;
         };
     }
 

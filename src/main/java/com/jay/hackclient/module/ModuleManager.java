@@ -23,6 +23,15 @@ public class ModuleManager {
         return Collections.unmodifiableList(modules);
     }
 
+    /** Meteor-style active modules list. */
+    public List<Module> getActive() {
+        List<Module> list = new ArrayList<>();
+        for (Module m : modules) {
+            if (m.isEnabled()) list.add(m);
+        }
+        return list;
+    }
+
     public List<Module> getByCategory(Module.Category category) {
         List<Module> list = new ArrayList<>();
         for (Module m : modules) {
@@ -74,7 +83,6 @@ public class ModuleManager {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.getWindow() == null) return;
         if (mc.currentScreen != null) {
-            // release hold-mode modules when GUI opens
             for (Module m : modules) {
                 if (m.getKeyMode() == Module.KeyMode.HOLD && m.isEnabled() && m.getKeyBind() >= 0) {
                     m.setEnabled(false);
@@ -97,7 +105,6 @@ public class ModuleManager {
                 continue;
             }
 
-            // TOGGLE
             if (down && !heldKeys.contains(key)) {
                 heldKeys.add(key);
                 m.toggle();
