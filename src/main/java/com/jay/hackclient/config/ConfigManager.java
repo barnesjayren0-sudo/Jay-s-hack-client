@@ -1,6 +1,7 @@
 package com.jay.hackclient.config;
 
 import com.jay.hackclient.JayHackClient;
+import com.jay.hackclient.gui.GuiLayout;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.Hitboxes;
 import com.jay.hackclient.module.modules.Reach;
@@ -11,7 +12,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Full combat settings + keybinds persistence. */
 public class ConfigManager {
 
     private Path path() {
@@ -24,7 +24,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Hack Client config v1.22\n");
+            sb.append("# Jay Hack Client config v1.33\n");
             sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
             sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
             sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
@@ -74,6 +74,12 @@ public class ConfigManager {
             }
             for (String fav : ClientSettings.favorites) {
                 sb.append("fav.").append(fav).append("=true\n");
+            }
+            GuiLayout.ensureDefaults();
+            for (var e : GuiLayout.POS.entrySet()) {
+                float[] xy = e.getValue();
+                sb.append("panel.").append(e.getKey().name()).append('=')
+                        .append(xy[0]).append(',').append(xy[1]).append('\n');
             }
             Files.writeString(p, sb.toString());
         } catch (IOException e) {
@@ -144,6 +150,12 @@ public class ConfigManager {
                             JayHackClient.friendManager.add(k.substring(7));
                         } else if (k.startsWith("fav.")) {
                             ClientSettings.addFavorite(k.substring(4));
+                        } else if (k.startsWith("panel.")) {
+                            try {
+                                Module.Category cat = Module.Category.valueOf(k.substring(6));
+                                String[] parts = v.split(",");
+                                GuiLayout.set(cat, Float.parseFloat(parts[0]), Float.parseFloat(parts[1]));
+                            } catch (Exception ignored) {}
                         }
                     }
                 }
