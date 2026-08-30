@@ -6,7 +6,7 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.Camera;
 import net.minecraft.item.Items;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
 /** Simple ender pearl arc preview on HUD. */
@@ -34,7 +34,6 @@ public class PearlTrajectory extends Module {
         double radY = Math.toRadians(yaw);
         double radP = Math.toRadians(pitch);
 
-        // Throw velocity approx
         Vec3d vel = new Vec3d(
                 -Math.sin(radY) * Math.cos(radP),
                 -Math.sin(radP),
@@ -53,10 +52,10 @@ public class PearlTrajectory extends Module {
         int max = pt.steps.getInt();
         for (int i = 0; i < max; i++) {
             pos = pos.add(vel);
-            vel = vel.multiply(0.99).add(0, -0.03, 0); // gravity-ish
+            vel = vel.multiply(0.99).add(0, -0.03, 0);
 
-            if (pt.mc.world.getBlockState(net.minecraft.util.math.BlockPos.ofFloored(pos)).isSolidBlock(pt.mc.world,
-                    net.minecraft.util.math.BlockPos.ofFloored(pos))) break;
+            BlockPos bp = BlockPos.ofFloored(pos);
+            if (!pt.mc.world.getBlockState(bp).isAir()) break;
 
             double dx = pos.x - camPos.x, dy = pos.y - camPos.y, dz = pos.z - camPos.z;
             double yawRad = Math.toRadians(cam.getYaw());
@@ -71,7 +70,6 @@ public class PearlTrajectory extends Module {
             int sx = (int) (sw / 2.0 + (x1 / z2) * scale);
             int sy = (int) (sh / 2.0 - (y1 / z2) * scale);
             if (prevSx >= 0) {
-                // simple line dots
                 ctx.fill(sx - 1, sy - 1, sx + 1, sy + 1, 0xFF55FFFF);
             }
             prevSx = sx;
