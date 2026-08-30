@@ -1,5 +1,6 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
@@ -9,7 +10,7 @@ import net.minecraft.util.math.BlockPos;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Save named positions and path with Baritone. */
+/** Save named positions and path with Baritone. Persisted via ConfigManager. */
 public class Waypoints extends Module {
 
     public static final Map<String, BlockPos> POINTS = new LinkedHashMap<>();
@@ -23,8 +24,12 @@ public class Waypoints extends Module {
 
     public static void save(String name, BlockPos pos) {
         if (name == null || name.isBlank() || pos == null) return;
-        POINTS.put(name.toLowerCase(), pos.toImmutable());
-        msg("§aWaypoint §f" + name + " §7@ " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        String key = name.toLowerCase().trim().replace(' ', '_');
+        POINTS.put(key, pos.toImmutable());
+        msg("§aWaypoint §f" + key + " §7@ " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        try {
+            if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+        } catch (Throwable ignored) {}
     }
 
     public static void saveHere(String name) {
@@ -34,18 +39,19 @@ public class Waypoints extends Module {
     }
 
     public static void gotoWp(String name) {
-        BlockPos p = POINTS.get(name.toLowerCase());
+        if (name == null) return;
+        BlockPos p = POINTS.get(name.toLowerCase().trim().replace(' ', '_'));
         if (p == null) {
-            msg("§cUnknown waypoint");
+            msg("§cUnknown waypoint §f" + name);
             return;
         }
         boolean ok = BaritoneCompat.pathTo(p);
-        msg(ok ? "§aPath → " + name : "§cPath failed (Baritone?)");
+        msg(ok ? "§aPath → §f" + name : "§cPath failed (install Baritone?)");
     }
 
     public static void list() {
         if (POINTS.isEmpty()) {
-            msg("§7No waypoints");
+            msg("§7No waypoints — §f.jay wp save <name>");
             return;
         }
         for (var e : POINTS.entrySet()) {
@@ -55,8 +61,28 @@ public class Waypoints extends Module {
     }
 
     public static void remove(String name) {
-        if (POINTS.remove(name.toLowerCase()) != null) msg("§cRemoved " + name);
-        else msg("§cNot found");
+        if (name == null) return;
+        String key = name.toLowerCase().trim().replace(' ', '_');
+        if (POINTS.remove(key) != null) {
+            msg("§cRemoved §f" + key);
+            try {
+                if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+            } catch (Throwable ignored) {}
+        } else msg("§cNot found");
+    }
+
+    /** Config line: wp.name=x,y,z */
+    public static void loadFromConfig(String name, int x, int y, int z) {
+        if (name == null || name.isBlank()) return;
+        POINTS.put(name.toLowerCase(), new BlockPos(x, y, z));
+    }
+
+    public static void writeConfig(StringBuilder sb) {
+        for (var e : POINTS.entrySet()) {
+            BlockPos p = e.getValue();
+            sb.append("wp.").append(e.getKey()).append('=')
+                    .append(p.getX()).append(',').append(p.getY()).append(',').append(p.getZ()).append('\n');
+        }
     }
 
     private static void msg(String s) {
@@ -65,7 +91,5 @@ public class Waypoints extends Module {
     }
 
     @Override
-    public void onTick() {
-        // Command-driven; module only marks feature enabled for HUD
-    }
+    public void onTick() {}
 }

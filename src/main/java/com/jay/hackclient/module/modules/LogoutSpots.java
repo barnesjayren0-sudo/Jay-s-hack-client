@@ -14,15 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 
-/** Remember logout positions + ESP boxes via WorldEspRenderer. */
+/** Remember logout positions + ESP + optional waypoint save. */
 public class LogoutSpots extends Module {
 
     public static final Map<String, Spot> SPOTS = new ConcurrentHashMap<>();
-    /** Hits for WorldEspRenderer boxes. */
     public static final List<BaseFinder.Hit> espHits = new CopyOnWriteArrayList<>();
 
     public final BoolSetting chat = new BoolSetting("Chat", "Announce logouts", true);
     public final BoolSetting boxes = new BoolSetting("Boxes", "Show ESP markers", true);
+    public final BoolSetting autoWp = new BoolSetting("AutoWaypoint", "Save logout as waypoint", true);
     public final NumberSetting maxSpots = new NumberSetting("MaxSpots", "Cap stored", 40, 10, 80, 5);
     public final NumberSetting colorR = new NumberSetting("ColorR", "Red", 255, 0, 255, 1);
     public final NumberSetting colorG = new NumberSetting("ColorG", "Green", 80, 0, 255, 1);
@@ -34,6 +34,7 @@ public class LogoutSpots extends Module {
         super("LogoutSpots", "Logout positions + ESP", Category.WORLD);
         addSetting(chat);
         addSetting(boxes);
+        addSetting(autoWp);
         addSetting(maxSpots);
         addSetting(colorR);
         addSetting(colorG);
@@ -66,6 +67,9 @@ public class LogoutSpots extends Module {
                     mc.player.sendMessage(Text.literal(
                             "§8[§bJay§8] §eLogout §f" + t.name + " §7@ "
                                     + t.pos.getX() + " " + t.pos.getY() + " " + t.pos.getZ()), false);
+                }
+                if (autoWp.get()) {
+                    Waypoints.save("lo_" + t.name, t.pos);
                 }
                 tracked.remove(e.getKey());
             }
