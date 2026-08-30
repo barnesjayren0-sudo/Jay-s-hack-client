@@ -14,15 +14,11 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
-/**
- * Scaffold — Normal / Telly / Godbridge.
- *
- * Telly: sprint + auto-jump, place only while airborne (classic telly bridge).
- */
+/** Scaffold — Normal / Telly / Godbridge / Tower. */
 public class Scaffold extends Module {
 
     public final ModeSetting mode = new ModeSetting("Mode", "Place style",
-            "Telly", "Normal", "Telly", "Godbridge");
+            "Telly", "Normal", "Telly", "Godbridge", "Tower");
     public final NumberSetting delay = new NumberSetting("Delay", "Base place ms", 45, 25, 120, 5);
     public final BoolSetting autoJump = new BoolSetting("AutoJump", "Jump when grounded (Telly)", true);
     public final NumberSetting airTicks = new NumberSetting("AirTicks", "Min air ticks before place", 2, 0, 8, 1);
@@ -34,7 +30,7 @@ public class Scaffold extends Module {
     private float savedPitch = Float.NaN;
 
     public Scaffold() {
-        super("Scaffold", "Telly / Normal / Godbridge scaffold", Category.WORLD);
+        super("Scaffold", "Telly / Normal / Godbridge / Tower", Category.WORLD);
         addSetting(mode);
         addSetting(delay);
         addSetting(autoJump);
@@ -60,9 +56,7 @@ public class Scaffold extends Module {
         if (mc.player.isOnGround()) {
             ticksInAir = 0;
             restorePitch();
-            if ("Telly".equals(m)) {
-                tellyGround();
-            }
+            if ("Telly".equals(m)) tellyGround();
         } else {
             ticksInAir++;
         }
@@ -70,8 +64,20 @@ public class Scaffold extends Module {
         long now = System.currentTimeMillis();
         int baseDelay = delay.getInt();
 
+        if ("Tower".equals(m)) {
+            if (now - lastPlace < Humanizer.delay(Math.max(30, baseDelay - 10), 8, 25, baseDelay + 20)) return;
+            if (mc.options.jumpKey.isPressed() || !mc.player.isOnGround()) {
+                if (mc.player.isOnGround()) mc.player.jump();
+                BlockPos under = mc.player.getBlockPos().down();
+                if (tryPlace(under)) {
+                    lastPlace = now;
+                    if (rotate.get()) aimDown();
+                }
+            }
+            return;
+        }
+
         if ("Telly".equals(m)) {
-            // Only place in air after a few ticks (the telly gap)
             if (mc.player.isOnGround()) return;
             if (ticksInAir < airTicks.getInt()) return;
             baseDelay = Math.max(30, baseDelay - 5);
@@ -85,7 +91,6 @@ public class Scaffold extends Module {
 
         BlockPos below = mc.player.getBlockPos().down();
 
-        // Telly: also try one block ahead under trajectory
         if ("Telly".equals(m)) {
             if (tryPlace(below) || tryPlace(aheadDown())) {
                 lastPlace = now;
@@ -105,19 +110,14 @@ public class Scaffold extends Module {
             }
             if (tryPlace(below)) {
                 lastPlace = now;
-                return;
             }
         } else {
-            // Normal — place under feet whenever air
-            if (tryPlace(below)) {
-                lastPlace = now;
-            }
+            if (tryPlace(below)) lastPlace = now;
         }
     }
 
     private void tellyGround() {
         if (mc.options == null) return;
-
         boolean forward = mc.options.forwardKey.isPressed();
         if (!forward) return;
 
@@ -125,9 +125,7 @@ public class Scaffold extends Module {
             mc.player.setSprinting(true);
         }
 
-        // Auto-jump for telly rhythm
         if (autoJump.get() && mc.player.isOnGround()) {
-            // Edge: about to walk into air OR always jump while holding forward
             BlockPos frontDown = mc.player.getBlockPos()
                     .offset(mc.player.getHorizontalFacing()).down();
             boolean edge = mc.world.getBlockState(frontDown).isAir()
@@ -139,35 +137,28 @@ public class Scaffold extends Module {
     }
 
     private BlockPos aheadDown() {
-        Direction face = mc.player.getHorizontalFacing();
-        return mc.player.getBlockPos().offset(face).down();
+        return mc.player.getBlockPos().offset(mc.player.getHorizontalFacing()).down();
     }
 
     private boolean tryPlace(BlockPos target) {
         if (target == null) return false;
         if (!mc.world.getBlockState(target).isReplaceable()) return false;
 
-        // Prefer solid neighbor to click against
         for (Direction dir : Direction.values()) {
             BlockPos neighbor = target.offset(dir);
             if (mc.world.getBlockState(neighbor).isAir()) continue;
             if (mc.world.getBlockState(neighbor).getBlock().getDefaultState().isReplaceable()) continue;
 
-            if (rotate.get() && "Telly".equals(mode.get())) {
+            if (rotate.get() && ("Telly".equals(mode.get()) || "Tower".equals(mode.get()))) {
                 aimDown();
             }
-            if (placeAgainst(neighbor, dir.getOpposite())) {
-                return true;
-            }
+            if (placeAgainst(neighbor, dir.getOpposite())) return true;
         }
         return false;
     }
 
     private void aimDown() {
-        if (Float.isNaN(savedPitch)) {
-            savedPitch = mc.player.getPitch();
-        }
-        // Look down enough to place under feet while moving
+        if (Float.isNaN(savedPitch)) savedPitch = mc.player.getPitch();
         float target = 75f + (float) (Math.random() * 6.0);
         float cur = mc.player.getPitch();
         mc.player.setPitch(cur + (target - cur) * 0.45f);
@@ -205,7 +196,6 @@ public class Scaffold extends Module {
     private boolean holdingBlock() {
         ItemStack main = mc.player.getMainHandStack();
         if (main.getItem() instanceof BlockItem) return true;
-        ItemStack off = mc.player.getOffHandStack();
-        return off.getItem() instanceof BlockItem;
+        return mc.player.getOffHandStack().getItem() instanceof BlockItem;
     }
 }
