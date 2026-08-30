@@ -1,56 +1,77 @@
-# Jay's Client v1.40.0
+# Jay's Hack Client
 
-Fabric **Minecraft 1.21.11** · dual **PvP + server utility**  
-Built for desktop Fabric and mobile launchers (Mojo / Pojav).
+**Fabric · Minecraft 1.21.11 · v1.42.1**
 
-> **Disclaimer:** For private worlds / education. Cheating on public servers can get you banned. You are responsible for how you use this.
+PvP + server utility client with floating ClickGUI, persistent config, profiles, finders, and optional Baritone pathing.
 
----
-
-## What's in 1.40
-
-- **Sword profile** — AimAssist, TriggerBot, ComboHit, ShieldBreak, Velocity, AutoGap
-- **Anarchy profile** — finders, StorageESP, LogoutSpots, HoleESP, NoFall, AutoTotem
-- **Scaffold Telly** — air-place telly bridge
-- **ClickGUI** — floating panels, search, RMB settings (saved)
-- **Config** — module settings + keybinds + friends persist
+> Loaded-chunk tools only. No seed / RNG locate modules.
 
 ---
 
-## Install (Mojo / Pojav / PC)
+## Features
 
-1. Minecraft **1.21.11** + **Fabric Loader**
-2. Install **Fabric API**
-3. Put `jays-hack-client-1.40.0.jar` in `mods/`
-4. Optional: [Baritone Fabric 1.21.11](https://github.com/cabaletta/baritone) for pathing
+### Combat
+KillAura · AimAssist · TriggerBot · ComboHit · CritAssist · SoftBlink · TargetStrafe  
+AutoSword · ShieldBreak · AutoBlock · SwordBlock · Velocity · WTap · STap  
+JumpReset · NoJumpDelay · Criticals · Reach · Hitboxes · AutoClicker  
+AutoPot · PotRefill · AnchorMacro · AutoWeb · AntiFireball · AntiBot
 
-### Build from source (Termux)
+### Movement
+AutoSprint · KeepSprint · NoSlow (shield-aware) · Speed · NoFall · SafeWalk  
+Scaffold (**Normal / Telly / Godbridge / Tower**) · Fly · Step · Jesus · BoatFly · YClip
+
+### Player / inventory
+AutoArmor · AutoTotem (HardHP) · AutoGap · OffhandGap · AutoHead · Refill  
+InvManager · InvSort · AutoReplenish · FastPlace · NoBreakDelay  
+PearlAssist · PearlCatch · MiddleClickPearl · MiddleClickFriend
+
+### Render / HUD
+ESP · Nametags · StorageESP · FullBright · Freecam (`@`)  
+HUD · InfoHUD · TargetHUD · ReachHUD · CombatHUD · HitParticles  
+PlayerBoxes · PearlTrajectory · HoleESP
+
+### World / utility
+BaseFinder · FarmFinder · StorageFinder · BuildFinder · BeaconFinder  
+SpawnerFinder · PortalFinder · PlayerRadar · DofNear · LogoutSpots  
+NewChunks · Waypoints · PathToBase · BaritoneControl · AutoTool  
+AutoTrap · Burrow · Surround · SelfTrap · AutoCrystal · HoleFill · AutoLog · AntiVoid
+
+### Client systems
+- **ClickGUI** — floating Meteor-style panels, search, RMB per-module settings, saved layout
+- **Config** — modules, settings, keybinds, friends, favorites, waypoints, panel positions
+- **Profiles** — sword · anarchy · scout · builder · nethpot · utility · more
+- **Slot lock** — AutoTotem / AutoSword / ShieldBreak don’t fight the hotbar
+- **Shared combat target** — AimAssist / KillAura / ComboHit
+- **Panic** — one key disables everything
+
+---
+
+## Install
+
+### Requirements
+| Item | Version |
+|------|---------|
+| Minecraft | **1.21.11** |
+| Fabric Loader | latest for 1.21.11 |
+| Fabric API | required |
+| Baritone (optional) | Fabric build for 1.21.11 |
+
+### Jar install (PC / Mojo / Pojav)
+1. Install Fabric for **1.21.11**
+2. Drop **Fabric API** into `mods/`
+3. Drop `jays-hack-client-1.42.1.jar` into `mods/`
+4. Optional: Baritone jar for `#goto` / pathing
+
+### Build (Termux / PC)
 
 ```bash
 cd ~/Jay-s-hack-client
 git fetch origin && git reset --hard origin/main
 ./gradlew clean build --no-daemon
-cp build/libs/jays-hack-client-1.40.0.jar /storage/emulated/0/Download/
+cp build/libs/jays-hack-client-*.jar /storage/emulated/0/Download/
 ```
 
----
-
-## Default profiles
-
-| Profile | Enables (summary) |
-|---------|-------------------|
-| **sword** | AimAssist · TriggerBot · ComboHit · AutoSword · ShieldBreak · Velocity · WTap · JumpReset · AutoGap · Hitboxes · HUD · TargetHUD · AntiBot |
-| **anarchy** | BaseFinder · StorageESP · LogoutSpots · HoleESP · PlayerRadar · ESP · NoFall · AutoTotem · AutoLog · Step · Jesus · MiddleClickPearl · HUD |
-| **scout** | Finders + radar + ESP (no combat) |
-| **builder** | Scaffold · AutoTool · SafeWalk |
-
-**GUI:** profile chips on the top bar · or **P** to cycle · or chat:
-
-```text
-.jay sword
-.jay anarchy
-.jay scout
-```
+Output: `build/libs/jays-hack-client-1.42.1.jar`
 
 ---
 
@@ -58,50 +79,105 @@ cp build/libs/jays-hack-client-1.40.0.jar /storage/emulated/0/Download/
 
 | Key | Action |
 |-----|--------|
-| **Right Shift** | ClickGUI |
-| **Delete** | Panic (all off) |
+| **Right Shift** | Open / close ClickGUI |
+| **Delete** | Panic — all modules off |
 | **P** | Cycle profile |
 | **R** | KillAura |
 | **J** | AimAssist |
 | **T** | TriggerBot |
 | **N** | Velocity |
 | **X** | ESP |
+| **@** | Freecam |
 
-LMB = toggle · **RMB** = settings / keybind · drag panel headers to move (saved)
+- **LMB** on module = toggle  
+- **RMB** on module = settings (sliders, keybind, **Reset defaults**)  
+- Drag panel headers to move (positions saved)
 
 ---
 
-## Commands
+## Chat commands
 
 ```text
 .jay help
 .jay gui
-.jay sword | anarchy | scout | builder | nethpot
-.jay toggle <module>
-.jay scan | storage | radar
-.jay goto <x> <y> <z> | stoppath
-.jay friend add|del|list
+.jay sword | anarchy | scout | builder | nethpot | utility
+.jay toggle <ModuleName>
+.jay scan | storage | radar | near
+.jay wp save <name> | wp goto <name> | wp list | wp del <name>
+.jay goto <x> <y> <z> | path | stoppath
+.jay baritone <args>          # or use #commands if Baritone is installed
+.jay friend add|del|list <name>
+.jay fav <ModuleName>         # pin favorite
+.jay set aimrange|hitbox|reach|velh <n>
 .jay config save|load|reset
-.jay panic | off
+.jay panic | off | unpanic
 ```
 
 ---
 
-## Playtest checklist (sword + telly + finders)
+## Profiles
 
-1. `.jay sword` → duel dummy / friend — aim + trigger feel OK  
-2. Scaffold **Mode=Telly** → hold W + blocks — jumps and places in air  
-3. `.jay scout` or anarchy → StorageESP / BaseFinder markers on HUD  
-4. LogoutSpots — leave alt, confirm marker  
+| Profile | Focus |
+|---------|--------|
+| **sword** | AimAssist, TriggerBot, ComboHit, AutoSword, ShieldBreak, Velocity, WTap, AutoGap, Hitboxes |
+| **anarchy** | Finders, StorageESP, LogoutSpots, HoleESP, NoFall, AutoTotem, Step, Jesus |
+| **scout** | Finders + radar + ESP (light combat) |
+| **builder** | Scaffold, AutoTool, SafeWalk |
+| **nethpot** | Pots / refill oriented |
+| **utility** | Finders + QoL without rage combat |
+
+Apply via GUI chips, **P**, or `.jay sword` / `.jay anarchy` / …
+
+---
+
+## Waypoints
+
+```text
+.jay wp save home
+.jay wp list
+.jay wp goto home
+.jay wp del home
+```
+
+Saved into config. LogoutSpots can auto-save `lo_<player>` when **AutoWaypoint** is on.
+
+---
+
+## Scaffold modes
+
+| Mode | Behavior |
+|------|----------|
+| **Normal** | Place under feet |
+| **Telly** | Jump + air place (kit bridging) |
+| **Godbridge** | Edge place style |
+| **Tower** | Hold jump — place up |
+
+RMB **Scaffold** → Mode setting.
+
+---
+
+## Playtest checklist
+
+1. `.jay sword` — aim / trigger feel smooth  
+2. Scaffold **Telly** — W + blocks, air places  
+3. `.jay scout` or **anarchy** — StorageESP / BaseFinder markers  
+4. `.jay wp save test` → `wp list` → `wp goto test`  
 5. **Delete** panic clears modules  
 
-Report anything that crashes or desyncs hotbar.
+Report crashes or hotbar fights with the compile/log if possible.
 
 ---
 
 ## Policy
 
-Finders scan **loaded chunks only**. No seed/RNG locate modules.
+- Finders scan **loaded chunks only**
+- No seed cracking / Randar-style modules
+- Use only where you are allowed to (private testing, own server, etc.)
 
-**Repo:** https://github.com/barnesjayren0-sudo/Jay-s-hack-client  
-**Version:** 1.40.0
+---
+
+## Links
+
+- **Repo:** https://github.com/barnesjayren0-sudo/Jay-s-hack-client  
+- **Version:** 1.42.1  
+- **MC:** 1.21.11 (Fabric)
