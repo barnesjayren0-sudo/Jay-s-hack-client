@@ -45,6 +45,12 @@ public abstract class Module {
         return Collections.unmodifiableList(settings);
     }
 
+    public void resetSettings() {
+        for (Setting s : settings) {
+            try { s.reset(); } catch (Throwable ignored) {}
+        }
+    }
+
     public void toggle() {
         setEnabled(!this.enabled);
     }
