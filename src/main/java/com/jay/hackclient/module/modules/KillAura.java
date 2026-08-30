@@ -7,6 +7,7 @@ import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.Mobile;
+import com.jay.hackclient.util.RotationOwner;
 import com.jay.hackclient.util.RotationUtil;
 import com.jay.hackclient.util.TargetUtil;
 import net.minecraft.entity.player.PlayerEntity;
@@ -14,9 +15,7 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * KillAura [R] — shared TargetUtil + ComboHit gate, FOV cone, sword/axe.
- */
+/** KillAura [R] — priority rotation owner over AimAssist. */
 public class KillAura extends Module {
 
     public final NumberSetting range = new NumberSetting("Range", "Attack range", 3.2, 2.5, 4.5, 0.05);
@@ -64,7 +63,6 @@ public class KillAura extends Module {
             return;
         }
 
-        // ComboHit: crit vs grounded / punish jump
         if (comboHit.get() && !ComboHit.shouldAttack(mc.player, target)) {
             return;
         }
@@ -73,15 +71,14 @@ public class KillAura extends Module {
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
             if ((aimTick & 1) == 0 && Humanizer.chance(35)) {
-                RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.35f);
+                if (RotationOwner.tryClaim("KillAura", 2, 50))
+                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.35f);
             }
             return;
         }
 
         if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
-        if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)
-                && comboHit.get()) {
-            // allow ComboHit to decide; if CritAssist on and not in window, skip
+        if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player) && comboHit.get()) {
             if (!mc.player.isOnGround()) return;
         }
         if (Humanizer.shouldMiss()) {
@@ -90,7 +87,8 @@ public class KillAura extends Module {
             return;
         }
 
-        RotationUtil.lookAt(target, Math.min(0.38f, ClientSettings.aimSmooth * 1.05f));
+        if (RotationOwner.tryClaim("KillAura", 2, 80))
+            RotationUtil.lookAt(target, Math.min(0.38f, ClientSettings.aimSmooth * 1.05f));
         ReachHUD.recordHit(mc.player.distanceTo(target));
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
@@ -117,7 +115,6 @@ public class KillAura extends Module {
             lockedTargetId = -1;
         }
 
-        // Shared target system — closest / lowest_hp / crosshair
         PlayerEntity best = TargetUtil.findCombatTarget(range, fov);
         if (best != null) {
             if (best.getId() != lockedTargetId) {
@@ -141,5 +138,6 @@ public class KillAura extends Module {
     public void onDisable() {
         lockedTargetId = -1;
         targetLockedUntil = 0;
+        RotationOwner.release("KillAura");
     }
 }
