@@ -1,10 +1,10 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.util.Mobile;
+
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.BarrelBlockEntity;
@@ -66,7 +66,7 @@ public class StorageESP extends Module {
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
         long now = System.currentTimeMillis();
-        if (now - lastScan < 500) return;
+        if (now - lastScan < (Mobile.shouldThrottle() ? 1400 : 500)) return;
         lastScan = now;
         scan();
     }
