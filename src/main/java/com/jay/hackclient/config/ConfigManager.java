@@ -61,11 +61,28 @@ public class ConfigManager {
                 sb.append("fav.").append(fav).append("=true\n");
             }
             Waypoints.writeConfig(sb);
-            GuiLayout.writeConfig(sb);
+            GuiLayout.ensureDefaults();
+            for (var e : GuiLayout.POS.entrySet()) {
+                float[] xy = e.getValue();
+                if (xy == null || xy.length < 2) continue;
+                sb.append("panel.").append(e.getKey().name()).append('=')
+                        .append(xy[0]).append(',').append(xy[1]).append('\n');
+            }
             Files.writeString(p, sb.toString());
-        } catch (Exception e) {
-            System.err.println("[JayHack] config save: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("[Jay] config save failed: " + e.getMessage());
         }
+    }
+
+    private void writeClient(StringBuilder sb) {
+        try {
+            sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
+            sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
+            sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
+            sb.append("aimFov=").append(ClientSettings.aimFov).append('\n');
+            sb.append("lastProfile=").append(ClientSettings.lastProfile).append('\n');
+            sb.append("mode=").append(ClientSettings.mode).append('\n');
+        } catch (Throwable ignored) {}
     }
 
     public void load() {
@@ -113,20 +130,26 @@ public class ConfigManager {
                     } else if (k.startsWith("fav.")) {
                         ClientSettings.favorites.add(k.substring(4));
                     } else if (k.startsWith("panel.")) {
-                        GuiLayout.loadLine(k, v);
+                        try {
+                            Module.Category cat = Module.Category.valueOf(k.substring(6));
+                            String[] parts = v.split(",");
+                            if (parts.length >= 2) {
+                                GuiLayout.set(cat, Float.parseFloat(parts[0]), Float.parseFloat(parts[1]));
+                            }
+                        } catch (Exception ignored) {}
                     } else {
                         readClientKey(k, v);
                     }
                 } catch (Exception ignored) {}
             }
         } catch (IOException e) {
-            System.err.println("[JayHack] config load: " + e.getMessage());
+            System.err.println("[Jay] config load failed: " + e.getMessage());
         }
     }
 
     private void applySetting(String rest, String v) {
         int dot = rest.indexOf('.');
-        if (dot < 0) return;
+        if (dot < 0 || JayHackClient.moduleManager == null) return;
         String modName = rest.substring(0, dot);
         String setName = rest.substring(dot + 1).replace('_', ' ');
         Module m = JayHackClient.moduleManager.getModuleByName(modName);
@@ -144,26 +167,19 @@ public class ConfigManager {
         }
     }
 
-    private void writeClient(StringBuilder sb) {
-        // ClientSettings persistence — keep existing keys if present in original file structure
-        try {
-            sb.append("mode=").append(ClientSettings.mode).append('\n');
-            sb.append("lastProfile=").append(ClientSettings.lastProfile).append('\n');
-        } catch (Throwable ignored) {}
-    }
-
     private void readClientKey(String k, String v) {
         try {
-            if (k.equals("mode")) ClientSettings.mode = v;
+            if (k.equals("aimMode")) ClientSettings.aimMode = v;
+            else if (k.equals("targetPriority")) ClientSettings.targetPriority = v;
+            else if (k.equals("aimRange")) ClientSettings.aimRange = Double.parseDouble(v);
+            else if (k.equals("aimFov")) ClientSettings.aimFov = Float.parseFloat(v);
             else if (k.equals("lastProfile")) ClientSettings.lastProfile = v;
+            else if (k.equals("mode")) ClientSettings.mode = v;
         } catch (Throwable ignored) {}
     }
 
     public void resetDefaults() {
-        try {
-            Path p = path();
-            Files.deleteIfExists(p);
-        } catch (Exception ignored) {}
-        ClientSettings.applyDualConfig();
+        try { Files.deleteIfExists(path()); } catch (Exception ignored) {}
+        try { ClientSettings.applyDualConfig(); } catch (Throwable ignored) {}
     }
 }
