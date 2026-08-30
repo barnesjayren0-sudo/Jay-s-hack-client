@@ -35,4 +35,26 @@ public final class GuiLayout {
         ensureDefaults();
         return POS.computeIfAbsent(cat, c -> new float[]{20, 40});
     }
+
+    public static void writeConfig(StringBuilder sb) {
+        ensureDefaults();
+        for (var e : POS.entrySet()) {
+            float[] xy = e.getValue();
+            if (xy == null || xy.length < 2) continue;
+            sb.append("panel.").append(e.getKey().name()).append('=')
+                    .append(xy[0]).append(',').append(xy[1]).append('\n');
+        }
+    }
+
+    public static void loadLine(String k, String v) {
+        try {
+            if (!k.startsWith("panel.")) return;
+            String catName = k.substring(6);
+            Module.Category cat = Module.Category.valueOf(catName);
+            String[] parts = v.split(",");
+            if (parts.length < 2) return;
+            set(cat, Float.parseFloat(parts[0].trim()), Float.parseFloat(parts[1].trim()));
+            loaded = true;
+        } catch (Exception ignored) {}
+    }
 }
