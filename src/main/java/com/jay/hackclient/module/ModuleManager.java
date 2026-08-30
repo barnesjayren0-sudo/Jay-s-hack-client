@@ -14,6 +14,7 @@ public class ModuleManager {
     private final List<Module> modules = new ArrayList<>();
     private final Set<Integer> heldKeys = new HashSet<>();
     private boolean frozen = false;
+    private boolean extrasRegistered = false;
 
     public void register(Module module) {
         modules.add(module);
@@ -23,7 +24,6 @@ public class ModuleManager {
         return Collections.unmodifiableList(modules);
     }
 
-    /** Meteor-style active modules list. */
     public List<Module> getActive() {
         List<Module> list = new ArrayList<>();
         for (Module m : modules) {
@@ -115,6 +115,16 @@ public class ModuleManager {
     }
 
     public void onTick() {
+        if (!extrasRegistered) {
+            extrasRegistered = true;
+            try {
+                Class.forName("com.jay.hackclient.ModuleBootstrap")
+                        .getMethod("registerExtra", ModuleManager.class)
+                        .invoke(null, this);
+            } catch (Throwable t) {
+                System.err.println("[JayHack] ModuleBootstrap: " + t.getMessage());
+            }
+        }
         if (frozen) return;
         pollKeybinds();
         for (Module m : modules) {
