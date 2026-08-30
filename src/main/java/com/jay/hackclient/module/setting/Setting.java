@@ -1,6 +1,6 @@
 package com.jay.hackclient.module.setting;
 
-/** Base setting attached to a Module (Cyemer-style settings system). */
+/** Base setting attached to a Module. */
 public abstract class Setting {
     private final String name;
     private final String description;
@@ -13,4 +13,6 @@ public abstract class Setting {
     public String getName() { return name; }
     public String getDescription() { return description; }
     public abstract String getDisplayValue();
+    /** Restore constructor default. */
+    public abstract void reset();
 }

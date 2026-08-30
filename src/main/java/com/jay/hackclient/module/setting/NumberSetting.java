@@ -2,6 +2,7 @@ package com.jay.hackclient.module.setting;
 
 public class NumberSetting extends Setting {
     private double value;
+    private final double def;
     private final double min, max;
     private final double step;
 
@@ -10,7 +11,8 @@ public class NumberSetting extends Setting {
         this.min = min;
         this.max = max;
         this.step = step <= 0 ? 0.1 : step;
-        this.value = clamp(def);
+        this.def = clamp(def);
+        this.value = this.def;
     }
 
     public double get() { return value; }
@@ -24,6 +26,9 @@ public class NumberSetting extends Setting {
 
     public double getMin() { return min; }
     public double getMax() { return max; }
+
+    @Override
+    public void reset() { this.value = def; }
 
     private double clamp(double v) {
         return Math.max(min, Math.min(max, v));

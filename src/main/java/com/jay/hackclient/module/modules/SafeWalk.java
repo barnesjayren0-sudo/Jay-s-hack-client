@@ -1,10 +1,11 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import net.minecraft.util.math.BlockPos;
 
-/** Prevent walking off edges — non-sticky sneak. */
+/** Prevent walking off edges — disabled while Scaffold Telly is active. */
 public class SafeWalk extends Module {
 
     public final BoolSetting sneak = new BoolSetting("Sneak", "Brief sneak near edge", true);
@@ -20,34 +21,52 @@ public class SafeWalk extends Module {
 
     @Override
     public void onDisable() {
+        clearSneak();
+    }
+
+    private void clearSneak() {
         if (forcedSneak && mc.options != null) {
             mc.options.sneakKey.setPressed(false);
             forcedSneak = false;
         }
     }
 
+    private boolean scaffoldTellyActive() {
+        if (JayHackClient.moduleManager == null) return false;
+        Module sc = JayHackClient.moduleManager.getModuleByName("Scaffold");
+        if (sc == null || !sc.isEnabled()) return false;
+        if (sc instanceof Scaffold s) {
+            return "Telly".equalsIgnoreCase(s.mode.get());
+        }
+        return true;
+    }
+
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.options == null) return;
+
+        // Never fight Telly
+        if (scaffoldTellyActive()) {
+            clearSneak();
+            return;
+        }
+
         if (!mc.player.isOnGround()) {
-            if (forcedSneak) {
-                mc.options.sneakKey.setPressed(false);
-                forcedSneak = false;
-            }
+            clearSneak();
             return;
         }
 
         BlockPos below = mc.player.getBlockPos().down();
         boolean edge = false;
+        double mx = mc.player.getVelocity().x;
+        double mz = mc.player.getVelocity().z;
+
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 if (dx == 0 && dz == 0) continue;
                 BlockPos p = below.add(dx, 0, dz);
                 if (airCheck.get() && mc.world.getBlockState(p).isAir()) {
-                    // near edge relative to movement
-                    double mx = mc.player.getVelocity().x;
-                    double mz = mc.player.getVelocity().z;
-                    if (mx * dx + mz * dz > 0.01) edge = true;
+                    if (mx * dx + mz * dz > 0.015) edge = true;
                 }
             }
         }
@@ -55,9 +74,8 @@ public class SafeWalk extends Module {
         if (sneak.get() && edge) {
             mc.options.sneakKey.setPressed(true);
             forcedSneak = true;
-        } else if (forcedSneak) {
-            mc.options.sneakKey.setPressed(false);
-            forcedSneak = false;
+        } else {
+            clearSneak();
         }
     }
 }

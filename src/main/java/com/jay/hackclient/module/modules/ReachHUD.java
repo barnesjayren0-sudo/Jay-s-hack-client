@@ -4,7 +4,7 @@ import com.jay.hackclient.module.Module;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/** Tracks last hit / crosshair distance for practice. Drawn by HudRenderer. */
+/** Tracks last hit / crosshair distance. */
 public class ReachHUD extends Module {
 
     public static double lastReach = 0;
@@ -25,5 +25,9 @@ public class ReachHUD extends Module {
 
     public static void recordHit(double dist) {
         lastReach = dist;
+    }
+
+    public static double lastHitDist() {
+        return lastReach;
     }
 }

@@ -5,13 +5,15 @@ import java.util.List;
 
 public class ModeSetting extends Setting {
     private final List<String> modes;
+    private final int defIndex;
     private int index;
 
     public ModeSetting(String name, String description, String def, String... modes) {
         super(name, description);
         this.modes = Arrays.asList(modes);
-        this.index = Math.max(0, this.modes.indexOf(def));
-        if (this.index < 0) this.index = 0;
+        int i = this.modes.indexOf(def);
+        this.defIndex = Math.max(0, i);
+        this.index = this.defIndex;
     }
 
     public String get() { return modes.get(index); }
@@ -27,6 +29,9 @@ public class ModeSetting extends Setting {
     }
 
     public List<String> getModes() { return modes; }
+
+    @Override
+    public void reset() { this.index = defIndex; }
 
     @Override
     public String getDisplayValue() { return get(); }
