@@ -17,7 +17,7 @@ import net.minecraft.util.math.Vec3d;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Screen-space ESP markers for finders, storage, holes, logout spots. */
+/** Screen-space ESP markers for finders, storage, holes, logout spots + combat overlays. */
 public final class WorldEspRenderer {
 
     private static boolean registered;
@@ -48,18 +48,10 @@ public final class WorldEspRenderer {
         boolean logoutOn = lo != null && lo.isEnabled();
 
         List<BaseFinder.Hit> hits = new ArrayList<>();
-        if (baseOn || farmOn) {
-            hits.addAll(BaseFinder.lastHits);
-        }
-        if (storageOn) {
-            hits.addAll(StorageESP.hits);
-        }
-        if (holeOn) {
-            hits.addAll(HoleESP.holes);
-        }
-        if (logoutOn) {
-            hits.addAll(LogoutSpots.espHits);
-        }
+        if (baseOn || farmOn) hits.addAll(BaseFinder.lastHits);
+        if (storageOn) hits.addAll(StorageESP.hits);
+        if (holeOn) hits.addAll(HoleESP.holes);
+        if (logoutOn) hits.addAll(LogoutSpots.espHits);
 
         Camera cam = mc.gameRenderer.getCamera();
         Vec3d camPos = cam.getCameraPos();
@@ -69,16 +61,13 @@ public final class WorldEspRenderer {
         float yaw = cam.getYaw();
         float pitch = cam.getPitch();
         float fov = 70f;
-        try {
-            fov = (float) mc.options.getFov().getValue();
-        } catch (Throwable ignored) {}
+        try { fov = (float) mc.options.getFov().getValue(); } catch (Throwable ignored) {}
 
         int drawn = 0;
         int maxDraw = 60;
 
         for (BaseFinder.Hit hit : hits) {
             if (drawn >= maxDraw) break;
-
             boolean isHole = hit.label.contains("Hole");
             boolean isLogout = hit.label.startsWith("LO:");
             boolean isStorage = isStorageLabel(hit.label);
@@ -119,19 +108,16 @@ public final class WorldEspRenderer {
                     : isHole ? Math.max(3, (int) (8 - dist / 8))
                     : Math.max(2, (int) (6 - dist / 20));
 
-            // Box marker
             ctx.fill(sx - size, sy - size, sx + size, sy + size, color);
             ctx.fill(sx - size - 1, sy - size - 1, sx + size + 1, sy - size, 0xAA000000);
             ctx.fill(sx - size - 1, sy + size, sx + size + 1, sy + size + 1, 0xAA000000);
             if (isLogout) {
-                // Corner brackets for logout spots
                 int b = size + 2;
                 ctx.fill(sx - b, sy - b, sx - b + 2, sy - b + 6, color);
                 ctx.fill(sx - b, sy - b, sx - b + 6, sy - b + 2, color);
                 ctx.fill(sx + b - 2, sy - b, sx + b, sy - b + 6, color);
                 ctx.fill(sx + b - 6, sy - b, sx + b, sy - b + 2, color);
             }
-
             if (dist < 64) {
                 String lab = hit.label.length() > 12 ? hit.label.substring(0, 12) : hit.label;
                 ctx.drawTextWithShadow(mc.textRenderer, lab, sx + size + 2, sy - 4, color);
@@ -139,7 +125,6 @@ public final class WorldEspRenderer {
             drawn++;
         }
 
-        // Nametags overlay for nearby players
         if (nt != null && nt.isEnabled() && nt instanceof Nametags tags) {
             double max = tags.range.get();
             for (PlayerEntity p : mc.world.getPlayers()) {
@@ -176,6 +161,10 @@ public final class WorldEspRenderer {
                 ctx.drawTextWithShadow(mc.textRenderer, label, sx - tw / 2, sy, color);
             }
         }
+
+        try { com.jay.hackclient.module.modules.PlayerBoxes.draw(ctx); } catch (Throwable ignored) {}
+        try { com.jay.hackclient.module.modules.PearlTrajectory.draw(ctx); } catch (Throwable ignored) {}
+        try { com.jay.hackclient.module.modules.CombatHUD.draw(ctx); } catch (Throwable ignored) {}
     }
 
     private static boolean isStorageLabel(String label) {
