@@ -22,6 +22,25 @@ public class Waypoints extends Module {
         addSetting(announce);
     }
 
+    /** Handle .jay wp ... — returns true if consumed. */
+    public static boolean tryCommand(String[] args) {
+        if (args == null || args.length < 2) return false;
+        String cmd = args[1].toLowerCase();
+        if (!cmd.equals("wp") && !cmd.equals("waypoint")) return false;
+
+        if (args.length < 3) {
+            msg("§f.jay wp save <name> | goto <name> | list | del <name>");
+            return true;
+        }
+        String sub = args[2].toLowerCase();
+        if (sub.equals("list")) { list(); return true; }
+        if (sub.equals("save") && args.length >= 4) { saveHere(args[3]); return true; }
+        if (sub.equals("goto") && args.length >= 4) { gotoWp(args[3]); return true; }
+        if ((sub.equals("del") || sub.equals("remove")) && args.length >= 4) { remove(args[3]); return true; }
+        msg("§f.jay wp save|goto|list|del <name>");
+        return true;
+    }
+
     public static void save(String name, BlockPos pos) {
         if (name == null || name.isBlank() || pos == null) return;
         String key = name.toLowerCase().trim().replace(' ', '_');
@@ -71,7 +90,6 @@ public class Waypoints extends Module {
         } else msg("§cNot found");
     }
 
-    /** Config line: wp.name=x,y,z */
     public static void loadFromConfig(String name, int x, int y, int z) {
         if (name == null || name.isBlank()) return;
         POINTS.put(name.toLowerCase(), new BlockPos(x, y, z));
