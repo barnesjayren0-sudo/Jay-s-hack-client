@@ -30,8 +30,9 @@ class LegitBridgeAssist : Module(
         val dz = Math.cos(yaw) * edgeCheck.get()
         val feet = p.blockPos
         val ahead = BlockPos.ofFloored(p.x + dx, p.y - 0.1, p.z + dz)
-        if (w.getBlockState(ahead.down()).isAir && w.getBlockState(feet.down()).isSolid) {
-            // Soft stop forward impulse
+        val aheadDownAir = w.getBlockState(ahead.down()).isAir
+        val feetSolid = !w.getBlockState(feet.down()).isAir
+        if (aheadDownAir && feetSolid) {
             val v = p.velocity
             p.setVelocity(v.x * 0.55, v.y, v.z * 0.55)
         }

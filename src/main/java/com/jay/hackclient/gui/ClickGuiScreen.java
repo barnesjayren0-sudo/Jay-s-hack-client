@@ -19,13 +19,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Floating category panels (Meteor-inspired) — positions saved to config. */
+/** Compact floating category panels — phone-friendly sizes. */
 public class ClickGuiScreen extends Screen {
 
-    private static final int PANEL_W = 118;
-    private static final int HEADER_H = 18;
-    private static final int ROW_H = 14;
-    private static final int MAX_VISIBLE = 12;
+    private static final int PANEL_W = 98;
+    private static final int HEADER_H = 14;
+    private static final int ROW_H = 11;
+    private static final int MAX_VISIBLE = 10;
 
     private Module.Category dragCat;
     private double dragOx, dragOy;
@@ -48,123 +48,97 @@ public class ClickGuiScreen extends Screen {
     }
 
     private float openAnim() {
-        float t = (System.currentTimeMillis() - openMs) / 160f;
+        float t = (System.currentTimeMillis() - openMs) / 180f;
         if (t >= 1f) return 1f;
-        return 1f - (1f - t) * (1f - t);
+        return t * t * (3f - 2f * t);
     }
 
-    private List<Module> mods(Module.Category cat) {
+    private List<Module> filtered(Module.Category cat) {
         List<Module> out = new ArrayList<>();
         if (JayHackClient.moduleManager == null) return out;
-        String q = search == null ? "" : search.toLowerCase(Locale.ROOT).trim();
-        for (Module m : JayHackClient.moduleManager.getByCategory(cat)) {
-            if (q.isEmpty()
-                    || m.getName().toLowerCase(Locale.ROOT).contains(q)
-                    || m.getDescription().toLowerCase(Locale.ROOT).contains(q)) {
-                out.add(m);
-            }
+        String q = search.toLowerCase(Locale.ROOT).trim();
+        for (Module m : JayHackClient.moduleManager.getModules()) {
+            if (m.getCategory() != cat) continue;
+            if (!q.isEmpty() && !m.getName().toLowerCase(Locale.ROOT).contains(q)) continue;
+            out.add(m);
         }
         return out;
-    }
-
-    private void panelBg(DrawContext ctx, int x, int y, int w, int h) {
-        ctx.fill(x + 2, y + 3, x + w + 2, y + h + 3, 0x55000000);
-        ctx.fill(x, y, x + w, y + h, GuiTheme.BG);
-        ctx.fill(x, y, x + w, y + 1, GuiTheme.BORDER);
-        ctx.fill(x, y + h - 1, x + w, y + h, GuiTheme.BORDER);
-        ctx.fill(x, y, x + 1, y + h, GuiTheme.BORDER);
-        ctx.fill(x + w - 1, y, x + w, y + h, GuiTheme.BORDER);
-        ctx.fill(x + 1, y + 1, x + w - 1, y + 2, GuiTheme.ACCENT);
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         ensurePositions();
         float anim = openAnim();
+        int overlay = GuiTheme.withAlpha(0x000000, (int) (0x55 * anim));
+        ctx.fill(0, 0, width, height, overlay);
 
-        ctx.fill(0, 0, width, height, GuiTheme.withAlpha(0x000000, (int) (0x55 * anim)));
-
-        int barH = 22;
+        int barH = 16;
         ctx.fill(0, 0, width, barH, GuiTheme.PANEL);
-        ctx.fill(0, barH, width, barH + 1, GuiTheme.BORDER);
-        JayLogo.draw(ctx, 6, 3, 16);
-        ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 26, 7, GuiTheme.TEXT);
+        try { JayLogo.draw(ctx, 4, 2, 12); } catch (Throwable ignored) {}
+        ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 20, 4, GuiTheme.TEXT);
 
-        int sx = width / 2 - 70;
-        int sw = 140;
-        ctx.fill(sx, 3, sx + sw, 19, GuiTheme.PANEL2);
-        if (searchFocused) ctx.fill(sx, 18, sx + sw, 19, GuiTheme.ACCENT);
-        String ph = search.isEmpty() && !searchFocused ? "§8Search..." : "§f" + search + (searchFocused ? "§7|" : "");
-        ctx.drawTextWithShadow(textRenderer, ph, sx + 6, 7, GuiTheme.TEXT);
+        int sx = width / 2 - 50;
+        int sw = 100;
+        ctx.fill(sx, 2, sx + sw, 14, GuiTheme.PANEL2);
+        String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search" : search);
+        ctx.drawTextWithShadow(textRenderer, st, sx + 4, 4, GuiTheme.TEXT);
 
-        String[] profiles = {"anarchy", "sword", "scout", "nethpot"};
-        int px = width - 8;
-        for (int i = profiles.length - 1; i >= 0; i--) {
-            String p = profiles[i];
-            int pw = textRenderer.getWidth(p) + 10;
-            px -= pw + 3;
-            boolean on = p.equalsIgnoreCase(ClientSettings.lastProfile);
-            ctx.fill(px, 4, px + pw, 18, on ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
-            if (on) ctx.fill(px, 17, px + pw, 18, GuiTheme.ACCENT);
-            ctx.drawTextWithShadow(textRenderer, p, px + 5, 7, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
+        String[] chips = {"sword", "anarchy", "scout", "builder"};
+        int cx = width - 8;
+        for (int i = chips.length - 1; i >= 0; i--) {
+            String c = chips[i];
+            int pw = textRenderer.getWidth(c) + 8;
+            cx -= pw + 3;
+            boolean on = c.equalsIgnoreCase(ClientSettings.lastProfile);
+            ctx.fill(cx, 2, cx + pw, 14, on ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
+            ctx.drawTextWithShadow(textRenderer, c, cx + 4, 4, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
         }
 
-        int yOff = (int) ((1f - anim) * 8);
         for (Module.Category cat : Module.Category.values()) {
-            List<Module> list = mods(cat);
-            if (list.isEmpty() && !search.isBlank()) continue;
-
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0];
-            int y = (int) pos[1] + yOff;
-
-            int visible = Math.min(MAX_VISIBLE, Math.max(1, list.size()));
-            int bodyH = visible * ROW_H + 4;
+            int y = (int) pos[1];
+            List<Module> list = filtered(cat);
+            int vis = Math.min(MAX_VISIBLE, Math.max(1, list.size()));
+            int bodyH = vis * ROW_H + 2;
             int h = HEADER_H + bodyH;
 
-            panelBg(ctx, x, y, PANEL_W, h);
+            ctx.fill(x + 2, y + 2, x + PANEL_W + 2, y + h + 2, GuiTheme.SHADOW);
+            ctx.fill(x, y, x + PANEL_W, y + h, GuiTheme.BG);
+            ctx.fill(x + 1, y + 1, x + PANEL_W - 1, y + HEADER_H, GuiTheme.PANEL);
 
-            ctx.fill(x + 1, y + 2, x + PANEL_W - 1, y + HEADER_H, GuiTheme.PANEL);
-            ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 6, y + 5, GuiTheme.ACCENT);
+            String title = cat.name();
+            ctx.drawTextWithShadow(textRenderer, title, x + 4, y + 3, cat.color);
             String cstr = String.valueOf(list.size());
             ctx.drawTextWithShadow(textRenderer, cstr,
-                    x + PANEL_W - 6 - textRenderer.getWidth(cstr), y + 5, GuiTheme.TEXT_DIM);
+                    x + PANEL_W - 4 - textRenderer.getWidth(cstr), y + 3, GuiTheme.TEXT_DIM);
 
             int sc = scroll.getOrDefault(cat, 0);
-            int row = 0;
-            for (int i = 0; i < list.size(); i++) {
-                if (i < sc) continue;
-                if (row >= MAX_VISIBLE) break;
-                Module m = list.get(i);
-                int ry = y + HEADER_H + 2 + row * ROW_H;
-                boolean hover = mouseX >= x && mouseX < x + PANEL_W && mouseY >= ry && mouseY < ry + ROW_H;
+            if (sc > Math.max(0, list.size() - MAX_VISIBLE)) sc = Math.max(0, list.size() - MAX_VISIBLE);
+            scroll.put(cat, sc);
 
+            for (int row = 0; row < vis && sc + row < list.size(); row++) {
+                Module m = list.get(sc + row);
+                int ry = y + HEADER_H + 1 + row * ROW_H;
+                boolean hover = mouseX >= x && mouseX < x + PANEL_W && mouseY >= ry && mouseY < ry + ROW_H;
                 if (m.isEnabled()) {
                     ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_ON);
-                    ctx.fill(x + 1, ry, x + 2, ry + ROW_H, GuiTheme.ACCENT);
                 } else if (hover) {
                     ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_HOVER);
                 }
-
-                int nameColor = m.isEnabled() ? GuiTheme.TEXT : 0xFFB0B6C4;
-                ctx.drawTextWithShadow(textRenderer, m.getName(), x + 6, ry + 3, nameColor);
-
-                String key = m.getKeyLabel();
-                if (!key.isEmpty()) {
+                int nameColor = m.isEnabled() ? GuiTheme.ACCENT : GuiTheme.TEXT;
+                ctx.drawTextWithShadow(textRenderer, m.getName(), x + 4, ry + 2, nameColor);
+                if (m.getKeyBind() > 0) {
+                    String key = m.getKeyLabel();
+                    if (key.length() > 4) key = key.substring(0, 4);
                     ctx.drawTextWithShadow(textRenderer, key,
-                            x + PANEL_W - 6 - textRenderer.getWidth(key), ry + 3, GuiTheme.TEXT_DIM);
+                            x + PANEL_W - 4 - textRenderer.getWidth(key), ry + 2, GuiTheme.TEXT_DIM);
                 }
-                row++;
             }
         }
-
-        ctx.drawTextWithShadow(textRenderer, "§8LMB toggle · RMB settings · drag headers (saved)",
-                8, height - 12, GuiTheme.TEXT_DIM);
-
-        super.render(ctx, mouseX, mouseY, delta);
     }
 
-    private Module.Category headerAt(double mx, double my) {
+    private Module.Category hitHeader(double mx, double my) {
         for (Module.Category cat : Module.Category.values()) {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
@@ -173,156 +147,127 @@ public class ClickGuiScreen extends Screen {
         return null;
     }
 
-    private Module moduleAt(double mx, double my) {
-        for (Module.Category cat : Module.Category.values()) {
-            List<Module> list = mods(cat);
-            float[] pos = GuiLayout.get(cat);
-            int x = (int) pos[0], y = (int) pos[1];
-            int sc = scroll.getOrDefault(cat, 0);
-            int row = 0;
-            for (int i = 0; i < list.size(); i++) {
-                if (i < sc) continue;
-                if (row >= MAX_VISIBLE) break;
-                int ry = y + HEADER_H + 2 + row * ROW_H;
-                if (mx >= x && mx < x + PANEL_W && my >= ry && my < ry + ROW_H) {
-                    return list.get(i);
-                }
-                row++;
-            }
-        }
-        return null;
-    }
-
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        double mx = click.x();
-        double my = click.y();
+        double mx = click.x(), my = click.y();
         int button = click.button();
         ensurePositions();
 
-        int sx = width / 2 - 70;
-        if (button == 0 && mx >= sx && mx <= sx + 140 && my >= 3 && my <= 19) {
-            searchFocused = true;
+        if (button == 0 && my < 16) {
+            int sx = width / 2 - 50;
+            if (mx >= sx && mx <= sx + 100) {
+                searchFocused = true;
+                return true;
+            }
+            String[] chips = {"sword", "anarchy", "scout", "builder"};
+            int cx = width - 8;
+            for (int i = chips.length - 1; i >= 0; i--) {
+                String c = chips[i];
+                int pw = textRenderer.getWidth(c) + 8;
+                cx -= pw + 3;
+                if (mx >= cx && mx <= cx + pw) {
+                    applyChip(c);
+                    return true;
+                }
+            }
+            searchFocused = false;
+        }
+
+        Module.Category header = hitHeader(mx, my);
+        if (header != null && button == 0) {
+            dragCat = header;
+            float[] pos = GuiLayout.get(header);
+            dragOx = mx - pos[0];
+            dragOy = my - pos[1];
             return true;
         }
 
-        if (button == 0 && my >= 4 && my <= 18) {
-            String[] profiles = {"anarchy", "sword", "scout", "nethpot"};
-            int px = width - 8;
-            for (int i = profiles.length - 1; i >= 0; i--) {
-                String p = profiles[i];
-                int pw = textRenderer.getWidth(p) + 10;
-                px -= pw + 3;
-                if (mx >= px && mx < px + pw) {
-                    applyProfile(p);
+        for (Module.Category cat : Module.Category.values()) {
+            float[] pos = GuiLayout.get(cat);
+            int x = (int) pos[0], y = (int) pos[1];
+            List<Module> list = filtered(cat);
+            int sc = scroll.getOrDefault(cat, 0);
+            int vis = Math.min(MAX_VISIBLE, Math.max(1, list.size()));
+            for (int row = 0; row < vis && sc + row < list.size(); row++) {
+                Module m = list.get(sc + row);
+                int ry = y + HEADER_H + 1 + row * ROW_H;
+                if (mx >= x && mx < x + PANEL_W && my >= ry && my < ry + ROW_H) {
+                    if (button == 0) {
+                        m.toggle();
+                        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+                    } else if (button == 1) {
+                        client.setScreen(new SettingsScreen(this, m));
+                    }
                     return true;
                 }
             }
         }
-
-        if (button == 0) {
-            Module.Category head = headerAt(mx, my);
-            if (head != null) {
-                dragCat = head;
-                float[] pos = GuiLayout.get(head);
-                dragOx = mx - pos[0];
-                dragOy = my - pos[1];
-                searchFocused = false;
-                return true;
-            }
-        }
-
-        Module m = moduleAt(mx, my);
-        if (m != null) {
-            if (button == 1) {
-                if (client != null) client.setScreen(new SettingsScreen(this, m));
-                return true;
-            }
-            if (button == 0) {
-                if (JayHackClient.moduleManager != null && JayHackClient.moduleManager.isFrozen()) {
-                    if (client != null && client.player != null) {
-                        client.player.sendMessage(Text.literal("§8[§bJay§8] §cUnpanic first"), false);
-                    }
-                } else {
-                    m.toggle();
-                }
-                return true;
-            }
-        }
-
-        searchFocused = false;
         return super.mouseClicked(click, doubled);
     }
 
+    private void applyChip(String name) {
+        switch (name.toLowerCase(Locale.ROOT)) {
+            case "sword" -> LegitProfile.applySword();
+            case "anarchy" -> LegitProfile.applyAnarchy();
+            case "scout" -> LegitProfile.applyScout();
+            case "builder" -> LegitProfile.applyBuilder();
+            default -> {}
+        }
+        ClientSettings.lastProfile = name.toLowerCase(Locale.ROOT);
+        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+    }
+
     @Override
-    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
+    public boolean mouseDragged(Click click, double dx, double dy) {
         if (dragCat != null) {
             float[] pos = GuiLayout.get(dragCat);
-            pos[0] = (float) (click.x() - dragOx);
-            pos[1] = (float) (click.y() - dragOy);
-            pos[0] = Math.max(0, Math.min(width - PANEL_W, pos[0]));
-            pos[1] = Math.max(24, Math.min(height - 40, pos[1]));
+            pos[0] = (float) Math.max(0, Math.min(width - PANEL_W, click.x() - dragOx));
+            pos[1] = (float) Math.max(16, Math.min(height - 40, click.y() - dragOy));
+            GuiLayout.set(dragCat, pos[0], pos[1]);
             return true;
         }
-        return super.mouseDragged(click, deltaX, deltaY);
+        return super.mouseDragged(click, dx, dy);
     }
 
     @Override
     public boolean mouseReleased(Click click) {
-        if (dragCat != null && JayHackClient.configManager != null) {
-            JayHackClient.configManager.save();
+        if (dragCat != null) {
+            dragCat = null;
+            if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+            return true;
         }
-        dragCat = null;
         return super.mouseReleased(click);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double hAmount, double vAmount) {
-        ensurePositions();
+    public boolean mouseScrolled(double mx, double my, double h, double v) {
         for (Module.Category cat : Module.Category.values()) {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
-            List<Module> list = mods(cat);
-            int h = HEADER_H + Math.min(MAX_VISIBLE, Math.max(1, list.size())) * ROW_H + 4;
-            if (mouseX >= x && mouseX < x + PANEL_W && mouseY >= y && mouseY < y + h) {
-                int sc = scroll.getOrDefault(cat, 0);
-                int max = Math.max(0, list.size() - MAX_VISIBLE);
-                if (vAmount > 0) sc = Math.max(0, sc - 1);
-                else if (vAmount < 0) sc = Math.min(max, sc + 1);
+            List<Module> list = filtered(cat);
+            int body = Math.min(MAX_VISIBLE, Math.max(1, list.size())) * ROW_H + HEADER_H + 2;
+            if (mx >= x && mx < x + PANEL_W && my >= y && my < y + body) {
+                int sc = scroll.getOrDefault(cat, 0) - (int) Math.signum(v);
+                sc = Math.max(0, Math.min(Math.max(0, list.size() - MAX_VISIBLE), sc));
                 scroll.put(cat, sc);
                 return true;
             }
         }
-        return true;
-    }
-
-    private void applyProfile(String name) {
-        switch (name.toLowerCase(Locale.ROOT)) {
-            case "sword" -> LegitProfile.applySword();
-            case "scout" -> LegitProfile.applyScout();
-            case "nethpot" -> LegitProfile.applyNethpot();
-            case "anarchy" -> LegitProfile.applyAnarchy();
-            default -> { return; }
-        }
-        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
-        if (client != null && client.player != null) {
-            client.player.sendMessage(Text.literal("§8[§bJay§8] §aProfile §f" + name), false);
-        }
+        return super.mouseScrolled(mx, my, h, v);
     }
 
     @Override
     public boolean keyPressed(KeyInput input) {
         int key = input.key();
-        if (key == GLFW.GLFW_KEY_ESCAPE || (key == GLFW.GLFW_KEY_RIGHT_SHIFT && !searchFocused)) {
-            close();
-            return true;
+        if (searchFocused) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) { searchFocused = false; return true; }
+            if (key == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
+                search = search.substring(0, search.length() - 1);
+                return true;
+            }
         }
-        if (searchFocused && key == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
-            search = search.substring(0, search.length() - 1);
-            return true;
-        }
-        if (searchFocused && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
-            searchFocused = false;
+        if (key == GLFW.GLFW_KEY_ESCAPE) {
+            client.setScreen(null);
             return true;
         }
         return super.keyPressed(input);
@@ -331,9 +276,9 @@ public class ClickGuiScreen extends Screen {
     @Override
     public boolean charTyped(CharInput input) {
         if (searchFocused) {
-            int cp = input.codepoint();
-            if (cp >= 32 && cp < 127 && search.length() < 24) {
-                search += (char) cp;
+            char c = (char) input.codepoint();
+            if (c >= 32 && c < 127 && search.length() < 24) {
+                search += c;
                 return true;
             }
         }
