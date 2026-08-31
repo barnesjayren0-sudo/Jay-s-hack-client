@@ -23,20 +23,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * ClickGUI — scale 0.85–1.25, ★ pin row, category collapse, hold-to-bind,
- * search matches module name/description/settings.
- */
+/** ClickGUI — scale chip, ★ pins, collapse, hold-to-bind, search settings. */
 public class ClickGuiScreen extends Screen {
 
     private static final int PANEL_W = 100;
     private static final int HEADER_H = 14;
-    private static final int ROW_H = 13;
+    private static final int BASE_ROW = 13;
     private static final int MAX_VISIBLE = 10;
     private static final int SIDE_W = 120;
     private static final long HOLD_MS = 450;
 
     private Module.Category dragCat;
+    private boolean panelDragged;
     private double dragOx, dragOy;
     private final Map<Module.Category, Integer> scroll = new EnumMap<>(Module.Category.class);
     private final Set<Module.Category> collapsed = EnumSet.noneOf(Module.Category.class);
@@ -58,8 +56,16 @@ public class ClickGuiScreen extends Screen {
         super(Text.literal("JAY CLIENT"));
     }
 
-    private float scale() {
+    private float guiScale() {
         return Math.max(0.85f, Math.min(1.25f, ClientSettings.guiScale));
+    }
+
+    private int rowH() {
+        return Math.round(BASE_ROW * guiScale());
+    }
+
+    private int panelW() {
+        return Math.round(PANEL_W * guiScale());
     }
 
     private void ensurePositions() {
@@ -67,23 +73,14 @@ public class ClickGuiScreen extends Screen {
         for (Module.Category cat : Module.Category.values()) scroll.putIfAbsent(cat, 0);
     }
 
-    private float openAnim() {
-        float speed = ThemeEngine.animSpeed;
-        float t = (System.currentTimeMillis() - openMs) / (180f / Math.max(0.4f, speed));
-        if (t >= 1f) return 1f;
-        return t * t * (3f - 2f * t);
-    }
-
     private boolean matchesSearch(Module m, String q) {
         if (q.isEmpty()) return true;
         if (m.getName().toLowerCase(Locale.ROOT).contains(q)) return true;
-        if (m.getDescription().toLowerCase(Locale.ROOT).contains(q)) return true;
+        if (m.getDescription() != null && m.getDescription().toLowerCase(Locale.ROOT).contains(q)) return true;
         try {
-            for (Setting<?> s : m.getSettings()) {
-                if (s.getName() != null && s.getName().toLowerCase(Locale.ROOT).contains(q))
-                    return true;
-                if (s.getDescription() != null && s.getDescription().toLowerCase(Locale.ROOT).contains(q))
-                    return true;
+            for (Setting s : m.getSettings()) {
+                if (s.getName() != null && s.getName().toLowerCase(Locale.ROOT).contains(q)) return true;
+                if (s.getDescription() != null && s.getDescription().toLowerCase(Locale.ROOT).contains(q)) return true;
             }
         } catch (Throwable ignored) {}
         return false;
@@ -118,43 +115,31 @@ public class ClickGuiScreen extends Screen {
             if (ClientSettings.isFavorite(m.getName())) out.add(m);
         }
         out.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-        if (out.size() > 6) return out.subList(0, 6);
-        return out;
+        return out.size() > 6 ? out.subList(0, 6) : out;
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         ensurePositions();
-        float anim = openAnim();
-        float sc = scale();
-
-        ctx.fill(0, 0, width, height, GuiTheme.withAlpha(0x000000, (int) (0x50 * anim)));
-
-        // Scale content from top-left for mobile readability
-        ctx.getMatrices().pushMatrix();
-        ctx.getMatrices().scale(sc, sc);
-
-        int logicalW = (int) (width / sc);
-        int logicalH = (int) (height / sc);
-        int mx = (int) (mouseX / sc);
-        int my = (int) (mouseY / sc);
-
+        int pw = panelW();
+        int rh = rowH();
         int barH = 18;
         int pinH = pinned().isEmpty() ? 0 : 16;
         int top = barH + pinH;
 
-        ctx.fill(0, 0, logicalW, barH, GuiTheme.PANEL);
+        ctx.fill(0, 0, width, height, GuiTheme.withAlpha(0x000000, 0x50));
+        ctx.fill(0, 0, width, barH, GuiTheme.PANEL);
         try { JayLogo.draw(ctx, 3, 3, 12); } catch (Throwable ignored) {}
         ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 18, 5, GuiTheme.TEXT);
 
-        // Scale chip
-        String scaleLabel = String.format(Locale.ROOT, "%.2fx", sc);
-        int scaleW = textRenderer.getWidth(scaleLabel) + 16;
-        int scaleX = logicalW - scaleW - 110;
+        // Scale chip — tap to cycle 0.85 → 1.25
+        String scaleLabel = String.format(Locale.ROOT, "%.2fx", guiScale());
+        int scaleW = textRenderer.getWidth(scaleLabel) + 12;
+        int scaleX = width - scaleW - 112;
         ctx.fill(scaleX, 3, scaleX + scaleW, 15, GuiTheme.PANEL2);
         ctx.drawTextWithShadow(textRenderer, scaleLabel, scaleX + 4, 5, GuiTheme.ACCENT);
 
-        int sx = Math.max(100, logicalW / 2 - 90);
+        int sx = Math.max(100, width / 2 - 90);
         ctx.fill(sx, 3, sx + 90, 15, GuiTheme.PANEL2);
         String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search" : search);
         ctx.drawTextWithShadow(textRenderer, st, sx + 4, 5, GuiTheme.TEXT);
@@ -171,7 +156,7 @@ public class ClickGuiScreen extends Screen {
         }
 
         String[] tools = {"Prof", "Keys", "HUD", "Dbg", "Theme"};
-        int tx = logicalW - 6;
+        int tx = width - 6;
         for (int i = tools.length - 1; i >= 0; i--) {
             int tw = textRenderer.getWidth(tools[i]) + 8;
             tx -= tw + 2;
@@ -179,22 +164,19 @@ public class ClickGuiScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, tools[i], tx + 4, 5, GuiTheme.TEXT_DIM);
         }
 
-        // Favorites pin row
         List<Module> pins = pinned();
         if (!pins.isEmpty()) {
-            ctx.fill(0, barH, logicalW, barH + pinH, GuiTheme.PANEL2);
+            ctx.fill(0, barH, width, barH + pinH, GuiTheme.PANEL2);
             int px = 4;
             ctx.drawTextWithShadow(textRenderer, "§e★", px, barH + 4, GuiTheme.TEXT);
             px += 12;
             for (Module m : pins) {
-                String label = m.getName();
-                int pw = textRenderer.getWidth(label) + 10;
-                ctx.fill(px, barH + 2, px + pw, barH + 14,
-                        m.isEnabled() ? GuiTheme.ROW_ON : GuiTheme.BG);
-                ctx.drawTextWithShadow(textRenderer, label, px + 5, barH + 4,
+                int bw = textRenderer.getWidth(m.getName()) + 10;
+                ctx.fill(px, barH + 2, px + bw, barH + 14, m.isEnabled() ? GuiTheme.ROW_ON : GuiTheme.BG);
+                ctx.drawTextWithShadow(textRenderer, m.getName(), px + 5, barH + 4,
                         m.isEnabled() ? GuiTheme.ACCENT : GuiTheme.TEXT);
-                px += pw + 3;
-                if (px > logicalW - 20) break;
+                px += bw + 3;
+                if (px > width - 20) break;
             }
         }
 
@@ -204,32 +186,30 @@ public class ClickGuiScreen extends Screen {
                     8, top + 2, GuiTheme.TEXT);
         }
 
-        if (logicalW > 400) {
+        if (width > 400) {
             int px = 8;
             for (PresetManager.Preset p : PresetManager.Preset.values()) {
-                int pw = textRenderer.getWidth(p.display) + 8;
-                ctx.fill(px, top + 2, px + pw, top + 13, GuiTheme.PANEL2);
+                int bw = textRenderer.getWidth(p.display) + 8;
+                ctx.fill(px, top + 2, px + bw, top + 13, GuiTheme.PANEL2);
                 ctx.drawTextWithShadow(textRenderer, p.display, px + 4, top + 4, GuiTheme.ACCENT);
-                px += pw + 3;
+                px += bw + 3;
             }
         }
 
         for (Module.Category cat : Module.Category.values()) {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0];
-            int y = (int) pos[1];
-            if (y < top) y = top + 2;
+            int y = Math.max(top + 2, (int) pos[1]);
             List<Module> list = filtered(cat);
             boolean fold = collapsed.contains(cat);
-            int vis = fold ? 0 : Math.min(MAX_VISIBLE, Math.max(0, list.size()));
-            if (!fold && list.isEmpty()) vis = 0;
-            int h = HEADER_H + vis * ROW_H + 2;
+            int vis = fold ? 0 : Math.min(MAX_VISIBLE, list.size());
+            int h = HEADER_H + vis * rh + 2;
 
-            ctx.fill(x + 2, y + 2, x + PANEL_W + 2, y + h + 2, GuiTheme.SHADOW);
-            ctx.fill(x, y, x + PANEL_W, y + h, GuiTheme.BG);
-            ctx.fill(x + 1, y + 1, x + PANEL_W - 1, y + HEADER_H, GuiTheme.PANEL);
-            String foldMark = fold ? "§8+ " : "§8- ";
-            ctx.drawTextWithShadow(textRenderer, foldMark + cat.displayName, x + 4, y + 3, categoryColor(cat));
+            ctx.fill(x + 2, y + 2, x + pw + 2, y + h + 2, GuiTheme.SHADOW);
+            ctx.fill(x, y, x + pw, y + h, GuiTheme.BG);
+            ctx.fill(x + 1, y + 1, x + pw - 1, y + HEADER_H, GuiTheme.PANEL);
+            String mark = fold ? "§8+ " : "§8- ";
+            ctx.drawTextWithShadow(textRenderer, mark + cat.displayName, x + 4, y + 3, categoryColor(cat));
 
             if (fold) continue;
 
@@ -239,10 +219,10 @@ public class ClickGuiScreen extends Screen {
 
             for (int row = 0; row < vis && scrl + row < list.size(); row++) {
                 Module m = list.get(scrl + row);
-                int ry = y + HEADER_H + 1 + row * ROW_H;
-                boolean hover = mx >= x && mx < x + PANEL_W && my >= ry && my < ry + ROW_H;
-                if (m.isEnabled()) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_ON);
-                else if (hover || m == selected) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_HOVER);
+                int ry = y + HEADER_H + 1 + row * rh;
+                boolean hover = mouseX >= x && mouseX < x + pw && mouseY >= ry && mouseY < ry + rh;
+                if (m.isEnabled()) ctx.fill(x + 1, ry, x + pw - 1, ry + rh, GuiTheme.ROW_ON);
+                else if (hover || m == selected) ctx.fill(x + 1, ry, x + pw - 1, ry + rh, GuiTheme.ROW_HOVER);
                 String star = ClientSettings.isFavorite(m.getName()) ? "§e★ " : "";
                 ctx.drawTextWithShadow(textRenderer, star + m.getName(), x + 3, ry + 2,
                         m.isEnabled() ? GuiTheme.ACCENT : GuiTheme.TEXT);
@@ -250,13 +230,14 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (selected != null) {
-            int spx = logicalW - SIDE_W - 6;
+            int spx = width - SIDE_W - 6;
             int spy = top + 4;
             int sph = 100;
             ctx.fill(spx, spy, spx + SIDE_W, spy + sph, GuiTheme.BG);
             ctx.drawTextWithShadow(textRenderer, selected.getName(), spx + 4, spy + 4, GuiTheme.ACCENT);
             int dy = spy + 16;
-            for (String line : wrap(selected.getDescription(), SIDE_W - 10)) {
+            String desc = selected.getDescription() == null ? "" : selected.getDescription();
+            for (String line : wrap(desc, SIDE_W - 10)) {
                 ctx.drawTextWithShadow(textRenderer, "§7" + line, spx + 4, dy, GuiTheme.TEXT_DIM);
                 dy += 9;
                 if (dy > spy + sph - 28) break;
@@ -264,8 +245,6 @@ public class ClickGuiScreen extends Screen {
             ctx.fill(spx + 4, spy + sph - 18, spx + SIDE_W - 4, spy + sph - 4, GuiTheme.PANEL2);
             ctx.drawTextWithShadow(textRenderer, "Settings", spx + 8, spy + sph - 14, GuiTheme.TEXT);
         }
-
-        ctx.getMatrices().popMatrix();
     }
 
     private List<String> wrap(String s, int maxPx) {
@@ -295,36 +274,33 @@ public class ClickGuiScreen extends Screen {
         };
     }
 
-    private double lx(double mx) { return mx / scale(); }
-    private double ly(double my) { return my / scale(); }
-
     private Module.Category hitHeader(double mx, double my) {
+        int pw = panelW();
         for (Module.Category cat : Module.Category.values()) {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
-            if (mx >= x && mx < x + PANEL_W && my >= y && my < y + HEADER_H) return cat;
+            if (mx >= x && mx < x + pw && my >= y && my < y + HEADER_H) return cat;
         }
         return null;
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        double mx = lx(click.x()), my = ly(click.y());
+        double mx = click.x(), my = click.y();
         int button = click.button();
         ensurePositions();
-        float sc = scale();
-        int logicalW = (int) (width / sc);
         int barH = 18;
         int pinH = pinned().isEmpty() ? 0 : 16;
         int top = barH + pinH;
+        int pw = panelW();
+        int rh = rowH();
 
         if (bindingMode) return true;
 
-        // Scale adjust: left of scale label = decrease, right = increase
         if (button == 0 && my < barH) {
-            String scaleLabel = String.format(Locale.ROOT, "%.2fx", sc);
-            int scaleW = textRenderer.getWidth(scaleLabel) + 16;
-            int scaleX = logicalW - scaleW - 110;
+            String scaleLabel = String.format(Locale.ROOT, "%.2fx", guiScale());
+            int scaleW = textRenderer.getWidth(scaleLabel) + 12;
+            int scaleX = width - scaleW - 112;
             if (mx >= scaleX && mx <= scaleX + scaleW) {
                 float next = ClientSettings.guiScale + 0.05f;
                 if (next > 1.25f) next = 0.85f;
@@ -333,7 +309,7 @@ public class ClickGuiScreen extends Screen {
                 return true;
             }
 
-            int sx = Math.max(100, logicalW / 2 - 90);
+            int sx = Math.max(100, width / 2 - 90);
             if (mx >= sx && mx <= sx + 90) { searchFocused = true; return true; }
 
             String[] sorts = {"Name", "On", "★"};
@@ -346,7 +322,7 @@ public class ClickGuiScreen extends Screen {
             }
 
             String[] tools = {"Prof", "Keys", "HUD", "Dbg", "Theme"};
-            int tx = logicalW - 6;
+            int tx = width - 6;
             for (int i = tools.length - 1; i >= 0; i--) {
                 int tw = textRenderer.getWidth(tools[i]) + 8;
                 tx -= tw + 2;
@@ -367,34 +343,33 @@ public class ClickGuiScreen extends Screen {
             searchFocused = false;
         }
 
-        // Pin row clicks
         if (button == 0 && pinH > 0 && my >= barH && my < barH + pinH) {
             int px = 16;
             for (Module m : pinned()) {
-                int pw = textRenderer.getWidth(m.getName()) + 10;
-                if (mx >= px && mx <= px + pw) {
+                int bw = textRenderer.getWidth(m.getName()) + 10;
+                if (mx >= px && mx <= px + bw) {
                     m.toggle();
                     if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                     return true;
                 }
-                px += pw + 3;
+                px += bw + 3;
             }
         }
 
-        if (button == 0 && logicalW > 400 && my >= top + 2 && my <= top + 13) {
+        if (button == 0 && width > 400 && my >= top + 2 && my <= top + 13) {
             int px = 8;
             for (PresetManager.Preset p : PresetManager.Preset.values()) {
-                int pw = textRenderer.getWidth(p.display) + 8;
-                if (mx >= px && mx <= px + pw) {
+                int bw = textRenderer.getWidth(p.display) + 8;
+                if (mx >= px && mx <= px + bw) {
                     PresetManager.apply(p);
                     return true;
                 }
-                px += pw + 3;
+                px += bw + 3;
             }
         }
 
         if (selected != null && button == 0) {
-            int spx = logicalW - SIDE_W - 6;
+            int spx = width - SIDE_W - 6;
             int spy = top + 4;
             int sph = 100;
             if (mx >= spx + 4 && mx <= spx + SIDE_W - 4 && my >= spy + sph - 18 && my <= spy + sph - 4) {
@@ -405,18 +380,11 @@ public class ClickGuiScreen extends Screen {
 
         Module.Category header = hitHeader(mx, my);
         if (header != null && button == 0) {
-            // Shift-click or double-ish: collapse; else drag
-            if (doubled) {
-                if (collapsed.contains(header)) collapsed.remove(header);
-                else collapsed.add(header);
-                return true;
-            }
-            // Single click header toggles collapse when not dragging far
             dragCat = header;
+            panelDragged = false;
             float[] pos = GuiLayout.get(header);
             dragOx = mx - pos[0];
             dragOy = my - pos[1];
-            // Toggle collapse on short click — handled in mouseReleased if no drag
             return true;
         }
 
@@ -426,11 +394,11 @@ public class ClickGuiScreen extends Screen {
             int x = (int) pos[0], y = (int) pos[1];
             List<Module> list = filtered(cat);
             int scrl = scroll.getOrDefault(cat, 0);
-            int vis = Math.min(MAX_VISIBLE, Math.max(0, list.size()));
+            int vis = Math.min(MAX_VISIBLE, list.size());
             for (int row = 0; row < vis && scrl + row < list.size(); row++) {
                 Module m = list.get(scrl + row);
-                int ry = y + HEADER_H + 1 + row * ROW_H;
-                if (mx >= x && mx < x + PANEL_W && my >= ry && my < ry + ROW_H) {
+                int ry = y + HEADER_H + 1 + row * rh;
+                if (mx >= x && mx < x + pw && my >= ry && my < ry + rh) {
                     if (button == 0) {
                         holdModule = m;
                         holdStart = System.currentTimeMillis();
@@ -452,11 +420,10 @@ public class ClickGuiScreen extends Screen {
     @Override
     public boolean mouseDragged(Click click, double dx, double dy) {
         if (dragCat != null) {
-            double mx = lx(click.x()), my = ly(click.y());
-            float nx = (float) Math.max(0, Math.min((width / scale()) - PANEL_W, mx - dragOx));
-            float ny = (float) Math.max(34, Math.min((height / scale()) - 40, my - dragOy));
+            float nx = (float) Math.max(0, Math.min(width - panelW(), click.x() - dragOx));
+            float ny = (float) Math.max(34, Math.min(height - 40, click.y() - dragOy));
             GuiLayout.set(dragCat, nx, ny);
-            // Cancel collapse toggle if dragged
+            panelDragged = true;
             holdModule = null;
             return true;
         }
@@ -479,13 +446,14 @@ public class ClickGuiScreen extends Screen {
             return true;
         }
         if (dragCat != null) {
-            // If almost no movement, treat as collapse toggle
             Module.Category c = dragCat;
             dragCat = null;
             if (JayHackClient.configManager != null) JayHackClient.configManager.save();
-            // Double-tap style: also allow middle path — single click collapses
-            if (collapsed.contains(c)) collapsed.remove(c);
-            else collapsed.add(c);
+            if (!panelDragged) {
+                if (collapsed.contains(c)) collapsed.remove(c);
+                else collapsed.add(c);
+            }
+            panelDragged = false;
             return true;
         }
         return super.mouseReleased(click);
@@ -493,15 +461,15 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double h, double v) {
-        mx = lx(mx);
-        my = ly(my);
+        int pw = panelW();
+        int rh = rowH();
         for (Module.Category cat : Module.Category.values()) {
             if (collapsed.contains(cat)) continue;
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
             List<Module> list = filtered(cat);
-            int body = HEADER_H + Math.min(MAX_VISIBLE, Math.max(1, list.size())) * ROW_H + 2;
-            if (mx >= x && mx < x + PANEL_W && my >= y && my < y + body) {
+            int body = HEADER_H + Math.min(MAX_VISIBLE, Math.max(1, list.size())) * rh + 2;
+            if (mx >= x && mx < x + pw && my >= y && my < y + body) {
                 int scrl = scroll.getOrDefault(cat, 0) - (int) Math.signum(v);
                 scrl = Math.max(0, Math.min(Math.max(0, list.size() - MAX_VISIBLE), scrl));
                 scroll.put(cat, scrl);
