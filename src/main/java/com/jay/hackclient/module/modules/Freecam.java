@@ -10,7 +10,7 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * Detached free camera — body stays put; camera flies with WASD + Space/Shift.
- * Default bind: 2 (US layout @ is Shift+2).
+ * Default bind: F11.
  */
 public class Freecam extends Module {
 
@@ -24,7 +24,7 @@ public class Freecam extends Module {
 
     public Freecam() {
         super("Freecam", "Fly camera without moving your body", Category.RENDER);
-        setKeyBind(GLFW.GLFW_KEY_2);
+        setKeyBind(GLFW.GLFW_KEY_F11);
         addSetting(speed);
     }
 
