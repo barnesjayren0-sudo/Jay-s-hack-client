@@ -10,65 +10,84 @@ import java.nio.file.Path;
 import java.util.Base64;
 
 /**
- * Share full config as Base64 (clipboard-friendly for mobile).
+ * Export / import full client config as Base64 (clipboard-friendly).
  */
 public final class ConfigIO {
 
     private ConfigIO() {}
 
-    private static Path path() {
+    private static Path configPath() {
         return MinecraftClient.getInstance().runDirectory.toPath()
                 .resolve("config").resolve("jayhackclient.txt");
     }
 
-    public static void exportToClipboard() {
+    /** Save current state then return Base64 payload. */
+    public static String exportToString() {
         try {
-            if (JayHackClient.configManager != null) JayHackClient.configManager.save();
-            Path p = path();
+            if (JayHackClient.configManager != null) {
+                JayHackClient.configManager.save();
+            }
+            Path p = configPath();
             if (!Files.exists(p)) {
                 Notifications.warn("Config", "Nothing to export");
-                return;
+                return "";
             }
             byte[] raw = Files.readAllBytes(p);
             String b64 = Base64.getEncoder().encodeToString(raw);
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.keyboard != null) {
-                mc.keyboard.setClipboard(b64);
-                Notifications.success("Config", "Exported to clipboard (" + raw.length + "b)");
-            } else {
-                Notifications.warn("Config", "Clipboard unavailable");
-            }
+            Notifications.success("Config", "Exported (" + raw.length + " bytes)");
+            return "JAYCFG1:" + b64;
         } catch (Exception e) {
             Notifications.error("Config", "Export failed");
+            return "";
+        }
+    }
+
+    public static void exportToClipboard() {
+        String s = exportToString();
+        if (s.isEmpty()) return;
+        try {
+            MinecraftClient.getInstance().keyboard.setClipboard(s);
+            Notifications.success("Config", "Copied to clipboard");
+        } catch (Exception e) {
+            Notifications.warn("Config", "Clipboard unavailable — use .jay export");
+        }
+    }
+
+    public static boolean importFromString(String payload) {
+        if (payload == null || payload.isBlank()) {
+            Notifications.warn("Config", "Empty import");
+            return false;
+        }
+        try {
+            String data = payload.trim();
+            if (data.startsWith("JAYCFG1:")) data = data.substring(8);
+            // Also accept raw file text
+            byte[] bytes;
+            try {
+                bytes = Base64.getDecoder().decode(data.replaceAll("\\s", ""));
+            } catch (IllegalArgumentException ex) {
+                bytes = payload.getBytes(StandardCharsets.UTF_8);
+            }
+            Path p = configPath();
+            Files.createDirectories(p.getParent());
+            Files.write(p, bytes);
+            if (JayHackClient.configManager != null) {
+                JayHackClient.configManager.load();
+            }
+            Notifications.success("Config", "Imported");
+            return true;
+        } catch (Exception e) {
+            Notifications.error("Config", "Import failed");
+            return false;
         }
     }
 
     public static void importFromClipboard() {
         try {
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.keyboard == null) {
-                Notifications.warn("Config", "Clipboard unavailable");
-                return;
-            }
-            String clip = mc.keyboard.getClipboard();
-            if (clip == null || clip.isBlank()) {
-                Notifications.warn("Config", "Clipboard empty");
-                return;
-            }
-            clip = clip.trim().replaceAll("\\s+", "");
-            byte[] decoded = Base64.getDecoder().decode(clip);
-            String text = new String(decoded, StandardCharsets.UTF_8);
-            if (!text.contains("mod.") && !text.contains("aimMode")) {
-                Notifications.warn("Config", "Does not look like a Jay config");
-                return;
-            }
-            Path p = path();
-            Files.createDirectories(p.getParent());
-            Files.writeString(p, text);
-            if (JayHackClient.configManager != null) JayHackClient.configManager.load();
-            Notifications.success("Config", "Imported + applied");
+            String clip = MinecraftClient.getInstance().keyboard.getClipboard();
+            importFromString(clip);
         } catch (Exception e) {
-            Notifications.error("Config", "Import failed (need Base64 export)");
+            Notifications.error("Config", "Clipboard read failed");
         }
     }
 }
