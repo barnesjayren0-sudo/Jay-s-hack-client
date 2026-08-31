@@ -1,8 +1,8 @@
 package com.jay.hackclient.util;
 
 /**
- * One rotation owner per short window so KillAura and AimAssist do not fight the camera.
- * Priority: KillAura > AimAssist > other.
+ * One rotation owner per window so KillAura and AimAssist do not fight the camera.
+ * Priority: KillAura (2) > AimAssist (1) > other (0).
  */
 public final class RotationOwner {
 
@@ -12,15 +12,19 @@ public final class RotationOwner {
 
     private RotationOwner() {}
 
-    /** KillAura = 2, AimAssist = 1, other = 0 */
     public static boolean tryClaim(String name, int prio, int holdMs) {
         long now = System.currentTimeMillis();
         if (owner != null && now < untilMs) {
+            // Higher priority steals; same owner refreshes; lower is blocked
             if (!owner.equals(name) && prio < priority) return false;
+            if (!owner.equals(name) && prio == priority) return false;
         }
         owner = name;
         priority = prio;
-        untilMs = now + Math.max(16, holdMs);
+        // KillAura gets a slightly longer exclusive window
+        int hold = holdMs;
+        if (prio >= 2) hold = Math.max(holdMs, 70);
+        untilMs = now + Math.max(16, hold);
         return true;
     }
 

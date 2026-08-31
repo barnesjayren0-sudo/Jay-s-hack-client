@@ -12,6 +12,7 @@ import com.jay.hackclient.util.Mobile;
 import com.jay.hackclient.util.Notifications;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.player.PlayerEntity;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -33,12 +34,10 @@ public final class HudRenderer {
         if (mc.player == null || JayHackClient.moduleManager == null) return;
         if (mc.options.hudHidden) return;
 
-        // Screenshot-safe: F2 or debug HUD
         if (ClientSettings.hideHudInDebug && mc.getDebugHud().shouldShowDebugHud()) return;
         if (ClientSettings.hideHudOnScreenshot) {
             long h = mc.getWindow().getHandle();
             if (GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F2) == GLFW.GLFW_PRESS) return;
-            // F3+F2 style: while F3 held, suppress
             if (GLFW.glfwGetKey(h, GLFW.GLFW_KEY_F3) == GLFW.GLFW_PRESS) return;
         }
 
@@ -54,7 +53,6 @@ public final class HudRenderer {
             accent = 0xFF000000 | java.awt.Color.HSBtoRGB(hue, 0.7f, 1f);
         }
 
-        // Watermark
         if (HudLayout.visible("watermark")) {
             HudLayout.Element wm = HudLayout.get("watermark");
             int wx = HudLayout.resolveX(wm, screenW);
@@ -78,11 +76,10 @@ public final class HudRenderer {
         if (info != null && info.isEnabled()) {
             if (InfoHUD.coords.get() && HudLayout.visible("coords")) {
                 HudLayout.Element e = HudLayout.get("coords");
-                int x = HudLayout.resolveX(e, screenW);
-                int y = HudLayout.resolveY(e, 52);
                 String c = String.format("§7XYZ §f%.1f §7%.0f §f%.1f",
                         mc.player.getX(), mc.player.getY(), mc.player.getZ());
-                context.drawTextWithShadow(mc.textRenderer, c, x, y, 0xFFFFFF);
+                context.drawTextWithShadow(mc.textRenderer, c,
+                        HudLayout.resolveX(e, screenW), HudLayout.resolveY(e, 52), 0xFFFFFF);
             }
             if (InfoHUD.fps.get() && HudLayout.visible("fps")) {
                 HudLayout.Element e = HudLayout.get("fps");
@@ -122,7 +119,6 @@ public final class HudRenderer {
             context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, screenH - 36, 0xFFFFFF);
         }
 
-        // ArrayList — combat vs utility split
         List<Module> combat = new ArrayList<>();
         List<Module> util = new ArrayList<>();
         for (Module m : JayHackClient.moduleManager.getActive()) {
@@ -137,25 +133,20 @@ public final class HudRenderer {
         }
         combat.sort(listOrder(mc));
         util.sort(listOrder(mc));
-
-        updateSlide(combat);
-        updateSlide(util);
+        updateSlide(combat, util);
 
         if (HudLayout.visible("arraylist")) {
-            drawArrayList(context, mc, combat, screenW, HudLayout.get("arraylist"), phone, accent, true);
+            drawArrayList(context, mc, combat, screenW, HudLayout.get("arraylist"), phone, accent);
         }
         if (HudLayout.visible("arraylist_util")) {
-            drawArrayList(context, mc, util, screenW, HudLayout.get("arraylist_util"), phone, accent, false);
+            drawArrayList(context, mc, util, screenW, HudLayout.get("arraylist_util"), phone, accent);
         }
 
-        // Target HUD position from layout
         Module th = JayHackClient.moduleManager.getModuleByName("TargetHUD");
         if (th != null && th.isEnabled() && HudLayout.visible("target")) {
             HudLayout.Element te = HudLayout.get("target");
-            int tx = HudLayout.resolveX(te, screenW);
-            int ty = HudLayout.resolveY(te, 4);
             try {
-                drawTargetAt(context, mc, tx, ty);
+                drawTargetAt(context, mc, HudLayout.resolveX(te, screenW), HudLayout.resolveY(te, 4));
             } catch (Throwable ignored) {}
         }
 
@@ -173,19 +164,15 @@ public final class HudRenderer {
                 .thenComparingInt(m -> -mc.textRenderer.getWidth(m.getName()));
     }
 
-    private static void updateSlide(List<Module> enabled) {
-        for (Module m : enabled) {
-            float cur = slide.getOrDefault(m.getName(), 0f);
-            slide.put(m.getName(), Math.min(1f, cur + 0.18f));
-        }
+    private static void updateSlide(List<Module> a, List<Module> b) {
+        for (Module m : a) slide.put(m.getName(), Math.min(1f, slide.getOrDefault(m.getName(), 0f) + 0.18f));
+        for (Module m : b) slide.put(m.getName(), Math.min(1f, slide.getOrDefault(m.getName(), 0f) + 0.18f));
         Iterator<Map.Entry<String, Float>> it = slide.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<String, Float> e = it.next();
             boolean still = false;
-            for (Module m : enabled) {
-                if (m.getName().equals(e.getKey())) { still = true; break; }
-            }
-            // only decay if not in either list — handled per call; skip aggressive remove here
+            for (Module m : a) if (m.getName().equals(e.getKey())) { still = true; break; }
+            if (!still) for (Module m : b) if (m.getName().equals(e.getKey())) { still = true; break; }
             if (!still) {
                 float v = e.getValue() - 0.12f;
                 if (v <= 0) it.remove();
@@ -195,10 +182,9 @@ public final class HudRenderer {
     }
 
     private static void drawArrayList(DrawContext context, MinecraftClient mc, List<Module> list,
-                                      int screenW, HudLayout.Element el, boolean phone, int accent,
-                                      boolean combat) {
-        int maxList = phone ? (combat ? 6 : 5) : 16;
-        int y = HudLayout.resolveY(el, combat ? 28 : 120);
+                                      int screenW, HudLayout.Element el, boolean phone, int accent) {
+        int maxList = phone ? 6 : 16;
+        int y = HudLayout.resolveY(el, 28);
         int baseRight = el != null && el.x < 0 ? screenW + (int) el.x : screenW - 8;
         int shown = 0;
         for (Module m : list) {
@@ -219,17 +205,17 @@ public final class HudRenderer {
     }
 
     private static void drawTargetAt(DrawContext context, MinecraftClient mc, int bx, int by) {
-        if (TargetHUD.currentName == null || TargetHUD.currentName.isEmpty()) return;
-        String name = TargetHUD.currentName;
-        float hp = TargetHUD.currentHealth;
-        float max = Math.max(1f, TargetHUD.currentMaxHealth);
+        PlayerEntity t = TargetHUD.currentTarget;
+        if (t == null || !t.isAlive()) return;
+        String name = t.getName().getString();
+        float hp = t.getHealth() + t.getAbsorptionAmount();
+        float max = Math.max(1f, t.getMaxHealth());
         float pct = Math.max(0f, Math.min(1f, hp / max));
 
         int boxW = 120;
         int boxH = 28;
         context.fill(bx, by, bx + boxW, by + boxH, 0x990A0A10);
         context.fill(bx, by, bx + 2, by + boxH, CYAN);
-        context.fill(bx, by, bx + boxW, by + 1, 0x553DDCFF);
 
         String info = String.format("%s  §7%.1fm", name, TargetHUD.currentDistance);
         context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 5, 0xFFF0F0F8);
