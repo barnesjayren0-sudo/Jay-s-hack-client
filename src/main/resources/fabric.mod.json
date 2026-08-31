@@ -3,7 +3,7 @@
   "id": "jayhackclient",
   "version": "${version}",
   "name": "Jay's Client",
-  "description": "v1.47.0 — Sort chips, config export/import, Scaffold reliability, HUD layout, profiles.",
+  "description": "v1.48.0 — GUI scale, pin row, collapse, hold-bind, TargetHUD merge, Pearl/Scaffold polish.",
   "authors": ["barnesjayren0-sudo"],
   "license": "All-Rights-Reserved",
   "environment": "client",
@@ -18,8 +18,5 @@
     "fabric-api": "*",
     "fabric-language-kotlin": "*",
     "cloth-config": "*"
-  },
-  "suggests": {
-    "modmenu": "*"
   }
 }

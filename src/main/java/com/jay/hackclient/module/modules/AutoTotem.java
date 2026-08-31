@@ -5,25 +5,27 @@ import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.SlotLock;
-import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 
-/** Offhand totem — high priority + sticky lock when low HP. */
+/** Offhand totem — hard lock under HP threshold so AutoSword/InvManager cannot steal. */
 public class AutoTotem extends Module {
 
     public final NumberSetting softHp = new NumberSetting("SoftHP", "Faster under this HP", 12, 4, 20, 1);
     public final NumberSetting hardHp = new NumberSetting("HardHP", "Lock offhand under HP", 8, 2, 16, 1);
-    public final BoolSetting sticky = new BoolSetting("Sticky", "Re-equip if offhand changed low HP", true);
+    public final BoolSetting sticky = new BoolSetting("Sticky", "Re-equip if offhand changed while low", true);
+    public final BoolSetting onlyInCombat = new BoolSetting("CombatOnly", "Only swap when recently hurt", false);
 
     private long lastSwap;
+    private long lastHurtMs;
 
     public AutoTotem() {
-        super("AutoTotem", "Restock offhand totem", Category.PLAYER);
+        super("AutoTotem", "Hard offhand totem lock", Category.PLAYER);
         addSetting(softHp);
         addSetting(hardHp);
         addSetting(sticky);
+        addSetting(onlyInCombat);
     }
 
     @Override
@@ -31,27 +33,33 @@ public class AutoTotem extends Module {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
 
+        if (mc.player.hurtTime > 0) lastHurtMs = System.currentTimeMillis();
+        if (onlyInCombat.get() && System.currentTimeMillis() - lastHurtMs > 4000) return;
+
         float hp = mc.player.getHealth() + mc.player.getAbsorptionAmount();
         boolean critical = hp <= hardHp.getFloat();
 
-        // Highest hotbar priority when low — don't yield to AutoSword/InvManager
+        // Never yield hotbar under hard HP
         if (SlotLock.isLockedByOther("AutoTotem") && !critical) return;
 
         ItemStack off = mc.player.getOffHandStack();
         if (off.isOf(Items.TOTEM_OF_UNDYING)) {
-            // Sticky: if something else stole lock under hard HP, still fine while totem present
+            if (critical && sticky.get()) {
+                // Keep lock so other modules cannot swap offhand
+                SlotLock.tryAcquire("AutoTotem", 500, 95);
+            }
             return;
         }
 
         long now = System.currentTimeMillis();
-        int delay = critical ? 25 : (hp <= softHp.getFloat() ? 40 : Humanizer.swapDelay());
+        int delay = critical ? 20 : (hp <= softHp.getFloat() ? 35 : Humanizer.swapDelay());
         if (now - lastSwap < delay) return;
 
         int slot = findTotemSlot();
         if (slot == -1) return;
 
-        int priority = critical ? 90 : 35;
-        if (!SlotLock.tryAcquire("AutoTotem", critical ? 600 : 400, priority)) return;
+        int priority = critical ? 95 : 40;
+        if (!SlotLock.tryAcquire("AutoTotem", critical ? 800 : 400, priority)) return;
 
         try {
             int syncId = mc.player.playerScreenHandler.syncId;
@@ -63,23 +71,19 @@ public class AutoTotem extends Module {
             lastSwap = now;
         } catch (Exception ignored) {
         } finally {
-            // Keep lock a bit longer when critical so other modules don't yank offhand
-            if (!critical || !sticky.get()) {
-                SlotLock.release("AutoTotem");
-            } else {
-                // release next tick window
-                SlotLock.release("AutoTotem");
-            }
+            if (!critical) SlotLock.release("AutoTotem");
         }
     }
 
     private int findTotemSlot() {
-        PlayerInventory inv = mc.player.getInventory();
+        // hotbar first
         for (int i = 0; i < 9; i++) {
-            if (inv.getStack(i).isOf(Items.TOTEM_OF_UNDYING)) return 36 + i;
+            ItemStack s = mc.player.getInventory().getStack(i);
+            if (s.isOf(Items.TOTEM_OF_UNDYING)) return i + 36;
         }
         for (int i = 9; i < 36; i++) {
-            if (inv.getStack(i).isOf(Items.TOTEM_OF_UNDYING)) return i;
+            ItemStack s = mc.player.getInventory().getStack(i);
+            if (s.isOf(Items.TOTEM_OF_UNDYING)) return i;
         }
         return -1;
     }
