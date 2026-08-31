@@ -20,10 +20,17 @@ import com.jay.hackclient.event.EventBus;
 import com.jay.hackclient.event.events.TickEvent;
 import com.jay.hackclient.friend.FriendManager;
 import com.jay.hackclient.gui.ClickGuiScreen;
+import com.jay.hackclient.gui.DebugScreen;
+import com.jay.hackclient.gui.FirstLaunchScreen;
+import com.jay.hackclient.gui.HudEditorScreen;
+import com.jay.hackclient.gui.KeybindScreen;
+import com.jay.hackclient.gui.ProfileScreen;
+import com.jay.hackclient.gui.ThemeEngine;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.ModuleManager;
 import com.jay.hackclient.module.modules.*;
 import com.jay.hackclient.profile.LegitProfile;
+import com.jay.hackclient.profile.PresetManager;
 import com.jay.hackclient.render.HudRenderer;
 import com.jay.hackclient.render.WorldEspRenderer;
 import com.jay.hackclient.settings.ClientSettings;
@@ -31,7 +38,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.45.0";
+    public static final String VERSION = "1.46.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -104,6 +111,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new ReachHUD());
         moduleManager.register(new HitParticles());
         moduleManager.register(new Freecam());
+        moduleManager.register(new PerfDashboard());
 
         moduleManager.register(new AutoArmor());
         moduleManager.register(new AutoTotem());
@@ -227,6 +235,17 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
+        try { ThemeEngine.apply(ThemeEngine.current); } catch (Throwable ignored) {}
+
+        final boolean[] wizardQueued = { !ClientSettings.firstLaunchDone };
+        ClientTickEvents.END_CLIENT_TICK.register(c -> {
+            if (wizardQueued[0] && !ClientSettings.firstLaunchDone
+                    && c.currentScreen == null && c.player != null) {
+                wizardQueued[0] = false;
+                c.setScreen(new FirstLaunchScreen());
+            }
+        });
+
         System.out.println("[" + NAME + "] v" + VERSION + " · Cloth+FabricAPI+Kotlin · Baritone=" + BaritoneCompat.isPresent());
     }
 
@@ -253,7 +272,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2 || args[1].equalsIgnoreCase("help")) {
-            msg("§f.jay gui|cloth|toggle|profile|friend|config|set|scan|radar|wp|panic|off|binds");
+            msg("§f.jay gui|cloth|preset|profiles|hud|keys|debug|theme|toggle|wp|panic");
             return;
         }
 
@@ -263,6 +282,19 @@ public class JayHackClient implements ClientModInitializer {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
             case "cloth", "clothconfig", "settingsgui" ->
                     client.setScreen(JayClothConfig.createScreen(null));
+            case "preset" -> {
+                if (args.length >= 3) PresetManager.applyByName(args[2]);
+                else msg("§f.jay preset legit|pvp|survival|performance");
+            }
+            case "profiles" -> client.setScreen(new ProfileScreen(null));
+            case "hudedit", "hud" -> client.setScreen(new HudEditorScreen(null));
+            case "keys", "keybinds" -> client.setScreen(new KeybindScreen(null));
+            case "debug" -> client.setScreen(new DebugScreen(null));
+            case "theme" -> {
+                ThemeEngine.cycle();
+                configManager.save();
+                msg("§aTheme §f" + ThemeEngine.name());
+            }
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
             case "freecam", "fc" -> toggle("Freecam");
             case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
