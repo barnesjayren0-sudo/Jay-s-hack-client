@@ -2,16 +2,13 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.TargetUtil;
-import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/**
- * Shared combat target for HUD — HP, range, armor points in one panel.
- */
+/** Shared combat target for HUD — HP, range, armor in one panel. */
 public class TargetHUD extends Module {
 
     public static PlayerEntity currentTarget = null;
@@ -34,11 +31,10 @@ public class TargetHUD extends Module {
         if (mc.player == null || mc.world == null) return;
 
         PlayerEntity pick = null;
-
-        // Prefer shared combat target (KillAura / AimAssist)
         try {
-            PlayerEntity shared = TargetUtil.getCachedTarget();
-            if (shared != null && shared.isAlive()) pick = shared;
+            pick = TargetUtil.findCombatTarget(
+                    Math.max(ClientSettings.aimRange, ClientSettings.auraRange),
+                    Math.max(ClientSettings.aimFov, ClientSettings.auraFov));
         } catch (Throwable ignored) {}
 
         if (pick == null && mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.ENTITY) {
@@ -84,19 +80,10 @@ public class TargetHUD extends Module {
         currentDistance = mc.player.distanceTo(target);
         currentHp = target.getHealth() + target.getAbsorptionAmount();
         currentMaxHp = Math.max(1f, target.getMaxHealth());
-
-        int armor = 0;
-        for (EquipmentSlot slot : new EquipmentSlot[]{
-                EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
-        }) {
-            ItemStack s = target.getEquippedStack(slot);
-            if (!s.isEmpty()) armor += s.getMaxDamage() > 0 ? 1 : 0;
-        }
-        // Prefer armor value if available
         try {
             armorPoints = target.getArmor();
         } catch (Throwable t) {
-            armorPoints = armor;
+            armorPoints = 0;
         }
     }
 }
