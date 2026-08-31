@@ -4,6 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.render.HudLayout;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.Entity;
 
 /** Android-friendly performance overlay. */
 public class PerfDashboard extends Module {
@@ -21,7 +22,6 @@ public class PerfDashboard extends Module {
         addSetting(showPing);
     }
 
-    /** Called from HudRenderer when enabled. */
     public void renderOverlay(DrawContext ctx, int screenW) {
         if (!isEnabled() || mc.player == null) return;
         HudLayout.Element el = HudLayout.get("perf");
@@ -44,7 +44,9 @@ public class PerfDashboard extends Module {
             line += 10;
         }
         if (showEnt.get() && mc.world != null) {
-            ctx.drawTextWithShadow(tr, "Ent §f" + mc.world.getRegularEntityCount(), x, line, 0xFFAAAAAA);
+            int count = 0;
+            for (Entity ignored : mc.world.getEntities()) count++;
+            ctx.drawTextWithShadow(tr, "Ent §f" + count, x, line, 0xFFAAAAAA);
             line += 10;
         }
         if (showPing.get() && mc.getNetworkHandler() != null) {

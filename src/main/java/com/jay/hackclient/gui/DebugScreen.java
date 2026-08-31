@@ -6,6 +6,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.input.KeyInput;
+import net.minecraft.entity.Entity;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -41,7 +42,9 @@ public class DebugScreen extends Screen {
         y = line(ctx, x, y, "Mods", String.valueOf(FabricLoader.getInstance().getAllMods().size()));
 
         if (mc.world != null) {
-            y = line(ctx, x, y, "Entities", String.valueOf(mc.world.getRegularEntityCount()));
+            int count = 0;
+            for (Entity ignored : mc.world.getEntities()) count++;
+            y = line(ctx, x, y, "Entities", String.valueOf(count));
         }
         if (mc.getNetworkHandler() != null && mc.player != null) {
             var pe = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
