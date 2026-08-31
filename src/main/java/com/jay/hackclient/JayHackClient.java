@@ -15,6 +15,7 @@ import org.lwjgl.glfw.GLFW;
 import com.jay.hackclient.compat.BaritoneCommands;
 import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.config.ConfigManager;
+import com.jay.hackclient.config.JayClothConfig;
 import com.jay.hackclient.event.EventBus;
 import com.jay.hackclient.event.events.TickEvent;
 import com.jay.hackclient.friend.FriendManager;
@@ -30,7 +31,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.43.0";
+    public static final String VERSION = "1.44.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -152,9 +153,7 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoCrystal());
         moduleManager.register(new HoleFill());
 
-        try {
-            ModuleBootstrap.registerExtra(moduleManager);
-        } catch (Throwable ignored) {}
+        try { ModuleBootstrap.registerExtra(moduleManager); } catch (Throwable ignored) {}
 
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
@@ -254,8 +253,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2 || args[1].equalsIgnoreCase("help")) {
-            msg("§f.jay gui|toggle|profile|friend|config|set|scan|radar|wp|panic|off|binds");
-            msg("§7RMB module = settings · profiles in GUI · config auto-saves");
+            msg("§f.jay gui|cloth|toggle|profile|friend|config|set|scan|radar|wp|panic|off|binds");
             return;
         }
 
@@ -263,6 +261,8 @@ public class JayHackClient implements ClientModInitializer {
 
         switch (args[1].toLowerCase()) {
             case "gui", "menu" -> client.setScreen(new ClickGuiScreen());
+            case "cloth", "clothconfig", "settingsgui" ->
+                    client.setScreen(JayClothConfig.createScreen(null));
             case "toggle" -> { if (args.length >= 3) toggle(args[2]); }
             case "freecam", "fc" -> toggle("Freecam");
             case "sword" -> { LegitProfile.applySword(); configManager.save(); msg("§aSword"); }
