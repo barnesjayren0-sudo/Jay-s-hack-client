@@ -55,11 +55,9 @@ public class Freecam extends Module {
     public void onTick() {
         if (!active || mc.player == null || mc.world == null) return;
 
-        // Freeze body (client-side)
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setPosition(startX, startY, startZ);
 
-        // 1.21.11: Input uses PlayerInput record, not movementForward fields
         try {
             if (mc.player.input != null) {
                 mc.player.input.playerInput = PlayerInput.DEFAULT;

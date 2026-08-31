@@ -1,27 +1,25 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.Items;
 import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Pearl trajectory — thin line + landing marker (kit QoL).
- * Rendered from HudRenderer / world overlay when holding pearl.
- */
+/** Pearl trajectory — thin path + land mark when holding pearl. */
 public class PearlTrajectory extends Module {
 
     public final BoolSetting onlyWhenHolding = new BoolSetting("Holding", "Only when pearl in hand", true);
     public final NumberSetting steps = new NumberSetting("Steps", "Sim steps", 40, 20, 80, 5);
-    public final BoolSetting landMark = new BoolSetting("LandMark", "Red square at land", true);
+    public final BoolSetting landMark = new BoolSetting("LandMark", "Show land coords on HUD", true);
 
     public static final List<Vec3d> lastPath = new ArrayList<>();
     public static Vec3d lastLand = null;
@@ -31,6 +29,12 @@ public class PearlTrajectory extends Module {
         addSetting(onlyWhenHolding);
         addSetting(steps);
         addSetting(landMark);
+    }
+
+    @Override
+    public void onDisable() {
+        lastPath.clear();
+        lastLand = null;
     }
 
     @Override
@@ -49,7 +53,6 @@ public class PearlTrajectory extends Module {
     private void simulate() {
         Vec3d pos = mc.player.getEyePos();
         Vec3d vel = mc.player.getRotationVector().multiply(1.5);
-
         int n = steps.getInt();
         for (int i = 0; i < n; i++) {
             Vec3d next = pos.add(vel);
@@ -70,21 +73,20 @@ public class PearlTrajectory extends Module {
         }
     }
 
-    /** 2D HUD fallback — land marker near crosshair when path exists. */
     public static void drawHud(DrawContext ctx, int screenW, int screenH) {
-        if (lastLand == null || mc == null || mc.player == null || mc.gameRenderer == null) return;
-        // Simple indicator text bottom-center
-        String t = String.format("Pearl §c%.0f %.0f %.0f",
-                lastLand.x, lastLand.y, lastLand.z);
-        int tw = mc.textRenderer.getWidth(t);
-        ctx.drawTextWithShadow(mc.textRenderer, t, screenW / 2 - tw / 2, screenH - 40, 0xFFAAAA);
-    }
+        if (lastLand == null) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.player == null || client.textRenderer == null) return;
 
-    private static net.minecraft.client.MinecraftClient mc =
-            net.minecraft.client.MinecraftClient.getInstance();
+        try {
+            if (JayHackClient.moduleManager != null) {
+                Module m = JayHackClient.moduleManager.getModuleByName("PearlTrajectory");
+                if (m instanceof PearlTrajectory pt && !pt.landMark.get()) return;
+            }
+        } catch (Throwable ignored) {}
 
-    private static boolean isSolid(BlockPos p) {
-        if (mc.world == null) return true;
-        return !mc.world.getBlockState(p).isAir();
+        String t = String.format("Pearl §c%.0f %.0f %.0f", lastLand.x, lastLand.y, lastLand.z);
+        int tw = client.textRenderer.getWidth(t);
+        ctx.drawTextWithShadow(client.textRenderer, t, screenW / 2 - tw / 2, screenH - 40, 0xFFAAAA);
     }
 }
