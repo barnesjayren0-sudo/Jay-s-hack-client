@@ -2,7 +2,6 @@ package com.jay.hackclient.gui;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
-import com.jay.hackclient.profile.LegitProfile;
 import com.jay.hackclient.profile.PresetManager;
 import com.jay.hackclient.render.JayLogo;
 import com.jay.hackclient.settings.ClientSettings;
@@ -20,15 +19,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Compact floating ClickGUI — search, favorites, descriptions, side settings,
- * touch-friendly rows, theme chips, profile/keybind/HUD shortcuts.
- */
+/** Compact ClickGUI — search, sort chips, favorites, side settings, tools. */
 public class ClickGuiScreen extends Screen {
 
     private static final int PANEL_W = 100;
     private static final int HEADER_H = 14;
-    private static final int ROW_H = 13; // touch-friendlier
+    private static final int ROW_H = 13;
     private static final int MAX_VISIBLE = 10;
     private static final int SIDE_W = 120;
 
@@ -39,7 +35,7 @@ public class ClickGuiScreen extends Screen {
     private String search = "";
     private boolean searchFocused;
     private long openMs = System.currentTimeMillis();
-    private Module selected; // side panel
+    private Module selected;
     private SortMode sort = SortMode.NAME;
 
     private enum SortMode { NAME, CATEGORY, ENABLED, FAVORITES }
@@ -55,7 +51,7 @@ public class ClickGuiScreen extends Screen {
 
     private float openAnim() {
         float speed = ThemeEngine.animSpeed;
-        float t = (System.currentTimeMillis() - openMs) / (180f / speed);
+        float t = (System.currentTimeMillis() - openMs) / (180f / Math.max(0.4f, speed));
         if (t >= 1f) return 1f;
         return t * t * (3f - 2f * t);
     }
@@ -94,13 +90,23 @@ public class ClickGuiScreen extends Screen {
         try { JayLogo.draw(ctx, 3, 3, 12); } catch (Throwable ignored) {}
         ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 18, 5, GuiTheme.TEXT);
 
-        // Search
-        int sx = Math.max(100, width / 2 - 55);
-        ctx.fill(sx, 3, sx + 110, 15, GuiTheme.PANEL2);
-        String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search modules" : search);
+        int sx = Math.max(100, width / 2 - 90);
+        ctx.fill(sx, 3, sx + 90, 15, GuiTheme.PANEL2);
+        String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search" : search);
         ctx.drawTextWithShadow(textRenderer, st, sx + 4, 5, GuiTheme.TEXT);
 
-        // Tool buttons (right)
+        // Sort chips: Name / On / ★
+        String[] sorts = {"Name", "On", "★"};
+        SortMode[] modes = {SortMode.NAME, SortMode.ENABLED, SortMode.FAVORITES};
+        int srx = sx + 94;
+        for (int i = 0; i < sorts.length; i++) {
+            int sw = textRenderer.getWidth(sorts[i]) + 8;
+            boolean on = sort == modes[i];
+            ctx.fill(srx, 3, srx + sw, 15, on ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
+            ctx.drawTextWithShadow(textRenderer, sorts[i], srx + 4, 5, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
+            srx += sw + 2;
+        }
+
         String[] tools = {"Prof", "Keys", "HUD", "Dbg", "Theme"};
         int tx = width - 6;
         for (int i = tools.length - 1; i >= 0; i--) {
@@ -110,7 +116,6 @@ public class ClickGuiScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, tools[i], tx + 4, 5, GuiTheme.TEXT_DIM);
         }
 
-        // Preset chips under bar on wide screens
         if (width > 400) {
             int px = 8;
             for (PresetManager.Preset p : PresetManager.Preset.values()) {
@@ -121,7 +126,6 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // Category panels
         for (Module.Category cat : Module.Category.values()) {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0];
@@ -150,14 +154,12 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // Side panel: selected module description + open settings
         if (selected != null) {
             int spx = width - SIDE_W - 6;
             int spy = barH + 4;
             int sph = 90;
             ctx.fill(spx, spy, spx + SIDE_W, spy + sph, GuiTheme.BG);
             ctx.drawTextWithShadow(textRenderer, selected.getName(), spx + 4, spy + 4, GuiTheme.ACCENT);
-            // wrap description
             String desc = selected.getDescription();
             int dy = spy + 16;
             for (String line : wrap(desc, SIDE_W - 10)) {
@@ -214,8 +216,19 @@ public class ClickGuiScreen extends Screen {
         int barH = 18;
 
         if (button == 0 && my < barH) {
-            int sx = Math.max(100, width / 2 - 55);
-            if (mx >= sx && mx <= sx + 110) { searchFocused = true; return true; }
+            int sx = Math.max(100, width / 2 - 90);
+            if (mx >= sx && mx <= sx + 90) { searchFocused = true; return true; }
+            String[] sorts = {"Name", "On", "★"};
+            SortMode[] modes = {SortMode.NAME, SortMode.ENABLED, SortMode.FAVORITES};
+            int srx = sx + 94;
+            for (int i = 0; i < sorts.length; i++) {
+                int sw = textRenderer.getWidth(sorts[i]) + 8;
+                if (mx >= srx && mx <= srx + sw) {
+                    sort = modes[i];
+                    return true;
+                }
+                srx += sw + 2;
+            }
             String[] tools = {"Prof", "Keys", "HUD", "Dbg", "Theme"};
             int tx = width - 6;
             for (int i = tools.length - 1; i >= 0; i--) {
@@ -238,7 +251,6 @@ public class ClickGuiScreen extends Screen {
             searchFocused = false;
         }
 
-        // Presets
         if (button == 0 && width > 400 && my >= barH + 2 && my <= barH + 13) {
             int px = 8;
             for (PresetManager.Preset p : PresetManager.Preset.values()) {
@@ -251,7 +263,6 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        // Side settings button
         if (selected != null && button == 0) {
             int spx = width - SIDE_W - 6;
             int spy = barH + 4;
