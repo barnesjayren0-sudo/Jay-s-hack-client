@@ -27,6 +27,7 @@ public abstract class Module {
     private KeyMode keyMode = KeyMode.TOGGLE;
     private boolean drawn = true;
     private boolean chatFeedback = true;
+    private int runtimeErrorStreak = 0;
     private final List<Setting> settings = new ArrayList<>();
 
     public Module(String name, String description, Category category) {
@@ -52,33 +53,35 @@ public abstract class Module {
     }
 
     public void toggle() {
-        setEnabled(!this.enabled);
+        setEnabled(!enabled);
     }
 
-    public void setEnabled(boolean state) {
-        if (this.enabled == state) return;
-        this.enabled = state;
-        if (state) {
-            onEnable();
+    public void setEnabled(boolean enabled) {
+        if (this.enabled == enabled) return;
+        this.enabled = enabled;
+        runtimeErrorStreak = 0;
+        if (enabled) {
+            try { onEnable(); } catch (Throwable t) {
+                System.err.println("[Jay] " + name + " onEnable: " + t.getMessage());
+                this.enabled = false;
+                return;
+            }
             notify("enabled");
-            Notifications.push(name, "enabled");
-            ToggleSounds.play(true);
+            try { ToggleSounds.play(true); } catch (Throwable ignored) {}
+            try { Notifications.push(name, "enabled"); } catch (Throwable ignored) {}
         } else {
-            onDisable();
+            try { onDisable(); } catch (Throwable t) {
+                System.err.println("[Jay] " + name + " onDisable: " + t.getMessage());
+            }
             notify("disabled");
-            Notifications.push(name, "disabled");
-            ToggleSounds.play(false);
+            try { ToggleSounds.play(false); } catch (Throwable ignored) {}
+            try { Notifications.push(name, "disabled"); } catch (Throwable ignored) {}
         }
-        if (JayHackClient.EVENT_BUS != null) {
-            try {
-                JayHackClient.EVENT_BUS.post(new ModuleToggleEvent(this, state));
-            } catch (Throwable ignored) {}
-        }
-        if (JayHackClient.configManager != null) {
-            try {
-                JayHackClient.configManager.save();
-            } catch (Exception ignored) {}
-        }
+        try {
+            if (JayHackClient.EVENT_BUS != null) {
+                JayHackClient.EVENT_BUS.post(new ModuleToggleEvent(this, this.enabled));
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void notify(String status) {
@@ -91,6 +94,18 @@ public abstract class Module {
     public void onEnable() {}
     public void onDisable() {}
     public void onTick() {}
+
+    public final void markTickHealthy() {
+        runtimeErrorStreak = 0;
+    }
+
+    public final int markTickError() {
+        return ++runtimeErrorStreak;
+    }
+
+    public final int getRuntimeErrorStreak() {
+        return runtimeErrorStreak;
+    }
 
     public String getName() { return name; }
     public String getDescription() { return description; }
