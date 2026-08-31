@@ -11,10 +11,9 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
-/** Scaffold — Normal / Telly / Godbridge / Tower. */
+/** Scaffold — Normal / Telly / Godbridge / Tower with place-fail retry. */
 public class Scaffold extends Module {
 
     public final ModeSetting mode = new ModeSetting("Mode", "Place style",
@@ -24,10 +23,12 @@ public class Scaffold extends Module {
     public final NumberSetting airTicks = new NumberSetting("AirTicks", "Min air ticks before place", 2, 0, 8, 1);
     public final BoolSetting rotate = new BoolSetting("Rotate", "Pitch down when placing", true);
     public final BoolSetting sprint = new BoolSetting("Sprint", "Keep sprint on Telly", true);
+    public final BoolSetting retryFail = new BoolSetting("Retry", "Faster retry after failed place", true);
 
     private long lastPlace;
     private int ticksInAir;
     private float savedPitch = Float.NaN;
+    private int failStreak;
 
     public Scaffold() {
         super("Scaffold", "Telly / Normal / Godbridge / Tower", Category.WORLD);
@@ -37,12 +38,14 @@ public class Scaffold extends Module {
         addSetting(airTicks);
         addSetting(rotate);
         addSetting(sprint);
+        addSetting(retryFail);
     }
 
     @Override
     public void onDisable() {
         restorePitch();
         ticksInAir = 0;
+        failStreak = 0;
     }
 
     @Override
@@ -63,6 +66,10 @@ public class Scaffold extends Module {
 
         long now = System.currentTimeMillis();
         int baseDelay = delay.getInt();
+        // After failed place, allow quicker retry so Telly doesn't leave gaps
+        if (retryFail.get() && failStreak > 0) {
+            baseDelay = Math.max(25, baseDelay - 12 * Math.min(failStreak, 3));
+        }
 
         if ("Tower".equals(m)) {
             if (now - lastPlace < Humanizer.delay(Math.max(30, baseDelay - 10), 8, 25, baseDelay + 20)) return;
@@ -71,65 +78,66 @@ public class Scaffold extends Module {
                 BlockPos under = mc.player.getBlockPos().down();
                 if (tryPlace(under)) {
                     lastPlace = now;
+                    failStreak = 0;
                     if (rotate.get()) aimDown();
+                } else {
+                    failStreak++;
                 }
             }
             return;
         }
 
         if ("Telly".equals(m)) {
-            if (mc.player.isOnGround()) return;
+            if (sprint.get() && mc.options.forwardKey.isPressed()) mc.player.setSprinting(true);
             if (ticksInAir < airTicks.getInt()) return;
-            baseDelay = Math.max(30, baseDelay - 5);
-        } else if ("Godbridge".equals(m)) {
-            baseDelay = Math.max(30, baseDelay - 10);
-        }
-
-        if (now - lastPlace < Humanizer.delay(baseDelay, 10, Math.max(25, baseDelay - 12), baseDelay + 35)) {
+            if (now - lastPlace < Humanizer.delay(baseDelay, 10, 30, baseDelay + 40)) return;
+            BlockPos target = mc.player.getBlockPos().down();
+            if (!mc.world.getBlockState(target).isReplaceable()) {
+                target = aheadDown();
+            }
+            if (tryPlace(target)) {
+                lastPlace = now;
+                failStreak = 0;
+            } else if (tryPlace(aheadDown())) {
+                lastPlace = now;
+                failStreak = 0;
+            } else {
+                failStreak++;
+            }
             return;
         }
 
-        BlockPos below = mc.player.getBlockPos().down();
+        if ("Godbridge".equals(m)) {
+            if (now - lastPlace < Humanizer.delay(baseDelay + 15, 10, 25, baseDelay + 50)) return;
+            if (rotate.get()) aimDown();
+            BlockPos under = mc.player.getBlockPos().down();
+            BlockPos ahead = aheadDown();
+            if (tryPlace(under) || tryPlace(ahead)) {
+                lastPlace = now;
+                failStreak = 0;
+            } else failStreak++;
+            return;
+        }
 
-        if ("Telly".equals(m)) {
-            if (tryPlace(below) || tryPlace(aheadDown())) {
-                lastPlace = now;
-                return;
-            }
-        } else if ("Godbridge".equals(m)) {
-            Direction back = mc.player.getHorizontalFacing().getOpposite();
-            BlockPos neighbor = below.offset(back);
-            if (!mc.world.getBlockState(neighbor).isAir()) {
-                if (placeAgainst(neighbor, back.getOpposite())) {
-                    lastPlace = now;
-                    if (rotate.get()) {
-                        mc.player.setPitch(MathHelper.clamp(mc.player.getPitch(), 75f, 86f));
-                    }
-                    return;
-                }
-            }
-            if (tryPlace(below)) {
-                lastPlace = now;
-            }
+        // Normal
+        if (now - lastPlace < Humanizer.delay(baseDelay, 10, 30, baseDelay + 35)) return;
+        BlockPos under = mc.player.getBlockPos().down();
+        if (tryPlace(under)) {
+            lastPlace = now;
+            failStreak = 0;
+        } else if (tryPlace(aheadDown())) {
+            lastPlace = now;
+            failStreak = 0;
         } else {
-            if (tryPlace(below)) lastPlace = now;
+            failStreak++;
         }
     }
 
     private void tellyGround() {
-        if (mc.options == null) return;
-        boolean forward = mc.options.forwardKey.isPressed();
-        if (!forward) return;
-
-        if (sprint.get() && !mc.player.isSprinting() && mc.player.getHungerManager().getFoodLevel() > 6) {
-            mc.player.setSprinting(true);
-        }
-
-        if (autoJump.get() && mc.player.isOnGround()) {
-            BlockPos frontDown = mc.player.getBlockPos()
-                    .offset(mc.player.getHorizontalFacing()).down();
-            boolean edge = mc.world.getBlockState(frontDown).isAir()
-                    || mc.world.getBlockState(mc.player.getBlockPos().down()).isAir();
+        if (!autoJump.get()) return;
+        if (mc.options.forwardKey.isPressed()) {
+            boolean edge = mc.world.getBlockState(aheadDown()).isReplaceable()
+                    || mc.world.getBlockState(mc.player.getBlockPos().down()).isReplaceable();
             if (edge || mc.player.forwardSpeed > 0.08f) {
                 mc.player.jump();
             }
@@ -144,10 +152,15 @@ public class Scaffold extends Module {
         if (target == null) return false;
         if (!mc.world.getBlockState(target).isReplaceable()) return false;
 
-        for (Direction dir : Direction.values()) {
+        // Prefer horizontal faces first (more reliable for bridges)
+        Direction[] order = {
+                Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST,
+                Direction.UP, Direction.DOWN
+        };
+        for (Direction dir : order) {
             BlockPos neighbor = target.offset(dir);
             if (mc.world.getBlockState(neighbor).isAir()) continue;
-            if (mc.world.getBlockState(neighbor).getBlock().getDefaultState().isReplaceable()) continue;
+            if (mc.world.getBlockState(neighbor).isReplaceable()) continue;
 
             if (rotate.get() && ("Telly".equals(mode.get()) || "Tower".equals(mode.get()))) {
                 aimDown();
@@ -196,6 +209,14 @@ public class Scaffold extends Module {
     private boolean holdingBlock() {
         ItemStack main = mc.player.getMainHandStack();
         if (main.getItem() instanceof BlockItem) return true;
+        // Auto-switch to first hotbar block
+        for (int i = 0; i < 9; i++) {
+            ItemStack s = mc.player.getInventory().getStack(i);
+            if (s.getItem() instanceof BlockItem) {
+                mc.player.getInventory().setSelectedSlot(i);
+                return true;
+            }
+        }
         return mc.player.getOffHandStack().getItem() instanceof BlockItem;
     }
 }
