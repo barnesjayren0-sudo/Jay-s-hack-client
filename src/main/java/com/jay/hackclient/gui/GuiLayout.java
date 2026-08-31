@@ -5,24 +5,26 @@ import com.jay.hackclient.module.Module;
 import java.util.EnumMap;
 import java.util.Map;
 
-/** Persisted floating panel positions for ClickGUI. */
+/** Persisted floating panel positions — compact defaults for mobile. */
 public final class GuiLayout {
 
     public static final Map<Module.Category, float[]> POS = new EnumMap<>(Module.Category.class);
     public static boolean loaded;
+
+    /** Match ClickGuiScreen.PANEL_W */
+    public static final int PANEL_W = 98;
 
     private GuiLayout() {}
 
     public static void ensureDefaults() {
         if (!POS.isEmpty()) return;
         Module.Category[] cats = Module.Category.values();
-        int gap = 8;
-        int startX = 12;
-        int startY = 28;
-        int panelW = 118;
+        int gap = 6;
+        int startX = 8;
+        int startY = 22;
         for (int i = 0; i < cats.length; i++) {
-            float x = startX + (i % 4) * (panelW + gap);
-            float y = startY + (i / 4) * 160;
+            float x = startX + (i % 4) * (PANEL_W + gap);
+            float y = startY + (i / 4) * 130;
             POS.put(cats[i], new float[]{x, y});
         }
     }
@@ -33,7 +35,7 @@ public final class GuiLayout {
 
     public static float[] get(Module.Category cat) {
         ensureDefaults();
-        return POS.computeIfAbsent(cat, c -> new float[]{20, 40});
+        return POS.computeIfAbsent(cat, c -> new float[]{12, 24});
     }
 
     public static void writeConfig(StringBuilder sb) {
