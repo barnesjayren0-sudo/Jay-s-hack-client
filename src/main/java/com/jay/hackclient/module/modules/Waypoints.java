@@ -22,7 +22,6 @@ public class Waypoints extends Module {
         addSetting(announce);
     }
 
-    /** Handle .jay wp ... — returns true if consumed. */
     public static boolean tryCommand(String[] args) {
         if (args == null || args.length < 2) return false;
         String cmd = args[1].toLowerCase();
@@ -65,8 +64,11 @@ public class Waypoints extends Module {
             return;
         }
         try {
-            BaritoneCompat.gotoBlock(p.getX(), p.getY(), p.getZ());
-            msg("§aPathing to §f" + name);
+            if (BaritoneCompat.pathTo(p)) {
+                msg("§aPathing to §f" + name);
+            } else {
+                msg("§cBaritone unavailable");
+            }
         } catch (Throwable t) {
             msg("§cBaritone unavailable");
         }
@@ -98,7 +100,6 @@ public class Waypoints extends Module {
         POINTS.put(name.toLowerCase(), new BlockPos(x, y, z));
     }
 
-    /** ConfigManager: key like wp.home , value x,y,z */
     public static void loadLine(String k, String v) {
         if (k == null || v == null) return;
         String name = k.startsWith("wp.") ? k.substring(3) : k;
