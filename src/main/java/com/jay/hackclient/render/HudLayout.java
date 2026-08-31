@@ -23,17 +23,19 @@ public final class HudLayout {
     public static final Map<String, Element> ELEMENTS = new LinkedHashMap<>();
 
     static {
-        put("fps", "FPS", 4, 4);
-        put("ping", "Ping", 4, 16);
-        put("coords", "Coords", 4, 28);
-        put("speed", "Speed", 4, 40);
-        put("cps", "CPS", 4, 52);
-        put("keystrokes", "Keys", 4, 70);
+        put("fps", "FPS", 4, 28);
+        put("ping", "Ping", 4, 40);
+        put("coords", "Coords", 4, 52);
+        put("speed", "Speed", 4, 64);
+        put("cps", "CPS", 4, 76);
+        put("keystrokes", "Keys", 4, 90);
         put("armor", "Armor", 4, 120);
         put("potions", "Potions", 4, 160);
         put("target", "Target", 120, 4);
-        put("arraylist", "ArrayList", -120, 4); // negative = from right
+        put("arraylist", "ArrayList", -8, 28); // from right
+        put("arraylist_util", "UtilList", -8, 120);
         put("perf", "Perf", 4, 200);
+        put("watermark", "Watermark", 4, 4);
     }
 
     private static void put(String id, String label, float x, float y) {
@@ -42,6 +44,23 @@ public final class HudLayout {
 
     public static Element get(String id) {
         return ELEMENTS.get(id);
+    }
+
+    /** Resolve screen X (negative x = from right edge). */
+    public static int resolveX(Element e, int screenW) {
+        if (e == null) return 4;
+        if (e.x < 0) return screenW + (int) e.x;
+        return (int) e.x;
+    }
+
+    public static int resolveY(Element e, int fallback) {
+        if (e == null) return fallback;
+        return (int) e.y;
+    }
+
+    public static boolean visible(String id) {
+        Element e = ELEMENTS.get(id);
+        return e == null || e.visible;
     }
 
     public static void writeConfig(StringBuilder sb) {
