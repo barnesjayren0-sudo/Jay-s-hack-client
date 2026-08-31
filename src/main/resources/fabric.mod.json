@@ -3,7 +3,7 @@
   "id": "jayhackclient",
   "version": "${version}",
   "name": "Jay's Client",
-  "description": "v1.45.0 — Premium responsive GUI, resilient module runtime, Cloth Config settings, Kotlin modules, atomic config.",
+  "description": "v1.46.0 — Presets, theme engine, HUD editor, keybind manager, first-launch setup, perf dashboard.",
   "authors": ["barnesjayren0-sudo"],
   "license": "All-Rights-Reserved",
   "environment": "client",
