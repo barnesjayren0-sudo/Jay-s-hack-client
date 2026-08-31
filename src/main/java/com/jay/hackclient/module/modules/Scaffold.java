@@ -7,6 +7,7 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.Humanizer;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -21,14 +22,15 @@ public class Scaffold extends Module {
     public final NumberSetting delay = new NumberSetting("Delay", "Base place ms", 45, 25, 120, 5);
     public final BoolSetting autoJump = new BoolSetting("AutoJump", "Jump when grounded (Telly)", true);
     public final NumberSetting airTicks = new NumberSetting("AirTicks", "Min air ticks before place", 2, 0, 8, 1);
-    public final BoolSetting rotate = new BoolSetting("Rotate", "Pitch down when placing", true);
+    public final BoolSetting rotate = new BoolSetting("Rotate", "Face block when placing", true);
     public final BoolSetting sprint = new BoolSetting("Sprint", "Keep sprint on Telly", true);
     public final BoolSetting retryFail = new BoolSetting("Retry", "Faster retry after failed place", true);
+    public final BoolSetting safeEdge = new BoolSetting("SafeEdge", "Extra edge check before place", true);
 
     private long lastPlace;
     private int ticksInAir;
-    private float savedPitch = Float.NaN;
     private int failStreak;
+    private float savedPitch = 0;
 
     public Scaffold() {
         super("Scaffold", "Telly / Normal / Godbridge / Tower", Category.WORLD);
@@ -39,20 +41,25 @@ public class Scaffold extends Module {
         addSetting(rotate);
         addSetting(sprint);
         addSetting(retryFail);
+        addSetting(safeEdge);
+    }
+
+    @Override
+    public void onEnable() {
+        ticksInAir = 0;
+        failStreak = 0;
+        lastPlace = 0;
     }
 
     @Override
     public void onDisable() {
         restorePitch();
-        ticksInAir = 0;
-        failStreak = 0;
     }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        if (mc.currentScreen != null) return;
-        if (!holdingBlock()) return;
+        if (!hasBlocks()) return;
 
         String m = mode.get();
 
@@ -78,7 +85,6 @@ public class Scaffold extends Module {
                 if (tryPlace(under)) {
                     lastPlace = now;
                     failStreak = 0;
-                    if (rotate.get()) aimDown();
                 } else {
                     failStreak++;
                 }
@@ -87,31 +93,35 @@ public class Scaffold extends Module {
         }
 
         if ("Telly".equals(m)) {
-            if (sprint.get() && mc.options.forwardKey.isPressed()) mc.player.setSprinting(true);
             if (ticksInAir < airTicks.getInt()) return;
-            if (now - lastPlace < Humanizer.delay(baseDelay, 10, 30, baseDelay + 40)) return;
+            if (now - lastPlace < Humanizer.delay(baseDelay, 10, 30, baseDelay + 35)) return;
             BlockPos target = mc.player.getBlockPos().down();
             if (!mc.world.getBlockState(target).isReplaceable()) {
+                // extend forward when standing on placed block mid-bridge
                 target = aheadDown();
             }
+            if (safeEdge.get() && mc.player.isOnGround()) return;
             if (tryPlace(target)) {
                 lastPlace = now;
                 failStreak = 0;
-            } else if (tryPlace(aheadDown())) {
-                lastPlace = now;
-                failStreak = 0;
+                if (sprint.get() && mc.options.forwardKey.isPressed()) mc.player.setSprinting(true);
             } else {
                 failStreak++;
+                // one recovery attempt on adjacent edge
+                if (tryPlace(aheadDown())) {
+                    lastPlace = now;
+                    failStreak = 0;
+                }
             }
             return;
         }
 
         if ("Godbridge".equals(m)) {
-            if (now - lastPlace < Humanizer.delay(baseDelay + 15, 10, 25, baseDelay + 50)) return;
-            if (rotate.get()) aimDown();
-            BlockPos under = mc.player.getBlockPos().down();
-            BlockPos ahead = aheadDown();
-            if (tryPlace(under) || tryPlace(ahead)) {
+            if (now - lastPlace < Humanizer.delay(baseDelay, 8, 20, baseDelay + 25)) return;
+            savedPitch = mc.player.getPitch();
+            mc.player.setPitch(75f);
+            BlockPos target = aheadDown();
+            if (tryPlace(target) || tryPlace(mc.player.getBlockPos().down())) {
                 lastPlace = now;
                 failStreak = 0;
             } else failStreak++;
@@ -119,98 +129,96 @@ public class Scaffold extends Module {
         }
 
         // Normal
-        if (now - lastPlace < Humanizer.delay(baseDelay, 10, 30, baseDelay + 35)) return;
+        if (now - lastPlace < Humanizer.delay(baseDelay, 10, 28, baseDelay + 40)) return;
         BlockPos under = mc.player.getBlockPos().down();
-        if (tryPlace(under)) {
-            lastPlace = now;
-            failStreak = 0;
-        } else if (tryPlace(aheadDown())) {
-            lastPlace = now;
-            failStreak = 0;
-        } else {
-            failStreak++;
-        }
-    }
-
-    private void tellyGround() {
-        if (!autoJump.get()) return;
-        if (mc.options.forwardKey.isPressed()) {
+        if (mc.world.getBlockState(under).isReplaceable()) {
+            if (tryPlace(under)) {
+                lastPlace = now;
+                failStreak = 0;
+            } else failStreak++;
+        } else if (safeEdge.get()) {
             boolean edge = mc.world.getBlockState(aheadDown()).isReplaceable()
-                    || mc.world.getBlockState(mc.player.getBlockPos().down()).isReplaceable();
-            if (edge || mc.player.forwardSpeed > 0.08f) {
-                mc.player.jump();
+                    || mc.world.getBlockState(under).isReplaceable();
+            if (edge && tryPlace(aheadDown())) {
+                lastPlace = now;
+                failStreak = 0;
             }
         }
     }
 
+    private void tellyGround() {
+        if (autoJump.get() && mc.options.forwardKey.isPressed() && mc.player.isOnGround()) {
+            boolean edge = mc.world.getBlockState(aheadDown()).isReplaceable();
+            if (edge) mc.player.jump();
+        }
+    }
+
     private BlockPos aheadDown() {
-        return mc.player.getBlockPos().offset(mc.player.getHorizontalFacing()).down();
+        float yaw = mc.player.getYaw();
+        double rad = Math.toRadians(yaw);
+        int fx = (int) Math.round(-Math.sin(rad));
+        int fz = (int) Math.round(Math.cos(rad));
+        return mc.player.getBlockPos().add(fx, -1, fz);
     }
 
     private boolean tryPlace(BlockPos target) {
-        if (target == null) return false;
+        if (target == null || mc.world == null) return false;
         if (!mc.world.getBlockState(target).isReplaceable()) return false;
+        selectBlockSlot();
 
-        Direction[] order = {
-                Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST,
-                Direction.UP, Direction.DOWN
-        };
-        for (Direction dir : order) {
+        for (Direction dir : Direction.values()) {
             BlockPos neighbor = target.offset(dir);
-            if (mc.world.getBlockState(neighbor).isAir()) continue;
             if (mc.world.getBlockState(neighbor).isReplaceable()) continue;
-
             if (rotate.get() && ("Telly".equals(mode.get()) || "Tower".equals(mode.get()))) {
-                aimDown();
+                lookAt(neighbor);
             }
             if (placeAgainst(neighbor, dir.getOpposite())) return true;
         }
         return false;
     }
 
-    private void aimDown() {
-        if (Float.isNaN(savedPitch)) savedPitch = mc.player.getPitch();
-        float target = 75f + (float) (Math.random() * 6.0);
-        float cur = mc.player.getPitch();
-        mc.player.setPitch(cur + (target - cur) * 0.45f);
-    }
-
-    private void restorePitch() {
-        if (!Float.isNaN(savedPitch) && mc.player != null) {
-            mc.player.setPitch(savedPitch);
-            savedPitch = Float.NaN;
-        }
+    private void lookAt(BlockPos pos) {
+        Vec3d eyes = mc.player.getEyePos();
+        Vec3d center = Vec3d.ofCenter(pos);
+        Vec3d d = center.subtract(eyes);
+        double dist = Math.sqrt(d.x * d.x + d.z * d.z);
+        float yaw = (float) (Math.toDegrees(Math.atan2(d.z, d.x)) - 90.0);
+        float pitch = (float) (-Math.toDegrees(Math.atan2(d.y, dist)));
+        mc.player.setYaw(yaw);
+        mc.player.setPitch(pitch);
     }
 
     private boolean placeAgainst(BlockPos neighbor, Direction face) {
-        Hand hand = Hand.MAIN_HAND;
-        if (!(mc.player.getMainHandStack().getItem() instanceof BlockItem)
-                && mc.player.getOffHandStack().getItem() instanceof BlockItem) {
-            hand = Hand.OFF_HAND;
-        }
-        Vec3d hit = Vec3d.ofCenter(neighbor).add(
-                face.getOffsetX() * 0.5,
-                face.getOffsetY() * 0.5,
-                face.getOffsetZ() * 0.5
-        );
+        Vec3d hit = Vec3d.ofCenter(neighbor).add(Vec3d.of(face.getVector()).multiply(0.5));
         BlockHitResult bhr = new BlockHitResult(hit, face, neighbor, false);
-        try {
-            var result = mc.interactionManager.interactBlock(mc.player, hand, bhr);
-            mc.player.swingHand(hand);
-            return result != null && result.isAccepted();
-        } catch (Exception e) {
-            try {
-                mc.interactionManager.interactBlock(mc.player, hand, bhr);
-                mc.player.swingHand(hand);
-                return true;
-            } catch (Exception e2) {
-                return false;
+        ActionResult r = mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, bhr);
+        if (r.isAccepted()) {
+            mc.player.swingHand(Hand.MAIN_HAND);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasBlocks() {
+        ItemStack s = mc.player.getMainHandStack();
+        if (s.getItem() instanceof BlockItem) return true;
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).getItem() instanceof BlockItem) return true;
+        }
+        return false;
+    }
+
+    private void selectBlockSlot() {
+        if (mc.player.getMainHandStack().getItem() instanceof BlockItem) return;
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).getItem() instanceof BlockItem) {
+                mc.player.getInventory().setSelectedSlot(i);
+                return;
             }
         }
     }
 
-    private boolean holdingBlock() {
-        return mc.player.getMainHandStack().getItem() instanceof BlockItem
-                || mc.player.getOffHandStack().getItem() instanceof BlockItem;
+    private void restorePitch() {
+        // no-op soft restore — avoid fighting other rotation owners
     }
 }
