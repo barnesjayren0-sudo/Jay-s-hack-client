@@ -4,6 +4,7 @@ import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.compat.BaritoneCompat;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.modules.InfoHUD;
+import com.jay.hackclient.module.modules.PearlTrajectory;
 import com.jay.hackclient.module.modules.PerfDashboard;
 import com.jay.hackclient.module.modules.ReachHUD;
 import com.jay.hackclient.module.modules.TargetHUD;
@@ -63,11 +64,11 @@ public final class HudRenderer {
                 if (m.isDrawn()) active++;
             }
             String watermark = ClientSettings.showActiveCount
-                    ? ("§bJ§fay §8" + ver + " §7[" + active + "]")
-                    : ("§bJ§fay §8" + ver);
+                    ? ("§bJAY §f" + ver + " §8· §7" + active)
+                    : ("§bJAY §f" + ver);
             int ww = mc.textRenderer.getWidth(strip(watermark)) + 14;
-            context.fill(wx, wy, wx + ww, wy + 13, 0x990A0A10);
-            context.fill(wx, wy, wx + 2, wy + 13, accent);
+            context.fill(wx, wy, wx + ww, wy + 24, 0x990A0A10);
+            context.fill(wx, wy, wx + 2, wy + 24, accent);
             context.drawTextWithShadow(mc.textRenderer, watermark, wx + 6, wy + 3, 0xFFFFFF);
             context.drawTextWithShadow(mc.textRenderer, "§8" + ClientSettings.lastProfile, wx + 6, wy + 14, 0x888888);
         }
@@ -76,64 +77,50 @@ public final class HudRenderer {
         if (info != null && info.isEnabled()) {
             if (InfoHUD.coords.get() && HudLayout.visible("coords")) {
                 HudLayout.Element e = HudLayout.get("coords");
-                String c = String.format("§7XYZ §f%.1f §7%.0f §f%.1f",
-                        mc.player.getX(), mc.player.getY(), mc.player.getZ());
-                context.drawTextWithShadow(mc.textRenderer, c,
-                        HudLayout.resolveX(e, screenW), HudLayout.resolveY(e, 52), 0xFFFFFF);
-            }
-            if (InfoHUD.fps.get() && HudLayout.visible("fps")) {
-                HudLayout.Element e = HudLayout.get("fps");
-                context.drawTextWithShadow(mc.textRenderer, "§7FPS §f" + mc.getCurrentFps(),
-                        HudLayout.resolveX(e, screenW), HudLayout.resolveY(e, 28), 0xFFFFFF);
-            }
-            if (InfoHUD.speed.get() && HudLayout.visible("speed")) {
-                HudLayout.Element e = HudLayout.get("speed");
-                double dx = mc.player.getX() - mc.player.lastRenderX;
-                double dz = mc.player.getZ() - mc.player.lastRenderZ;
-                double bps = Math.sqrt(dx * dx + dz * dz) * 20.0;
-                context.drawTextWithShadow(mc.textRenderer, String.format("§7BPS §f%.2f", bps),
-                        HudLayout.resolveX(e, screenW), HudLayout.resolveY(e, 64), 0xFFFFFF);
-            }
-            if (InfoHUD.ping.get() && HudLayout.visible("ping")) {
-                HudLayout.Element e = HudLayout.get("ping");
-                int pingMs = 0;
-                try {
-                    if (mc.getNetworkHandler() != null) {
-                        var pe = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
-                        if (pe != null) pingMs = pe.getLatency();
-                    }
-                } catch (Throwable ignored) {}
-                context.drawTextWithShadow(mc.textRenderer, "§7Ping §f" + pingMs,
-                        HudLayout.resolveX(e, screenW), HudLayout.resolveY(e, 40), 0xFFFFFF);
+                int x = HudLayout.resolveX(e, screenW);
+                int y = HudLayout.resolveY(e, 52);
+                String c = String.format("§7%d %d %d",
+                        (int) mc.player.getX(), (int) mc.player.getY(), (int) mc.player.getZ());
+                context.drawTextWithShadow(mc.textRenderer, c, x, y, 0xCCCCCC);
             }
         }
 
-        Module rh = JayHackClient.moduleManager.getModuleByName("ReachHUD");
-        if (rh != null && rh.isEnabled()) {
-            String r = String.format("§7Reach §f%.2f §8| §7XH §f%.2f", ReachHUD.lastReach, ReachHUD.crosshairDist);
-            context.drawTextWithShadow(mc.textRenderer, r, 10, screenH - 24, 0xFFFFFF);
+        Module reach = JayHackClient.moduleManager.getModuleByName("ReachHUD");
+        if (reach != null && reach.isEnabled()) {
+            try { ReachHUD.draw(context); } catch (Throwable ignored) {}
         }
 
-        String bLine = BaritoneCompat.hudLine();
-        if (bLine != null) {
-            context.drawTextWithShadow(mc.textRenderer, "§bB §f" + bLine, 10, screenH - 36, 0xFFFFFF);
+        Module perf = JayHackClient.moduleManager.getModuleByName("PerfDashboard");
+        if (perf != null && perf.isEnabled() && HudLayout.visible("perf")) {
+            try { PerfDashboard.draw(context); } catch (Throwable ignored) {}
         }
+
+        Module pearl = JayHackClient.moduleManager.getModuleByName("PearlTrajectory");
+        if (pearl != null && pearl.isEnabled()) {
+            try { PearlTrajectory.drawHud(context, screenW, screenH); } catch (Throwable ignored) {}
+        }
+
+        try { Notifications.render(context); } catch (Throwable ignored) {}
+
+        try {
+            if (BaritoneCompat.isPathing()) {
+                context.drawTextWithShadow(mc.textRenderer, "§bBaritone §7pathing",
+                        4, screenH - 14, 0xAAAAAA);
+            }
+        } catch (Throwable ignored) {}
 
         List<Module> combat = new ArrayList<>();
         List<Module> util = new ArrayList<>();
         for (Module m : JayHackClient.moduleManager.getActive()) {
             if (!m.isDrawn()) continue;
-            String n = m.getName();
-            if (n.equalsIgnoreCase("HUD") || n.equalsIgnoreCase("InfoHUD")) continue;
             if (m.getCategory() == Module.Category.COMBAT || m.getCategory() == Module.Category.ANARCHY) {
                 combat.add(m);
             } else {
                 util.add(m);
             }
         }
-        combat.sort(listOrder(mc));
-        util.sort(listOrder(mc));
-        updateSlide(combat, util);
+        sortModules(combat);
+        sortModules(util);
 
         if (HudLayout.visible("arraylist")) {
             drawArrayList(context, mc, combat, screenW, HudLayout.get("arraylist"), phone, accent);
@@ -145,50 +132,43 @@ public final class HudRenderer {
         Module th = JayHackClient.moduleManager.getModuleByName("TargetHUD");
         if (th != null && th.isEnabled() && HudLayout.visible("target")) {
             HudLayout.Element te = HudLayout.get("target");
-            try {
-                drawTargetAt(context, mc, HudLayout.resolveX(te, screenW), HudLayout.resolveY(te, 4));
-            } catch (Throwable ignored) {}
+            drawTargetAt(context, mc, HudLayout.resolveX(te, screenW), HudLayout.resolveY(te, 4));
         }
-
-        Module perf = JayHackClient.moduleManager.getModuleByName("PerfDashboard");
-        if (perf instanceof PerfDashboard pd) {
-            pd.renderOverlay(context, screenW);
-        }
-
-        Notifications.render(context);
     }
 
-    private static Comparator<Module> listOrder(MinecraftClient mc) {
-        return Comparator
+    private static void sortModules(List<Module> list) {
+        list.sort(Comparator
                 .comparing((Module m) -> !ClientSettings.isFavorite(m.getName()))
-                .thenComparingInt(m -> -mc.textRenderer.getWidth(m.getName()));
+                .thenComparing(m -> m.getName().toLowerCase()));
     }
 
-    private static void updateSlide(List<Module> a, List<Module> b) {
+    private static void drawArrayList(DrawContext context, MinecraftClient mc, List<Module> list,
+                                      int screenW, HudLayout.Element el, boolean phone, int accent) {
+        if (list == null || list.isEmpty() || el == null) return;
+        int y = HudLayout.resolveY(el, 28);
+        int baseRight = HudLayout.resolveX(el, screenW);
+        if (el.x >= 0) baseRight = el.x > 0 ? (int) el.x + 80 : screenW - 4;
+
+        List<Module> a = new ArrayList<>(list);
+        List<Module> b = new ArrayList<>();
         for (Module m : a) slide.put(m.getName(), Math.min(1f, slide.getOrDefault(m.getName(), 0f) + 0.18f));
         for (Module m : b) slide.put(m.getName(), Math.min(1f, slide.getOrDefault(m.getName(), 0f) + 0.18f));
         Iterator<Map.Entry<String, Float>> it = slide.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<String, Float> e = it.next();
             boolean still = false;
-            for (Module m : a) if (m.getName().equals(e.getKey())) { still = true; break; }
-            if (!still) for (Module m : b) if (m.getName().equals(e.getKey())) { still = true; break; }
+            for (Module m : list) if (m.getName().equals(e.getKey())) { still = true; break; }
             if (!still) {
-                float v = e.getValue() - 0.12f;
+                float v = e.getValue() - 0.2f;
                 if (v <= 0) it.remove();
                 else e.setValue(v);
             }
         }
-    }
 
-    private static void drawArrayList(DrawContext context, MinecraftClient mc, List<Module> list,
-                                      int screenW, HudLayout.Element el, boolean phone, int accent) {
-        int maxList = phone ? 6 : 16;
-        int y = HudLayout.resolveY(el, 28);
-        int baseRight = el != null && el.x < 0 ? screenW + (int) el.x : screenW - 8;
         int shown = 0;
+        int max = phone ? 8 : 14;
         for (Module m : list) {
-            if (shown >= maxList) break;
+            if (shown >= max) break;
             float s = slide.getOrDefault(m.getName(), 1f);
             String star = ClientSettings.isFavorite(m.getName()) ? "§e★ " : "";
             String label = star + m.getName();
@@ -196,7 +176,6 @@ public final class HudRenderer {
             int slidePx = (int) ((1f - s) * (textW + 16));
             int x = baseRight - textW - 4 + slidePx;
             int rowAccent = ClientSettings.arrayListRainbow ? accent : m.getCategoryColor();
-            context.fill(x - 5, y - 1, baseRight, y + 10, 0x990A0A10);
             context.fill(baseRight - 2, y - 1, baseRight, y + 10, rowAccent);
             context.drawTextWithShadow(mc.textRenderer, label, x, y, 0xE8E8F0);
             y += 11;
@@ -207,29 +186,30 @@ public final class HudRenderer {
     private static void drawTargetAt(DrawContext context, MinecraftClient mc, int bx, int by) {
         PlayerEntity t = TargetHUD.currentTarget;
         if (t == null || !t.isAlive()) return;
-        String name = t.getName().getString();
-        float hp = t.getHealth() + t.getAbsorptionAmount();
-        float max = Math.max(1f, t.getMaxHealth());
-        float pct = Math.max(0f, Math.min(1f, hp / max));
 
-        int boxW = 120;
-        int boxH = 28;
+        float hp = TargetHUD.currentHp > 0 ? TargetHUD.currentHp : (t.getHealth() + t.getAbsorptionAmount());
+        float max = TargetHUD.currentMaxHp > 0 ? TargetHUD.currentMaxHp : Math.max(1f, t.getMaxHealth());
+        float pct = Math.max(0f, Math.min(1f, hp / max));
+        int armor = TargetHUD.armorPoints;
+
+        int boxW = 128;
+        int boxH = 36;
         context.fill(bx, by, bx + boxW, by + boxH, 0x990A0A10);
         context.fill(bx, by, bx + 2, by + boxH, CYAN);
 
+        String name = t.getName().getString();
         String info = String.format("%s  §7%.1fm", name, TargetHUD.currentDistance);
-        context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 5, 0xFFF0F0F8);
+        context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 4, 0xFFF0F0F8);
+
+        String hpText = String.format("§f%.1f §8| §7A%d", hp, armor);
+        context.drawTextWithShadow(mc.textRenderer, hpText, bx + 8, by + 14, CYAN);
 
         int barW = boxW - 16;
-        int barY = by + 18;
+        int barY = by + 26;
         context.fill(bx + 8, barY, bx + 8 + barW, barY + 5, 0xFF1A1A24);
         int fill = Math.max(1, (int) (barW * pct));
         int col = pct > 0.5f ? 0xFF3DDCFF : (pct > 0.25f ? 0xFFCCAA33 : 0xFFCC4444);
         context.fill(bx + 8, barY, bx + 8 + fill, barY + 5, col);
-
-        String hpText = String.format("%.1f", hp);
-        context.drawTextWithShadow(mc.textRenderer, hpText,
-                bx + boxW - 8 - mc.textRenderer.getWidth(hpText), by + 5, CYAN);
     }
 
     private static String strip(String s) {
