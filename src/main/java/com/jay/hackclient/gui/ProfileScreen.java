@@ -1,5 +1,6 @@
 package com.jay.hackclient.gui;
 
+import com.jay.hackclient.config.ConfigIO;
 import com.jay.hackclient.profile.PresetManager;
 import com.jay.hackclient.profile.ProfileManager;
 import com.jay.hackclient.util.Notifications;
@@ -13,7 +14,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
-/** Profiles UI — presets, + New, confirm overwrite/delete (mobile-friendly). */
+/** Profiles — presets, + New, confirm overwrite/delete, config export/import. */
 public class ProfileScreen extends Screen {
 
     private final Screen parent;
@@ -32,14 +33,14 @@ public class ProfileScreen extends Screen {
         ctx.fill(0, 0, width, height, GuiTheme.OVERLAY);
         int w = Math.min(300, width - 16);
         int x = (width - w) / 2;
-        int y = 24;
-        int h = Math.min(height - 40, 240);
+        int y = 20;
+        int h = Math.min(height - 32, 260);
         ctx.fill(x, y, x + w, y + h, GuiTheme.BG);
-        ctx.drawTextWithShadow(textRenderer, "§bProfiles", x + 8, y + 8, GuiTheme.TEXT);
+        ctx.drawTextWithShadow(textRenderer, "§bProfiles", x + 8, y + 6, GuiTheme.TEXT);
 
-        ctx.drawTextWithShadow(textRenderer, "§7Presets", x + 8, y + 22, GuiTheme.TEXT_DIM);
+        ctx.drawTextWithShadow(textRenderer, "§7Presets", x + 8, y + 20, GuiTheme.TEXT_DIM);
         int px = x + 8;
-        int py = y + 34;
+        int py = y + 32;
         for (PresetManager.Preset p : PresetManager.Preset.values()) {
             int bw = textRenderer.getWidth(p.display) + 10;
             if (px + bw > x + w - 8) { px = x + 8; py += 16; }
@@ -48,39 +49,37 @@ public class ProfileScreen extends Screen {
             px += bw + 4;
         }
 
-        int fieldY = py + 22;
-        ctx.drawTextWithShadow(textRenderer, "§7Name (tap to type)", x + 8, fieldY, GuiTheme.TEXT_DIM);
-        ctx.fill(x + 8, fieldY + 12, x + w - 8, fieldY + 28, typing ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
+        int fieldY = py + 20;
+        ctx.drawTextWithShadow(textRenderer, "§7Name (tap)", x + 8, fieldY, GuiTheme.TEXT_DIM);
+        ctx.fill(x + 8, fieldY + 11, x + w - 8, fieldY + 26, typing ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
         String shown = typing ? nameBuf + "§7|" : nameBuf;
-        ctx.drawTextWithShadow(textRenderer, shown, x + 12, fieldY + 16, GuiTheme.TEXT);
+        ctx.drawTextWithShadow(textRenderer, shown, x + 12, fieldY + 15, GuiTheme.TEXT);
 
-        int by = fieldY + 36;
-        drawBtn(ctx, x + 8, by, 52, "+ New");
-        drawBtn(ctx, x + 64, by, 52, "Save");
-        drawBtn(ctx, x + 120, by, 52, "Load");
-        drawBtn(ctx, x + 176, by, 52, "Delete");
+        int by = fieldY + 32;
+        drawBtn(ctx, x + 8, by, 50, "+ New");
+        drawBtn(ctx, x + 62, by, 50, "Save");
+        drawBtn(ctx, x + 116, by, 50, "Load");
+        drawBtn(ctx, x + 170, by, 50, "Delete");
 
+        drawBtn(ctx, x + 8, by + 18, 60, "Export");
+        drawBtn(ctx, x + 72, by + 18, 60, "Import");
+
+        int listY = by + 40;
         if (pendingDelete != null) {
-            ctx.drawTextWithShadow(textRenderer, "§cDelete " + pendingDelete + "?", x + 8, by + 20, GuiTheme.DANGER);
-            drawBtn(ctx, x + 8, by + 34, 50, "Yes");
-            drawBtn(ctx, x + 62, by + 34, 50, "No");
+            ctx.drawTextWithShadow(textRenderer, "§cDelete " + pendingDelete + "?", x + 8, listY, GuiTheme.DANGER);
+            drawBtn(ctx, x + 8, listY + 14, 50, "Yes");
+            drawBtn(ctx, x + 62, listY + 14, 50, "No");
         } else if (pendingOverwrite != null) {
-            ctx.drawTextWithShadow(textRenderer, "§eOverwrite " + pendingOverwrite + "?", x + 8, by + 20, GuiTheme.TEXT);
-            drawBtn(ctx, x + 8, by + 34, 50, "Yes");
-            drawBtn(ctx, x + 62, by + 34, 50, "No");
+            ctx.drawTextWithShadow(textRenderer, "§eOverwrite " + pendingOverwrite + "?", x + 8, listY, GuiTheme.TEXT);
+            drawBtn(ctx, x + 8, listY + 14, 50, "Yes");
+            drawBtn(ctx, x + 62, listY + 14, 50, "No");
         } else {
-            ctx.drawTextWithShadow(textRenderer, "§7Saved", x + 8, by + 20, GuiTheme.TEXT_DIM);
-            List<String> list = ProfileManager.list();
-            int ly = by + 34;
-            for (String n : list) {
-                boolean sel = n.equalsIgnoreCase(nameBuf);
-                if (sel) ctx.fill(x + 8, ly - 1, x + w - 8, ly + 11, GuiTheme.ROW_HOVER);
-                ctx.drawTextWithShadow(textRenderer, (sel ? "§b" : "§f") + n, x + 12, ly, GuiTheme.TEXT);
+            ctx.drawTextWithShadow(textRenderer, "§7Saved", x + 8, listY, GuiTheme.TEXT_DIM);
+            int ly = listY + 14;
+            for (String n : ProfileManager.list()) {
+                ctx.drawTextWithShadow(textRenderer, "§f" + n, x + 12, ly, GuiTheme.TEXT);
                 ly += 12;
-                if (ly > y + h - 12) break;
-            }
-            if (list.isEmpty()) {
-                ctx.drawTextWithShadow(textRenderer, "§8No profiles yet", x + 12, ly, GuiTheme.MUTED);
+                if (ly > y + h - 8) break;
             }
         }
     }
@@ -95,11 +94,12 @@ public class ProfileScreen extends Screen {
         if (click.button() != 0) return super.mouseClicked(click, doubled);
         int w = Math.min(300, width - 16);
         int x = (width - w) / 2;
-        int y = 24;
+        int y = 20;
         double mx = click.x(), my = click.y();
 
+        // Recompute layout anchors (same as render)
         int px = x + 8;
-        int py = y + 34;
+        int py = y + 32;
         for (PresetManager.Preset p : PresetManager.Preset.values()) {
             int bw = textRenderer.getWidth(p.display) + 10;
             if (px + bw > x + w - 8) { px = x + 8; py += 16; }
@@ -110,33 +110,34 @@ public class ProfileScreen extends Screen {
             px += bw + 4;
         }
 
-        int fieldY = py + 22;
-        if (mx >= x + 8 && mx <= x + w - 8 && my >= fieldY + 12 && my <= fieldY + 28) {
+        int fieldY = py + 20;
+        if (mx >= x + 8 && mx <= x + w - 8 && my >= fieldY + 11 && my <= fieldY + 26) {
             typing = true;
             return true;
         }
 
-        int by = fieldY + 36;
+        int by = fieldY + 32;
+        int listY = by + 40;
 
         if (pendingDelete != null) {
-            if (mx >= x + 8 && mx <= x + 58 && my >= by + 34 && my <= by + 48) {
+            if (mx >= x + 8 && mx <= x + 58 && my >= listY + 14 && my <= listY + 28) {
                 ProfileManager.delete(pendingDelete);
                 pendingDelete = null;
                 return true;
             }
-            if (mx >= x + 62 && mx <= x + 112 && my >= by + 34 && my <= by + 48) {
+            if (mx >= x + 62 && mx <= x + 112 && my >= listY + 14 && my <= listY + 28) {
                 pendingDelete = null;
                 return true;
             }
             return true;
         }
         if (pendingOverwrite != null) {
-            if (mx >= x + 8 && mx <= x + 58 && my >= by + 34 && my <= by + 48) {
+            if (mx >= x + 8 && mx <= x + 58 && my >= listY + 14 && my <= listY + 28) {
                 ProfileManager.save(pendingOverwrite);
                 pendingOverwrite = null;
                 return true;
             }
-            if (mx >= x + 62 && mx <= x + 112 && my >= by + 34 && my <= by + 48) {
+            if (mx >= x + 62 && mx <= x + 112 && my >= listY + 14 && my <= listY + 28) {
                 pendingOverwrite = null;
                 return true;
             }
@@ -144,13 +145,13 @@ public class ProfileScreen extends Screen {
         }
 
         if (my >= by && my <= by + 14) {
-            if (mx >= x + 8 && mx <= x + 60) {
+            if (mx >= x + 8 && mx <= x + 58) {
                 nameBuf = "Profile" + (ProfileManager.list().size() + 1);
                 typing = true;
-                Notifications.push("Profile", "Name set — Save when ready");
+                Notifications.push("Profile", "Tap name field, then Save");
                 return true;
             }
-            if (mx >= x + 64 && mx <= x + 116) {
+            if (mx >= x + 62 && mx <= x + 112) {
                 if (ProfileManager.list().stream().anyMatch(n -> n.equalsIgnoreCase(nameBuf))) {
                     pendingOverwrite = nameBuf;
                 } else {
@@ -158,19 +159,29 @@ public class ProfileScreen extends Screen {
                 }
                 return true;
             }
-            if (mx >= x + 120 && mx <= x + 172) {
+            if (mx >= x + 116 && mx <= x + 166) {
                 ProfileManager.load(nameBuf);
                 return true;
             }
-            if (mx >= x + 176 && mx <= x + 228) {
+            if (mx >= x + 170 && mx <= x + 220) {
                 pendingDelete = nameBuf;
                 return true;
             }
         }
 
-        List<String> list = ProfileManager.list();
-        int ly = by + 34;
-        for (String n : list) {
+        if (my >= by + 18 && my <= by + 32) {
+            if (mx >= x + 8 && mx <= x + 68) {
+                ConfigIO.exportToClipboard();
+                return true;
+            }
+            if (mx >= x + 72 && mx <= x + 132) {
+                ConfigIO.importFromClipboard();
+                return true;
+            }
+        }
+
+        int ly = listY + 14;
+        for (String n : ProfileManager.list()) {
             if (mx >= x + 12 && mx <= x + w - 12 && my >= ly && my <= ly + 12) {
                 nameBuf = n;
                 typing = false;
@@ -178,6 +189,7 @@ public class ProfileScreen extends Screen {
             }
             ly += 12;
         }
+
         typing = false;
         return super.mouseClicked(click, doubled);
     }
