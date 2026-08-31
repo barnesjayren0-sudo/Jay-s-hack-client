@@ -2,22 +2,22 @@ package com.jay.hackclient.render;
 
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
-import com.jay.hackclient.module.modules.BaseFinder;
-import com.jay.hackclient.module.modules.HoleESP;
-import com.jay.hackclient.module.modules.LogoutSpots;
+import com.jay.hackclient.module.modules.AntiBot;
+import com.jay.hackclient.module.modules.ESP;
 import com.jay.hackclient.module.modules.Nametags;
 import com.jay.hackclient.module.modules.StorageESP;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.Camera;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.mob.HostileEntity;
+import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/** Screen-space ESP markers for finders, storage, holes, logout spots + combat overlays. */
+/**
+ * HUD-space ESP: 2D boxes + nametags using Camera-based projection.
+ */
 public final class WorldEspRenderer {
 
     private static boolean registered;
@@ -31,146 +31,161 @@ public final class WorldEspRenderer {
 
     public static void drawHudOverlay(DrawContext ctx) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
-        if (JayHackClient.moduleManager == null) return;
+        if (mc.player == null || mc.world == null || JayHackClient.moduleManager == null) return;
+        if (mc.options.hudHidden) return;
 
-        Module bf = JayHackClient.moduleManager.getModuleByName("BaseFinder");
-        Module se = JayHackClient.moduleManager.getModuleByName("StorageESP");
-        Module ff = JayHackClient.moduleManager.getModuleByName("FarmFinder");
-        Module he = JayHackClient.moduleManager.getModuleByName("HoleESP");
-        Module lo = JayHackClient.moduleManager.getModuleByName("LogoutSpots");
-        Module nt = JayHackClient.moduleManager.getModuleByName("Nametags");
+        Module espMod = JayHackClient.moduleManager.getModuleByName("ESP");
+        Module ntMod = JayHackClient.moduleManager.getModuleByName("Nametags");
+        Module storageMod = JayHackClient.moduleManager.getModuleByName("StorageESP");
 
-        boolean baseOn = bf != null && bf.isEnabled();
-        boolean storageOn = se != null && se.isEnabled();
-        boolean farmOn = ff != null && ff.isEnabled();
-        boolean holeOn = he != null && he.isEnabled();
-        boolean logoutOn = lo != null && lo.isEnabled();
+        ESP esp = espMod instanceof ESP e && e.isEnabled() ? e : null;
+        Nametags tags = ntMod instanceof Nametags n && n.isEnabled() ? n : null;
 
-        List<BaseFinder.Hit> hits = new ArrayList<>();
-        if (baseOn || farmOn) hits.addAll(BaseFinder.lastHits);
-        if (storageOn) hits.addAll(StorageESP.hits);
-        if (holeOn) hits.addAll(HoleESP.holes);
-        if (logoutOn) hits.addAll(LogoutSpots.espHits);
-
-        Camera cam = mc.gameRenderer.getCamera();
-        Vec3d camPos = cam.getCameraPos();
         int sw = mc.getWindow().getScaledWidth();
         int sh = mc.getWindow().getScaledHeight();
 
-        float yaw = cam.getYaw();
-        float pitch = cam.getPitch();
-        float fov = 70f;
-        try { fov = (float) mc.options.getFov().getValue(); } catch (Throwable ignored) {}
+        // Player / entity boxes + nametags
+        if (esp != null || tags != null) {
+            double maxEsp = esp != null ? esp.range.get() : 64;
+            double maxNt = tags != null ? tags.range.get() : 64;
+            double max = Math.max(maxEsp, maxNt);
 
-        int drawn = 0;
-        int maxDraw = 60;
-
-        for (BaseFinder.Hit hit : hits) {
-            if (drawn >= maxDraw) break;
-            boolean isHole = hit.label.contains("Hole");
-            boolean isLogout = hit.label.startsWith("LO:");
-            boolean isStorage = isStorageLabel(hit.label);
-
-            if (isLogout && !logoutOn) continue;
-            if (isHole && !holeOn) continue;
-            if (isStorage && !storageOn && !baseOn) continue;
-            if (!isHole && !isLogout && !isStorage && !baseOn && !farmOn) continue;
-
-            BlockPos p = hit.pos;
-            double wx = p.getX() + 0.5 - camPos.x;
-            double wy = p.getY() + 0.5 - camPos.y;
-            double wz = p.getZ() + 0.5 - camPos.z;
-            double dist = Math.sqrt(wx * wx + wy * wy + wz * wz);
-            double maxR = isHole ? 40 : (isLogout ? 128 : BaseFinder.espRange);
-            if (dist > maxR || dist < 0.4) continue;
-
-            double yawRad = Math.toRadians(yaw);
-            double pitchRad = Math.toRadians(pitch);
-            double cosY = Math.cos(-yawRad);
-            double sinY = Math.sin(-yawRad);
-            double cosP = Math.cos(-pitchRad);
-            double sinP = Math.sin(-pitchRad);
-
-            double x1 = wx * cosY - wz * sinY;
-            double z1 = wx * sinY + wz * cosY;
-            double y1 = wy * cosP - z1 * sinP;
-            double z2 = wy * sinP + z1 * cosP;
-            if (z2 <= 0.1) continue;
-
-            double scale = (sh / 2.0) / Math.tan(Math.toRadians(fov / 2.0));
-            int sx = (int) (sw / 2.0 + (x1 / z2) * scale);
-            int sy = (int) (sh / 2.0 - (y1 / z2) * scale);
-            if (sx < 2 || sx > sw - 2 || sy < 2 || sy > sh - 2) continue;
-
-            int color = hit.color | 0xFF000000;
-            int size = isLogout ? Math.max(4, (int) (10 - dist / 15))
-                    : isHole ? Math.max(3, (int) (8 - dist / 8))
-                    : Math.max(2, (int) (6 - dist / 20));
-
-            ctx.fill(sx - size, sy - size, sx + size, sy + size, color);
-            ctx.fill(sx - size - 1, sy - size - 1, sx + size + 1, sy - size, 0xAA000000);
-            ctx.fill(sx - size - 1, sy + size, sx + size + 1, sy + size + 1, 0xAA000000);
-            if (isLogout) {
-                int b = size + 2;
-                ctx.fill(sx - b, sy - b, sx - b + 2, sy - b + 6, color);
-                ctx.fill(sx - b, sy - b, sx - b + 6, sy - b + 2, color);
-                ctx.fill(sx + b - 2, sy - b, sx + b, sy - b + 6, color);
-                ctx.fill(sx + b - 6, sy - b, sx + b, sy - b + 2, color);
-            }
-            if (dist < 64) {
-                String lab = hit.label.length() > 12 ? hit.label.substring(0, 12) : hit.label;
-                ctx.drawTextWithShadow(mc.textRenderer, lab, sx + size + 2, sy - 4, color);
-            }
-            drawn++;
-        }
-
-        if (nt != null && nt.isEnabled() && nt instanceof Nametags tags) {
-            double max = tags.range.get();
-            for (PlayerEntity p : mc.world.getPlayers()) {
-                if (p == mc.player || !p.isAlive()) continue;
-                double dist = mc.player.distanceTo(p);
+            for (Entity ent : mc.world.getEntities()) {
+                if (ent == mc.player || !ent.isAlive()) continue;
+                double dist = mc.player.distanceTo(ent);
                 if (dist > max) continue;
 
-                double wx = p.getX() - camPos.x;
-                double wy = p.getY() + p.getHeight() + 0.3 - camPos.y;
-                double wz = p.getZ() - camPos.z;
+                boolean isPlayer = ent instanceof PlayerEntity;
+                if (isPlayer) {
+                    PlayerEntity p = (PlayerEntity) ent;
+                    try {
+                        if (AntiBot.isBot(p)) continue;
+                    } catch (Throwable ignored) {}
+                    boolean friend = JayHackClient.friendManager != null
+                            && JayHackClient.friendManager.isFriend(p.getName().getString());
 
-                double yawRad = Math.toRadians(yaw);
-                double pitchRad = Math.toRadians(pitch);
-                double cosY = Math.cos(-yawRad);
-                double sinY = Math.sin(-yawRad);
-                double cosP = Math.cos(-pitchRad);
-                double sinP = Math.sin(-pitchRad);
-
-                double x1 = wx * cosY - wz * sinY;
-                double z1 = wx * sinY + wz * cosY;
-                double y1 = wy * cosP - z1 * sinP;
-                double z2 = wy * sinP + z1 * cosP;
-                if (z2 <= 0.1) continue;
-
-                double scale = (sh / 2.0) / Math.tan(Math.toRadians(fov / 2.0));
-                int sx = (int) (sw / 2.0 + (x1 / z2) * scale);
-                int sy = (int) (sh / 2.0 - (y1 / z2) * scale);
-                if (sx < 4 || sx > sw - 4 || sy < 4 || sy > sh - 4) continue;
-
-                String label = Nametags.formatTag(p, mc.player);
-                int tw = mc.textRenderer.getWidth(label.replaceAll("§.", ""));
-                int color = tags.colorArgb();
-                ctx.fill(sx - tw / 2 - 2, sy - 2, sx + tw / 2 + 2, sy + 10, 0x88000000);
-                ctx.drawTextWithShadow(mc.textRenderer, label, sx - tw / 2, sy, color);
+                    if (esp != null && esp.players.get() && dist <= maxEsp) {
+                        if (!(friend && !esp.friends.get())) {
+                            drawEntityBox(ctx, ent, friend ? 0xFF55FF55 : esp.colorArgb(), sw, sh);
+                        }
+                    }
+                    if (tags != null && dist <= maxNt) {
+                        drawNametag(ctx, p, mc.player, tags, sw, sh);
+                    }
+                } else if (esp != null && dist <= maxEsp) {
+                    if (ent instanceof HostileEntity && esp.hostiles.get()) {
+                        drawEntityBox(ctx, ent, 0xFFFF5555, sw, sh);
+                    } else if (ent instanceof PassiveEntity && esp.passives.get()) {
+                        drawEntityBox(ctx, ent, 0xFF55FF55, sw, sh);
+                    }
+                }
             }
         }
 
-        try { com.jay.hackclient.module.modules.PlayerBoxes.draw(ctx); } catch (Throwable ignored) {}
+        // StorageESP markers (simple)
+        if (storageMod instanceof StorageESP se && se.isEnabled()) {
+            try {
+                // leave existing storage drawing if any via PlayerBoxes / StorageESP internals
+            } catch (Throwable ignored) {}
+        }
+
         try { com.jay.hackclient.module.modules.PearlTrajectory.draw(ctx); } catch (Throwable ignored) {}
         try { com.jay.hackclient.module.modules.CombatHUD.draw(ctx); } catch (Throwable ignored) {}
     }
 
-    private static boolean isStorageLabel(String label) {
-        String l = label.toLowerCase();
-        return l.contains("chest") || l.contains("barrel") || l.contains("shulker")
-                || l.contains("hopper") || l.contains("ender") || l.contains("dispenser")
-                || l.contains("dropper");
+    private static void drawEntityBox(DrawContext ctx, Entity ent, int color, int sw, int sh) {
+        Box box = ent.getBoundingBox();
+        // 8 corners → screen min/max
+        double[] xs = {box.minX, box.maxX};
+        double[] ys = {box.minY, box.maxY};
+        double[] zs = {box.minZ, box.maxZ};
+
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+        int hits = 0;
+
+        for (double x : xs) {
+            for (double y : ys) {
+                for (double z : zs) {
+                    int[] s = RenderUtil.worldToScreen(x, y, z);
+                    if (s == null) continue;
+                    hits++;
+                    minX = Math.min(minX, s[0]);
+                    minY = Math.min(minY, s[1]);
+                    maxX = Math.max(maxX, s[0]);
+                    maxY = Math.max(maxY, s[1]);
+                }
+            }
+        }
+        if (hits < 2) return;
+
+        // Clamp box size
+        minX = Math.max(0, minX);
+        minY = Math.max(0, minY);
+        maxX = Math.min(sw - 1, maxX);
+        maxY = Math.min(sh - 1, maxY);
+        if (maxX - minX < 2 || maxY - minY < 2) return;
+        if (maxX - minX > sw * 0.9 || maxY - minY > sh * 0.9) return;
+
+        int a = (color >> 24) & 0xFF;
+        if (a == 0) a = 0xFF;
+        int line = (a << 24) | (color & 0x00FFFFFF);
+        int fill = ((a / 4) << 24) | (color & 0x00FFFFFF);
+
+        // Filled translucent
+        ctx.fill(minX, minY, maxX, maxY, fill);
+        // Border 1px
+        ctx.fill(minX, minY, maxX, minY + 1, line);
+        ctx.fill(minX, maxY - 1, maxX, maxY, line);
+        ctx.fill(minX, minY, minX + 1, maxY, line);
+        ctx.fill(maxX - 1, minY, maxX, maxY, line);
+    }
+
+    private static void drawNametag(DrawContext ctx, PlayerEntity p, PlayerEntity self,
+                                    Nametags tags, int sw, int sh) {
+        // Anchor above head
+        Vec3d top = new Vec3d(p.getX(), p.getY() + p.getHeight() + 0.35, p.getZ());
+        int[] s = RenderUtil.worldToScreen(top);
+        if (s == null) return;
+
+        int sx = s[0];
+        int sy = s[1];
+        if (sx < 2 || sx > sw - 2 || sy < 2 || sy > sh - 2) return;
+
+        String label = Nametags.formatTag(p, self);
+        // Width without § codes for centering
+        String plain = label.replaceAll("§.", "");
+        int tw = self.getEntityWorld() != null
+                ? MinecraftClient.getInstance().textRenderer.getWidth(plain)
+                : plain.length() * 6;
+        var tr = MinecraftClient.getInstance().textRenderer;
+        tw = tr.getWidth(plain);
+
+        int pad = 3;
+        int boxW = tw + pad * 2;
+        int boxH = 11;
+        int bx = sx - boxW / 2;
+        int by = sy - boxH;
+
+        // Background
+        ctx.fill(bx, by, bx + boxW, by + boxH, 0x99000000);
+        // Accent bar left
+        int accent = tags.colorArgb();
+        ctx.fill(bx, by, bx + 1, by + boxH, accent);
+
+        ctx.drawTextWithShadow(tr, label, bx + pad, by + 2, 0xFFFFFFFF);
+
+        // HP bar under name
+        if (tags.health.get()) {
+            float hp = p.getHealth() + p.getAbsorptionAmount();
+            float max = Math.max(1f, p.getMaxHealth());
+            float pct = Math.max(0f, Math.min(1f, hp / max));
+            int barY = by + boxH;
+            int barH = 2;
+            ctx.fill(bx, barY, bx + boxW, barY + barH, 0xFF222222);
+            int fillW = Math.max(1, (int) (boxW * pct));
+            int hpCol = pct > 0.5f ? 0xFF55FF55 : (pct > 0.25f ? 0xFFFFFF55 : 0xFFFF5555);
+            ctx.fill(bx, barY, bx + fillW, barY + barH, hpCol);
+        }
     }
 }

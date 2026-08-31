@@ -10,7 +10,9 @@ import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.lwjgl.glfw.GLFW;
 
-/** Player / mob glow ESP with range + filters. */
+/**
+ * ESP — glow + 2D boxes (boxes drawn in WorldEspRenderer; glow is optional helper).
+ */
 public class ESP extends Module {
 
     public final NumberSetting range = new NumberSetting("Range", "Max distance", 64, 16, 128, 4);
@@ -18,19 +20,20 @@ public class ESP extends Module {
     public final BoolSetting hostiles = new BoolSetting("Hostiles", "Hostile mobs", false);
     public final BoolSetting passives = new BoolSetting("Passives", "Passive mobs", false);
     public final BoolSetting friends = new BoolSetting("Friends", "Also highlight friends", true);
-    /** Color tint hint for HUD markers (ARGB hue not applied to vanilla glow). */
+    public final BoolSetting glow = new BoolSetting("Glow", "Vanilla glow outline", true);
     public final NumberSetting colorR = new NumberSetting("ColorR", "Red 0-255", 61, 0, 255, 1);
     public final NumberSetting colorG = new NumberSetting("ColorG", "Green 0-255", 220, 0, 255, 1);
     public final NumberSetting colorB = new NumberSetting("ColorB", "Blue 0-255", 255, 0, 255, 1);
 
     public ESP() {
-        super("ESP", "Glow players / mobs", Category.RENDER);
+        super("ESP", "2D boxes + optional glow", Category.RENDER);
         setKeyBind(GLFW.GLFW_KEY_X);
         addSetting(range);
         addSetting(players);
         addSetting(hostiles);
         addSetting(passives);
         addSetting(friends);
+        addSetting(glow);
         addSetting(colorR);
         addSetting(colorG);
         addSetting(colorB);
@@ -46,8 +49,15 @@ public class ESP extends Module {
     @Override
     public void onTick() {
         if (mc.world == null || mc.player == null) return;
-        double max = range.get();
+        if (!glow.get()) {
+            // Still clear glow when disabled so boxes-only mode is clean
+            for (Entity e : mc.world.getEntities()) {
+                if (e != mc.player) e.setGlowing(false);
+            }
+            return;
+        }
 
+        double max = range.get();
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player) continue;
             if (mc.player.distanceTo(e) > max) {
@@ -55,7 +65,7 @@ public class ESP extends Module {
                 continue;
             }
 
-            boolean glow = false;
+            boolean doGlow = false;
             if (e instanceof PlayerEntity p) {
                 if (!players.get()) {
                     p.setGlowing(false);
@@ -73,14 +83,13 @@ public class ESP extends Module {
                     p.setGlowing(false);
                     continue;
                 }
-                glow = true;
+                doGlow = true;
             } else if (e instanceof HostileEntity) {
-                glow = hostiles.get();
+                doGlow = hostiles.get();
             } else if (e instanceof PassiveEntity) {
-                glow = passives.get();
+                doGlow = passives.get();
             }
-
-            e.setGlowing(glow);
+            e.setGlowing(doGlow);
         }
     }
 
