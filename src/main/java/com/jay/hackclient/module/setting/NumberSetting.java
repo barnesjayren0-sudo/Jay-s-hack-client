@@ -1,8 +1,10 @@
 package com.jay.hackclient.module.setting;
 
 public class NumberSetting extends Setting {
-    private final double min, max, step, def;
     private double value;
+    private final double def;
+    private final double min, max;
+    private final double step;
 
     public NumberSetting(String name, String description, double def, double min, double max, double step) {
         super(name, description);
@@ -14,12 +16,11 @@ public class NumberSetting extends Setting {
     }
 
     public double get() { return value; }
-    public float getFloat() { return (float) value; }
     public int getInt() { return (int) Math.round(value); }
+    public float getFloat() { return (float) value; }
 
     public void set(double v) {
         double clamped = clamp(v);
-        // Snap to step grid for stable slider / config values
         double snapped = min + Math.round((clamped - min) / step) * step;
         this.value = clamp(snapped);
     }
@@ -41,6 +42,6 @@ public class NumberSetting extends Setting {
     public String getDisplayValue() {
         if (step >= 1.0) return String.valueOf(getInt());
         int decimals = step >= 0.1 ? 1 : 2;
-        return String.format(java.util.Locale.ROOT, "%"." + decimals + "f", value);
+        return String.format(java.util.Locale.ROOT, "%\." + decimals + "f", value).replace("\\.", ".");
     }
 }
