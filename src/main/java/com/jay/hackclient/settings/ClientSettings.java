@@ -55,8 +55,10 @@ public final class ClientSettings {
 
     public static final Set<String> favorites = new HashSet<>();
 
-    /** Set true after FirstLaunchScreen completes. */
     public static boolean firstLaunchDone = false;
+
+    /** ClickGUI scale 0.85–1.25 */
+    public static float guiScale = 1.0f;
 
     public static String mode = "dual";
     public static String lastProfile = "sword";
@@ -83,6 +85,10 @@ public final class ClientSettings {
         String k = name.toLowerCase(Locale.ROOT);
         if (favorites.contains(k)) favorites.remove(k);
         else favorites.add(k);
+    }
+
+    public static void setGuiScale(float s) {
+        guiScale = Math.max(0.85f, Math.min(1.25f, s));
     }
 
     public static void applyVelocityMode(String mode) {
@@ -145,7 +151,7 @@ public final class ClientSettings {
     }
 
     public static String summarize() {
-        return String.format("mode=%s profile=%s aim=%s sounds=%s",
-                mode, lastProfile, aimMode, toggleSounds);
+        return String.format("mode=%s profile=%s aim=%s scale=%.2f",
+                mode, lastProfile, aimMode, guiScale);
     }
 }
