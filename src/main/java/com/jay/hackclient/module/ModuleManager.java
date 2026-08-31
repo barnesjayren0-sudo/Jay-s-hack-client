@@ -5,6 +5,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,20 @@ public class ModuleManager {
         for (Module m : modules) {
             if (m.getCategory() == category) list.add(m);
         }
+        list.sort(Comparator.comparing(Module::getName, String.CASE_INSENSITIVE_ORDER));
+        return list;
+    }
+
+    public List<Module> search(String query) {
+        String q = query == null ? "" : query.trim().toLowerCase();
+        List<Module> list = new ArrayList<>();
+        for (Module m : modules) {
+            if (q.isEmpty() || m.getName().toLowerCase().contains(q)
+                    || m.getDescription().toLowerCase().contains(q)) {
+                list.add(m);
+            }
+        }
+        list.sort(Comparator.comparing(Module::getName, String.CASE_INSENSITIVE_ORDER));
         return list;
     }
 
@@ -131,8 +146,16 @@ public class ModuleManager {
             if (m.isEnabled()) {
                 try {
                     m.onTick();
-                } catch (Exception e) {
-                    System.err.println("[JayHack] " + m.getName() + ": " + e.getMessage());
+                    m.markTickHealthy();
+                } catch (Throwable e) {
+                    int streak = m.markTickError();
+                    System.err.println("[JayHack] " + m.getName() + " tick error (#" + streak + "): " + e.getMessage());
+                    if (streak >= 3) {
+                        try {
+                            m.setEnabled(false);
+                            com.jay.hackclient.util.Notifications.push(m.getName(), "disabled after repeated errors");
+                        } catch (Throwable ignored) {}
+                    }
                 }
             }
         }

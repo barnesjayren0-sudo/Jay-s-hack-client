@@ -40,8 +40,12 @@ public class NumberSetting extends Setting {
 
     @Override
     public String getDisplayValue() {
-        if (step >= 1.0) return String.valueOf(getInt());
-        int decimals = step >= 0.1 ? 1 : 2;
-        return String.format(java.util.Locale.ROOT, "%\." + decimals + "f", value).replace("\\.", ".");
+        if (step >= 1.0) {
+            return String.valueOf(getInt());
+        }
+        if (step >= 0.1) {
+            return String.format(java.util.Locale.ROOT, "%.1f", value);
+        }
+        return String.format(java.util.Locale.ROOT, "%.2f", value);
     }
 }
