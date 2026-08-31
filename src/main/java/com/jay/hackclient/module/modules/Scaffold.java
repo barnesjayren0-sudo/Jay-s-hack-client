@@ -66,7 +66,6 @@ public class Scaffold extends Module {
 
         long now = System.currentTimeMillis();
         int baseDelay = delay.getInt();
-        // After failed place, allow quicker retry so Telly doesn't leave gaps
         if (retryFail.get() && failStreak > 0) {
             baseDelay = Math.max(25, baseDelay - 12 * Math.min(failStreak, 3));
         }
@@ -152,7 +151,6 @@ public class Scaffold extends Module {
         if (target == null) return false;
         if (!mc.world.getBlockState(target).isReplaceable()) return false;
 
-        // Prefer horizontal faces first (more reliable for bridges)
         Direction[] order = {
                 Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST,
                 Direction.UP, Direction.DOWN
@@ -185,6 +183,11 @@ public class Scaffold extends Module {
     }
 
     private boolean placeAgainst(BlockPos neighbor, Direction face) {
+        Hand hand = Hand.MAIN_HAND;
+        if (!(mc.player.getMainHandStack().getItem() instanceof BlockItem)
+                && mc.player.getOffHandStack().getItem() instanceof BlockItem) {
+            hand = Hand.OFF_HAND;
+        }
         Vec3d hit = Vec3d.ofCenter(neighbor).add(
                 face.getOffsetX() * 0.5,
                 face.getOffsetY() * 0.5,
@@ -192,13 +195,13 @@ public class Scaffold extends Module {
         );
         BlockHitResult bhr = new BlockHitResult(hit, face, neighbor, false);
         try {
-            var result = mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, bhr);
-            mc.player.swingHand(Hand.MAIN_HAND);
+            var result = mc.interactionManager.interactBlock(mc.player, hand, bhr);
+            mc.player.swingHand(hand);
             return result != null && result.isAccepted();
         } catch (Exception e) {
             try {
-                mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, bhr);
-                mc.player.swingHand(Hand.MAIN_HAND);
+                mc.interactionManager.interactBlock(mc.player, hand, bhr);
+                mc.player.swingHand(hand);
                 return true;
             } catch (Exception e2) {
                 return false;
@@ -207,16 +210,7 @@ public class Scaffold extends Module {
     }
 
     private boolean holdingBlock() {
-        ItemStack main = mc.player.getMainHandStack();
-        if (main.getItem() instanceof BlockItem) return true;
-        // Auto-switch to first hotbar block
-        for (int i = 0; i < 9; i++) {
-            ItemStack s = mc.player.getInventory().getStack(i);
-            if (s.getItem() instanceof BlockItem) {
-                mc.player.getInventory().setSelectedSlot(i);
-                return true;
-            }
-        }
-        return mc.player.getOffHandStack().getItem() instanceof BlockItem;
+        return mc.player.getMainHandStack().getItem() instanceof BlockItem
+                || mc.player.getOffHandStack().getItem() instanceof BlockItem;
     }
 }
