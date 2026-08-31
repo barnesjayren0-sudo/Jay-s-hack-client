@@ -13,7 +13,6 @@ import com.jay.hackclient.render.HudLayout;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.MinecraftClient;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -31,7 +30,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Client config v1.46\n");
+            sb.append("# Jay Client config v1.48.1\n");
             writeClient(sb);
             try {
                 sb.append("theme=").append(ThemeEngine.current.name()).append('\n');
@@ -49,37 +48,24 @@ public class ConfigManager {
                     sb.append("chatfb.").append(m.getName()).append('=').append(m.isChatFeedback()).append('\n');
                     for (Setting s : m.getSettings()) {
                         String key = "set." + m.getName() + "." + s.getName().replace(' ', '_');
-                        if (s instanceof NumberSetting n) sb.append(key).append('=').append(n.get()).append('\n');
-                        else if (s instanceof BoolSetting b) sb.append(key).append('=').append(b.get()).append('\n');
+                        if (s instanceof BoolSetting b) sb.append(key).append('=').append(b.get()).append('\n');
+                        else if (s instanceof NumberSetting n) sb.append(key).append('=').append(n.get()).append('\n');
                         else if (s instanceof ModeSetting md) sb.append(key).append('=').append(md.get()).append('\n');
                     }
                 }
             }
-            if (JayHackClient.friendManager != null) {
-                for (String f : JayHackClient.friendManager.getFriends()) {
-                    sb.append("friend.").append(f).append("=true\n");
-                }
-            }
+
             for (String fav : ClientSettings.favorites) {
                 sb.append("fav.").append(fav).append("=true\n");
             }
-            try { Waypoints.writeConfig(sb); } catch (Throwable ignored) {}
-            GuiLayout.ensureDefaults();
-            for (var e : GuiLayout.POS.entrySet()) {
-                float[] xy = e.getValue();
-                if (xy == null || xy.length < 2) continue;
-                sb.append("panel.").append(e.getKey().name()).append('=')
-                        .append(xy[0]).append(',').append(xy[1]).append('\n');
-            }
 
-            Path tmp = p.resolveSibling(p.getFileName().toString() + ".tmp");
+            try { GuiLayout.writeConfig(sb); } catch (Throwable ignored) {}
+            try { Waypoints.writeConfig(sb); } catch (Throwable ignored) {}
+
+            Path tmp = p.resolveSibling(p.getFileName() + ".tmp");
             Files.writeString(tmp, sb.toString());
-            try {
-                Files.move(tmp, p, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (Exception e) {
-                Files.move(tmp, p, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
+            Files.move(tmp, p, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (Exception e) {
             System.err.println("[Jay] config save failed: " + e.getMessage());
         }
     }
@@ -88,11 +74,14 @@ public class ConfigManager {
         try {
             Path p = path();
             if (!Files.exists(p)) return;
+            ClientSettings.favorites.clear();
             for (String line : Files.readAllLines(p)) {
-                if (line.isEmpty() || line.startsWith("#") || !line.contains("=")) continue;
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#")) continue;
                 int eq = line.indexOf('=');
-                String k = line.substring(0, eq);
-                String v = line.substring(eq + 1);
+                if (eq <= 0) continue;
+                String k = line.substring(0, eq).trim();
+                String v = line.substring(eq + 1).trim();
                 try {
                     if (k.startsWith("mod.") && JayHackClient.moduleManager != null) {
                         Module m = JayHackClient.moduleManager.getModuleByName(k.substring(4));
@@ -113,67 +102,44 @@ public class ConfigManager {
                         if (m != null) m.setChatFeedback(Boolean.parseBoolean(v));
                     } else if (k.startsWith("set.") && JayHackClient.moduleManager != null) {
                         applySetting(k.substring(4), v);
-                    } else if (k.startsWith("wp.")) {
-                        try {
-                            String name = k.substring(3);
-                            String[] xyz = v.split(",");
-                            if (xyz.length >= 3) {
-                                Waypoints.loadFromConfig(name,
-                                        Integer.parseInt(xyz[0].trim()),
-                                        Integer.parseInt(xyz[1].trim()),
-                                        Integer.parseInt(xyz[2].trim()));
-                            }
-                        } catch (Exception ignored) {}
-                    } else if (k.startsWith("friend.") && JayHackClient.friendManager != null) {
-                        JayHackClient.friendManager.add(k.substring(7));
                     } else if (k.startsWith("fav.")) {
                         ClientSettings.favorites.add(k.substring(4));
                     } else if (k.startsWith("hud.")) {
                         HudLayout.loadLine(k, v);
+                    } else if (k.startsWith("panel.") || k.startsWith("gui.")) {
+                        try { GuiLayout.loadLine(k, v); } catch (Throwable ignored) {}
+                    } else if (k.startsWith("wp.")) {
+                        try { Waypoints.loadLine(k, v); } catch (Throwable ignored) {}
                     } else if (k.equals("theme")) {
-                        ThemeEngine.loadFromConfig(v, ThemeEngine.bgOpacity,
-                                ThemeEngine.cornerRadius, ThemeEngine.animSpeed, ThemeEngine.customAccent);
+                        try { ThemeEngine.applyByName(v); } catch (Throwable ignored) {}
                     } else if (k.equals("themeOpacity")) {
-                        try {
-                            ThemeEngine.bgOpacity = Float.parseFloat(v);
-                            ThemeEngine.apply(ThemeEngine.current);
-                        } catch (Exception ignored) {}
+                        try { ThemeEngine.bgOpacity = Float.parseFloat(v); } catch (Throwable ignored) {}
                     } else if (k.equals("firstLaunchDone")) {
                         ClientSettings.firstLaunchDone = Boolean.parseBoolean(v);
-                    } else if (k.startsWith("panel.")) {
-                        try {
-                            Module.Category cat = Module.Category.valueOf(k.substring(6));
-                            String[] parts = v.split(",");
-                            if (parts.length >= 2) {
-                                GuiLayout.set(cat, Float.parseFloat(parts[0]), Float.parseFloat(parts[1]));
-                            }
-                        } catch (Exception ignored) {}
                     } else {
                         readClientKey(k, v);
                     }
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("[Jay] config load failed: " + e.getMessage());
         }
     }
 
     private void applySetting(String rest, String v) {
         int dot = rest.indexOf('.');
-        if (dot < 0 || JayHackClient.moduleManager == null) return;
+        if (dot <= 0) return;
         String modName = rest.substring(0, dot);
         String setName = rest.substring(dot + 1).replace('_', ' ');
         Module m = JayHackClient.moduleManager.getModuleByName(modName);
         if (m == null) return;
         for (Setting s : m.getSettings()) {
             if (!s.getName().equalsIgnoreCase(setName)) continue;
-            if (s instanceof NumberSetting n) {
-                try { n.set(Double.parseDouble(v)); } catch (Exception ignored) {}
-            } else if (s instanceof BoolSetting b) {
-                b.set(Boolean.parseBoolean(v));
-            } else if (s instanceof ModeSetting md) {
-                md.set(v);
-            }
+            try {
+                if (s instanceof BoolSetting b) b.set(Boolean.parseBoolean(v));
+                else if (s instanceof NumberSetting n) n.set(Double.parseDouble(v));
+                else if (s instanceof ModeSetting md) md.set(v);
+            } catch (Throwable ignored) {}
             return;
         }
     }
@@ -193,6 +159,7 @@ public class ConfigManager {
             sb.append("hideHudOnScreenshot=").append(ClientSettings.hideHudOnScreenshot).append('\n');
             sb.append("lastProfile=").append(ClientSettings.lastProfile).append('\n');
             sb.append("mode=").append(ClientSettings.mode).append('\n');
+            sb.append("guiScale=").append(ClientSettings.guiScale).append('\n');
         } catch (Throwable ignored) {}
     }
 
@@ -212,6 +179,7 @@ public class ConfigManager {
                 case "hideHudOnScreenshot" -> ClientSettings.hideHudOnScreenshot = Boolean.parseBoolean(v);
                 case "lastProfile" -> ClientSettings.lastProfile = v;
                 case "mode" -> ClientSettings.mode = v;
+                case "guiScale" -> ClientSettings.guiScale = Math.max(0.85f, Math.min(1.25f, Float.parseFloat(v)));
                 default -> {}
             }
         } catch (Throwable ignored) {}
