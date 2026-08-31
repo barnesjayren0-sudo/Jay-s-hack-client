@@ -16,8 +16,9 @@ import net.minecraft.client.MinecraftClient;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
-/** Persists ClientSettings + module state + settings + waypoints. */
+/** Atomic save of ClientSettings + modules + settings + waypoints. */
 public class ConfigManager {
 
     private Path path() {
@@ -30,7 +31,7 @@ public class ConfigManager {
             Path p = path();
             Files.createDirectories(p.getParent());
             StringBuilder sb = new StringBuilder();
-            sb.append("# Jay Client config v1.42\n");
+            sb.append("# Jay Client config v1.44\n");
             writeClient(sb);
 
             if (JayHackClient.moduleManager != null) {
@@ -68,21 +69,17 @@ public class ConfigManager {
                 sb.append("panel.").append(e.getKey().name()).append('=')
                         .append(xy[0]).append(',').append(xy[1]).append('\n');
             }
-            Files.writeString(p, sb.toString());
+
+            Path tmp = p.resolveSibling(p.getFileName().toString() + ".tmp");
+            Files.writeString(tmp, sb.toString());
+            try {
+                Files.move(tmp, p, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (Exception e) {
+                Files.move(tmp, p, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             System.err.println("[Jay] config save failed: " + e.getMessage());
         }
-    }
-
-    private void writeClient(StringBuilder sb) {
-        try {
-            sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
-            sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
-            sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
-            sb.append("aimFov=").append(ClientSettings.aimFov).append('\n');
-            sb.append("lastProfile=").append(ClientSettings.lastProfile).append('\n');
-            sb.append("mode=").append(ClientSettings.mode).append('\n');
-        } catch (Throwable ignored) {}
     }
 
     public void load() {
@@ -167,14 +164,42 @@ public class ConfigManager {
         }
     }
 
+    private void writeClient(StringBuilder sb) {
+        try {
+            sb.append("aimMode=").append(ClientSettings.aimMode).append('\n');
+            sb.append("targetPriority=").append(ClientSettings.targetPriority).append('\n');
+            sb.append("aimRange=").append(ClientSettings.aimRange).append('\n');
+            sb.append("aimFov=").append(ClientSettings.aimFov).append('\n');
+            sb.append("aimSmooth=").append(ClientSettings.aimSmooth).append('\n');
+            sb.append("auraRange=").append(ClientSettings.auraRange).append('\n');
+            sb.append("velocityHorizontal=").append(ClientSettings.velocityHorizontal).append('\n');
+            sb.append("toggleSounds=").append(ClientSettings.toggleSounds).append('\n');
+            sb.append("showActiveCount=").append(ClientSettings.showActiveCount).append('\n');
+            sb.append("pingScaleDelays=").append(ClientSettings.pingScaleDelays).append('\n');
+            sb.append("hideHudOnScreenshot=").append(ClientSettings.hideHudOnScreenshot).append('\n');
+            sb.append("lastProfile=").append(ClientSettings.lastProfile).append('\n');
+            sb.append("mode=").append(ClientSettings.mode).append('\n');
+        } catch (Throwable ignored) {}
+    }
+
     private void readClientKey(String k, String v) {
         try {
-            if (k.equals("aimMode")) ClientSettings.aimMode = v;
-            else if (k.equals("targetPriority")) ClientSettings.targetPriority = v;
-            else if (k.equals("aimRange")) ClientSettings.aimRange = Double.parseDouble(v);
-            else if (k.equals("aimFov")) ClientSettings.aimFov = Float.parseFloat(v);
-            else if (k.equals("lastProfile")) ClientSettings.lastProfile = v;
-            else if (k.equals("mode")) ClientSettings.mode = v;
+            switch (k) {
+                case "aimMode" -> ClientSettings.aimMode = v;
+                case "targetPriority" -> ClientSettings.targetPriority = v;
+                case "aimRange" -> ClientSettings.aimRange = Double.parseDouble(v);
+                case "aimFov" -> ClientSettings.aimFov = Float.parseFloat(v);
+                case "aimSmooth" -> ClientSettings.aimSmooth = Float.parseFloat(v);
+                case "auraRange" -> ClientSettings.auraRange = Double.parseDouble(v);
+                case "velocityHorizontal" -> ClientSettings.velocityHorizontal = Double.parseDouble(v);
+                case "toggleSounds" -> ClientSettings.toggleSounds = Boolean.parseBoolean(v);
+                case "showActiveCount" -> ClientSettings.showActiveCount = Boolean.parseBoolean(v);
+                case "pingScaleDelays" -> ClientSettings.pingScaleDelays = Boolean.parseBoolean(v);
+                case "hideHudOnScreenshot" -> ClientSettings.hideHudOnScreenshot = Boolean.parseBoolean(v);
+                case "lastProfile" -> ClientSettings.lastProfile = v;
+                case "mode" -> ClientSettings.mode = v;
+                default -> {}
+            }
         } catch (Throwable ignored) {}
     }
 
