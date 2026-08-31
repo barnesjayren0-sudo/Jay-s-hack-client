@@ -39,6 +39,18 @@ public final class ThemeEngine {
         GuiTheme.PANEL2 = GuiTheme.withAlpha(0x171D2A, a);
     }
 
+    public static void applyByName(String name) {
+        if (name == null || name.isBlank()) {
+            apply(Theme.CYAN);
+            return;
+        }
+        try {
+            apply(Theme.valueOf(name.trim().toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            apply(Theme.CYAN);
+        }
+    }
+
     public static void cycle() {
         Theme[] all = Theme.values();
         int i = (current.ordinal() + 1) % all.length;
@@ -55,8 +67,8 @@ public final class ThemeEngine {
             bgOpacity = Math.max(0.4f, Math.min(1f, opacity));
             cornerRadius = Math.max(0, Math.min(16, radius));
             animSpeed = Math.max(0.4f, Math.min(2f, anim));
-            apply(Theme.valueOf(theme.toUpperCase()));
-        } catch (Exception e) {
+            applyByName(theme);
+        } catch (Throwable ignored) {
             apply(Theme.CYAN);
         }
     }

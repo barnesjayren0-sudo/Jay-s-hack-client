@@ -128,6 +128,73 @@ public final class ClientSettings {
         applyVelocityMode("soft");
     }
 
+    /** Utility / finder profiles — soft combat values. */
+    public static void applyUtilityConfig() {
+        mode = "utility";
+        lastProfile = "utility";
+        aimMode = "classic";
+        targetPriority = "crosshair";
+        aimRange = 4.0;
+        aimFov = 60f;
+        aimSmooth = 0.18f;
+        auraRange = 3.1;
+        hitboxExpand = 0.05;
+        reachDistance = 3.05;
+        applyVelocityMode("soft");
+        requireAttackKey = true;
+        cooldownCheck = true;
+    }
+
+    public static void applyLegitConfig() {
+        mode = "legit";
+        lastProfile = "legit";
+        aimMode = "classic";
+        targetPriority = "crosshair";
+        aimRange = 3.9;
+        aimFov = 55f;
+        aimSmooth = 0.16f;
+        auraRange = 3.05;
+        hitboxExpand = 0.04;
+        reachDistance = 3.05;
+        applyVelocityMode("soft");
+        missChance = 6;
+        tickSkipChance = 8;
+        requireAttackKey = true;
+        cooldownCheck = true;
+    }
+
+    public static void applySwordAggressiveConfig() {
+        mode = "swordaggro";
+        lastProfile = "swordaggro";
+        aimMode = "classic";
+        targetPriority = "closest";
+        aimRange = 4.5;
+        aimFov = 80f;
+        aimSmooth = 0.28f;
+        auraRange = 3.35;
+        hitboxExpand = 0.14;
+        reachDistance = 3.2;
+        applyVelocityMode("medium");
+        missChance = 2;
+        tickSkipChance = 3;
+    }
+
+    public static void applyNethpotConfig() {
+        mode = "nethpot";
+        lastProfile = "nethpot";
+        aimMode = "classic";
+        targetPriority = "crosshair";
+        aimRange = 4.3;
+        aimFov = 70f;
+        aimSmooth = 0.22f;
+        auraRange = 3.2;
+        hitboxExpand = 0.10;
+        reachDistance = 3.12;
+        potSlotMin = 0;
+        potSlotMax = 3;
+        applyVelocityMode("soft");
+    }
+
     public static void applyRageConfig() {
         mode = "rage";
         lastProfile = "rage";

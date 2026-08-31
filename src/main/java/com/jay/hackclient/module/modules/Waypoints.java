@@ -59,18 +59,22 @@ public class Waypoints extends Module {
 
     public static void gotoWp(String name) {
         if (name == null) return;
-        BlockPos p = POINTS.get(name.toLowerCase().trim().replace(' ', '_'));
+        BlockPos p = POINTS.get(name.toLowerCase().trim());
         if (p == null) {
-            msg("§cUnknown waypoint §f" + name);
+            msg("§cNot found");
             return;
         }
-        boolean ok = BaritoneCompat.pathTo(p);
-        msg(ok ? "§aPath → §f" + name : "§cPath failed (install Baritone?)");
+        try {
+            BaritoneCompat.gotoBlock(p.getX(), p.getY(), p.getZ());
+            msg("§aPathing to §f" + name);
+        } catch (Throwable t) {
+            msg("§cBaritone unavailable");
+        }
     }
 
     public static void list() {
         if (POINTS.isEmpty()) {
-            msg("§7No waypoints — §f.jay wp save <name>");
+            msg("§7No waypoints");
             return;
         }
         for (var e : POINTS.entrySet()) {
@@ -81,9 +85,8 @@ public class Waypoints extends Module {
 
     public static void remove(String name) {
         if (name == null) return;
-        String key = name.toLowerCase().trim().replace(' ', '_');
-        if (POINTS.remove(key) != null) {
-            msg("§cRemoved §f" + key);
+        if (POINTS.remove(name.toLowerCase().trim()) != null) {
+            msg("§cRemoved §f" + name);
             try {
                 if (JayHackClient.configManager != null) JayHackClient.configManager.save();
             } catch (Throwable ignored) {}
@@ -93,6 +96,21 @@ public class Waypoints extends Module {
     public static void loadFromConfig(String name, int x, int y, int z) {
         if (name == null || name.isBlank()) return;
         POINTS.put(name.toLowerCase(), new BlockPos(x, y, z));
+    }
+
+    /** ConfigManager: key like wp.home , value x,y,z */
+    public static void loadLine(String k, String v) {
+        if (k == null || v == null) return;
+        String name = k.startsWith("wp.") ? k.substring(3) : k;
+        if (name.isBlank()) return;
+        try {
+            String[] p = v.split(",");
+            if (p.length < 3) return;
+            int x = Integer.parseInt(p[0].trim());
+            int y = Integer.parseInt(p[1].trim());
+            int z = Integer.parseInt(p[2].trim());
+            loadFromConfig(name, x, y, z);
+        } catch (Exception ignored) {}
     }
 
     public static void writeConfig(StringBuilder sb) {

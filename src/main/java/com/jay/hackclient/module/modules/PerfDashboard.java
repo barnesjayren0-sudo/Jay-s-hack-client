@@ -55,4 +55,18 @@ public class PerfDashboard extends Module {
             ctx.drawTextWithShadow(tr, "Ping §f" + ping, x, line, 0xFFAAAAAA);
         }
     }
+
+    /** Static entry used by HudRenderer. */
+    public static void draw(DrawContext ctx) {
+        if (ctx == null) return;
+        var client = net.minecraft.client.MinecraftClient.getInstance();
+        if (client == null) return;
+        try {
+            if (com.jay.hackclient.JayHackClient.moduleManager == null) return;
+            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("PerfDashboard");
+            if (m instanceof PerfDashboard pd && pd.isEnabled()) {
+                pd.renderOverlay(ctx, client.getWindow().getScaledWidth());
+            }
+        } catch (Throwable ignored) {}
+    }
 }

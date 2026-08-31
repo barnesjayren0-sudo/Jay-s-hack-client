@@ -73,6 +73,14 @@ public class PearlTrajectory extends Module {
         }
     }
 
+    /** WorldEspRenderer entry — HUD land marker. */
+    public static void draw(DrawContext ctx) {
+        if (ctx == null) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null) return;
+        drawHud(ctx, client.getWindow().getScaledWidth(), client.getWindow().getScaledHeight());
+    }
+
     public static void drawHud(DrawContext ctx, int screenW, int screenH) {
         if (lastLand == null) return;
         MinecraftClient client = MinecraftClient.getInstance();
@@ -82,6 +90,7 @@ public class PearlTrajectory extends Module {
             if (JayHackClient.moduleManager != null) {
                 Module m = JayHackClient.moduleManager.getModuleByName("PearlTrajectory");
                 if (m instanceof PearlTrajectory pt && !pt.landMark.get()) return;
+                if (m == null || !m.isEnabled()) return;
             }
         } catch (Throwable ignored) {}
 
