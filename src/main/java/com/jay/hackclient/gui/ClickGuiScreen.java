@@ -3,6 +3,7 @@ package com.jay.hackclient.gui;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.profile.LegitProfile;
+import com.jay.hackclient.profile.PresetManager;
 import com.jay.hackclient.render.JayLogo;
 import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.gui.Click;
@@ -19,22 +20,29 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Floating category panels — compact for mobile. */
+/**
+ * Compact floating ClickGUI — search, favorites, descriptions, side settings,
+ * touch-friendly rows, theme chips, profile/keybind/HUD shortcuts.
+ */
 public class ClickGuiScreen extends Screen {
 
-    private static final int PANEL_W = 98;
+    private static final int PANEL_W = 100;
     private static final int HEADER_H = 14;
-    private static final int ROW_H = 11;
+    private static final int ROW_H = 13; // touch-friendlier
     private static final int MAX_VISIBLE = 10;
+    private static final int SIDE_W = 120;
 
     private Module.Category dragCat;
     private double dragOx, dragOy;
-
     private final Map<Module.Category, Integer> scroll = new EnumMap<>(Module.Category.class);
 
     private String search = "";
     private boolean searchFocused;
     private long openMs = System.currentTimeMillis();
+    private Module selected; // side panel
+    private SortMode sort = SortMode.NAME;
+
+    private enum SortMode { NAME, CATEGORY, ENABLED, FAVORITES }
 
     public ClickGuiScreen() {
         super(Text.literal("JAY CLIENT"));
@@ -42,20 +50,14 @@ public class ClickGuiScreen extends Screen {
 
     private void ensurePositions() {
         GuiLayout.ensureDefaults();
-        for (Module.Category cat : Module.Category.values()) {
-            scroll.putIfAbsent(cat, 0);
-        }
+        for (Module.Category cat : Module.Category.values()) scroll.putIfAbsent(cat, 0);
     }
 
     private float openAnim() {
-        float t = (System.currentTimeMillis() - openMs) / 180f;
+        float speed = ThemeEngine.animSpeed;
+        float t = (System.currentTimeMillis() - openMs) / (180f / speed);
         if (t >= 1f) return 1f;
         return t * t * (3f - 2f * t);
-    }
-
-    private void panelBg(DrawContext ctx, int x, int y, int w, int h) {
-        ctx.fill(x + 2, y + 2, x + w + 2, y + h + 2, GuiTheme.SHADOW);
-        ctx.fill(x, y, x + w, y + h, GuiTheme.BG);
     }
 
     private List<Module> filtered(Module.Category cat) {
@@ -64,9 +66,20 @@ public class ClickGuiScreen extends Screen {
         String q = search.toLowerCase(Locale.ROOT).trim();
         for (Module m : JayHackClient.moduleManager.getModules()) {
             if (m.getCategory() != cat) continue;
-            if (!q.isEmpty() && !m.getName().toLowerCase(Locale.ROOT).contains(q)) continue;
+            if (!q.isEmpty() && !m.getName().toLowerCase(Locale.ROOT).contains(q)
+                    && !m.getDescription().toLowerCase(Locale.ROOT).contains(q)) continue;
             out.add(m);
         }
+        out.sort((a, b) -> {
+            if (sort == SortMode.FAVORITES) {
+                boolean fa = ClientSettings.isFavorite(a.getName());
+                boolean fb = ClientSettings.isFavorite(b.getName());
+                if (fa != fb) return fa ? -1 : 1;
+            } else if (sort == SortMode.ENABLED) {
+                if (a.isEnabled() != b.isEnabled()) return a.isEnabled() ? -1 : 1;
+            }
+            return a.getName().compareToIgnoreCase(b.getName());
+        });
         return out;
     }
 
@@ -76,42 +89,50 @@ public class ClickGuiScreen extends Screen {
         float anim = openAnim();
         ctx.fill(0, 0, width, height, GuiTheme.withAlpha(0x000000, (int) (0x50 * anim)));
 
-        int barH = 16;
+        int barH = 18;
         ctx.fill(0, 0, width, barH, GuiTheme.PANEL);
-        try { JayLogo.draw(ctx, 3, 2, 12); } catch (Throwable ignored) {}
-        ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 18, 4, GuiTheme.TEXT);
+        try { JayLogo.draw(ctx, 3, 3, 12); } catch (Throwable ignored) {}
+        ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 18, 5, GuiTheme.TEXT);
 
-        int sx = Math.max(90, width / 2 - 48);
-        int sw = 96;
-        ctx.fill(sx, 2, sx + sw, 14, GuiTheme.PANEL2);
-        String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search" : search);
-        ctx.drawTextWithShadow(textRenderer, st, sx + 3, 4, GuiTheme.TEXT);
+        // Search
+        int sx = Math.max(100, width / 2 - 55);
+        ctx.fill(sx, 3, sx + 110, 15, GuiTheme.PANEL2);
+        String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search modules" : search);
+        ctx.drawTextWithShadow(textRenderer, st, sx + 4, 5, GuiTheme.TEXT);
 
-        String[] chips = {"sword", "anarchy", "scout", "builder"};
-        int cx = width - 6;
-        for (int i = chips.length - 1; i >= 0; i--) {
-            String c = chips[i];
-            int pw = textRenderer.getWidth(c) + 6;
-            cx -= pw + 2;
-            boolean on = c.equalsIgnoreCase(ClientSettings.lastProfile);
-            ctx.fill(cx, 2, cx + pw, 14, on ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
-            ctx.drawTextWithShadow(textRenderer, c, cx + 3, 4, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
+        // Tool buttons (right)
+        String[] tools = {"Prof", "Keys", "HUD", "Dbg", "Theme"};
+        int tx = width - 6;
+        for (int i = tools.length - 1; i >= 0; i--) {
+            int tw = textRenderer.getWidth(tools[i]) + 8;
+            tx -= tw + 2;
+            ctx.fill(tx, 3, tx + tw, 15, GuiTheme.PANEL2);
+            ctx.drawTextWithShadow(textRenderer, tools[i], tx + 4, 5, GuiTheme.TEXT_DIM);
         }
 
+        // Preset chips under bar on wide screens
+        if (width > 400) {
+            int px = 8;
+            for (PresetManager.Preset p : PresetManager.Preset.values()) {
+                int pw = textRenderer.getWidth(p.display) + 8;
+                ctx.fill(px, barH + 2, px + pw, barH + 13, GuiTheme.PANEL2);
+                ctx.drawTextWithShadow(textRenderer, p.display, px + 4, barH + 4, GuiTheme.ACCENT);
+                px += pw + 3;
+            }
+        }
+
+        // Category panels
         for (Module.Category cat : Module.Category.values()) {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0];
             int y = (int) pos[1];
             List<Module> list = filtered(cat);
             int vis = Math.min(MAX_VISIBLE, Math.max(1, list.size()));
-            int bodyH = vis * ROW_H + 2;
-            int h = HEADER_H + bodyH;
-            panelBg(ctx, x, y, PANEL_W, h);
+            int h = HEADER_H + vis * ROW_H + 2;
+            ctx.fill(x + 2, y + 2, x + PANEL_W + 2, y + h + 2, GuiTheme.SHADOW);
+            ctx.fill(x, y, x + PANEL_W, y + h, GuiTheme.BG);
             ctx.fill(x + 1, y + 1, x + PANEL_W - 1, y + HEADER_H, GuiTheme.PANEL);
-            ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 3, y + 3, categoryColor(cat));
-            String cstr = String.valueOf(list.size());
-            ctx.drawTextWithShadow(textRenderer, cstr,
-                    x + PANEL_W - 3 - textRenderer.getWidth(cstr), y + 3, GuiTheme.TEXT_DIM);
+            ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 4, y + 3, categoryColor(cat));
 
             int sc = scroll.getOrDefault(cat, 0);
             sc = Math.max(0, Math.min(Math.max(0, list.size() - MAX_VISIBLE), sc));
@@ -122,17 +143,46 @@ public class ClickGuiScreen extends Screen {
                 int ry = y + HEADER_H + 1 + row * ROW_H;
                 boolean hover = mouseX >= x && mouseX < x + PANEL_W && mouseY >= ry && mouseY < ry + ROW_H;
                 if (m.isEnabled()) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_ON);
-                else if (hover) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_HOVER);
-                ctx.drawTextWithShadow(textRenderer, m.getName(), x + 3, ry + 1,
+                else if (hover || m == selected) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_HOVER);
+                String star = ClientSettings.isFavorite(m.getName()) ? "§e★ " : "";
+                ctx.drawTextWithShadow(textRenderer, star + m.getName(), x + 3, ry + 2,
                         m.isEnabled() ? GuiTheme.ACCENT : GuiTheme.TEXT);
-                if (m.getKeyBind() > 0) {
-                    String key = m.getKeyLabel();
-                    if (key.length() > 3) key = key.substring(0, 3);
-                    ctx.drawTextWithShadow(textRenderer, key,
-                            x + PANEL_W - 3 - textRenderer.getWidth(key), ry + 1, GuiTheme.TEXT_DIM);
-                }
             }
         }
+
+        // Side panel: selected module description + open settings
+        if (selected != null) {
+            int spx = width - SIDE_W - 6;
+            int spy = barH + 4;
+            int sph = 90;
+            ctx.fill(spx, spy, spx + SIDE_W, spy + sph, GuiTheme.BG);
+            ctx.drawTextWithShadow(textRenderer, selected.getName(), spx + 4, spy + 4, GuiTheme.ACCENT);
+            // wrap description
+            String desc = selected.getDescription();
+            int dy = spy + 16;
+            for (String line : wrap(desc, SIDE_W - 10)) {
+                ctx.drawTextWithShadow(textRenderer, "§7" + line, spx + 4, dy, GuiTheme.TEXT_DIM);
+                dy += 9;
+                if (dy > spy + sph - 24) break;
+            }
+            ctx.fill(spx + 4, spy + sph - 18, spx + SIDE_W - 4, spy + sph - 4, GuiTheme.PANEL2);
+            ctx.drawTextWithShadow(textRenderer, "Settings", spx + 8, spy + sph - 14, GuiTheme.TEXT);
+        }
+    }
+
+    private List<String> wrap(String s, int maxPx) {
+        List<String> lines = new ArrayList<>();
+        if (s == null || s.isEmpty()) return lines;
+        StringBuilder cur = new StringBuilder();
+        for (String word : s.split(" ")) {
+            String trial = cur.isEmpty() ? word : cur + " " + word;
+            if (textRenderer.getWidth(trial) > maxPx && !cur.isEmpty()) {
+                lines.add(cur.toString());
+                cur = new StringBuilder(word);
+            } else cur = new StringBuilder(trial);
+        }
+        if (!cur.isEmpty()) lines.add(cur.toString());
+        return lines;
     }
 
     private static int categoryColor(Module.Category cat) {
@@ -161,30 +211,55 @@ public class ClickGuiScreen extends Screen {
         double mx = click.x(), my = click.y();
         int button = click.button();
         ensurePositions();
+        int barH = 18;
 
-        if (button == 0 && my < 16) {
-            int sx = Math.max(90, width / 2 - 48);
-            if (mx >= sx && mx <= sx + 96) { searchFocused = true; return true; }
-            String[] chips = {"sword", "anarchy", "scout", "builder"};
-            int cx = width - 6;
-            for (int i = chips.length - 1; i >= 0; i--) {
-                String c = chips[i];
-                int pw = textRenderer.getWidth(c) + 6;
-                cx -= pw + 2;
-                if (mx >= cx && mx <= cx + pw) {
-                    switch (c) {
-                        case "sword" -> LegitProfile.applySword();
-                        case "anarchy" -> LegitProfile.applyAnarchy();
-                        case "scout" -> LegitProfile.applyScout();
-                        case "builder" -> LegitProfile.applyBuilder();
-                        default -> {}
+        if (button == 0 && my < barH) {
+            int sx = Math.max(100, width / 2 - 55);
+            if (mx >= sx && mx <= sx + 110) { searchFocused = true; return true; }
+            String[] tools = {"Prof", "Keys", "HUD", "Dbg", "Theme"};
+            int tx = width - 6;
+            for (int i = tools.length - 1; i >= 0; i--) {
+                int tw = textRenderer.getWidth(tools[i]) + 8;
+                tx -= tw + 2;
+                if (mx >= tx && mx <= tx + tw) {
+                    switch (tools[i]) {
+                        case "Prof" -> client.setScreen(new ProfileScreen(this));
+                        case "Keys" -> client.setScreen(new KeybindScreen(this));
+                        case "HUD" -> client.setScreen(new HudEditorScreen(this));
+                        case "Dbg" -> client.setScreen(new DebugScreen(this));
+                        case "Theme" -> {
+                            ThemeEngine.cycle();
+                            if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+                        }
                     }
-                    ClientSettings.lastProfile = c;
-                    if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                     return true;
                 }
             }
             searchFocused = false;
+        }
+
+        // Presets
+        if (button == 0 && width > 400 && my >= barH + 2 && my <= barH + 13) {
+            int px = 8;
+            for (PresetManager.Preset p : PresetManager.Preset.values()) {
+                int pw = textRenderer.getWidth(p.display) + 8;
+                if (mx >= px && mx <= px + pw) {
+                    PresetManager.apply(p);
+                    return true;
+                }
+                px += pw + 3;
+            }
+        }
+
+        // Side settings button
+        if (selected != null && button == 0) {
+            int spx = width - SIDE_W - 6;
+            int spy = barH + 4;
+            int sph = 90;
+            if (mx >= spx + 4 && mx <= spx + SIDE_W - 4 && my >= spy + sph - 18 && my <= spy + sph - 4) {
+                client.setScreen(new SettingsScreen(this, selected));
+                return true;
+            }
         }
 
         Module.Category header = hitHeader(mx, my);
@@ -208,9 +283,14 @@ public class ClickGuiScreen extends Screen {
                 if (mx >= x && mx < x + PANEL_W && my >= ry && my < ry + ROW_H) {
                     if (button == 0) {
                         m.toggle();
+                        selected = m;
                         if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                     } else if (button == 1) {
+                        selected = m;
                         client.setScreen(new SettingsScreen(this, m));
+                    } else if (button == 2) {
+                        ClientSettings.toggleFavorite(m.getName());
+                        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                     }
                     return true;
                 }
@@ -223,7 +303,7 @@ public class ClickGuiScreen extends Screen {
     public boolean mouseDragged(Click click, double dx, double dy) {
         if (dragCat != null) {
             float nx = (float) Math.max(0, Math.min(width - PANEL_W, click.x() - dragOx));
-            float ny = (float) Math.max(16, Math.min(height - 40, click.y() - dragOy));
+            float ny = (float) Math.max(18, Math.min(height - 40, click.y() - dragOy));
             GuiLayout.set(dragCat, nx, ny);
             return true;
         }
@@ -284,7 +364,5 @@ public class ClickGuiScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
-        return false;
-    }
+    public boolean shouldPause() { return false; }
 }
