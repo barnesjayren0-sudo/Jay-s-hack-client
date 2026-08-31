@@ -30,7 +30,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.42.1";
+    public static final String VERSION = "1.43.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -152,6 +152,10 @@ public class JayHackClient implements ClientModInitializer {
         moduleManager.register(new AutoCrystal());
         moduleManager.register(new HoleFill());
 
+        try {
+            ModuleBootstrap.registerExtra(moduleManager);
+        } catch (Throwable ignored) {}
+
         Module hud = moduleManager.getModuleByName("HUD");
         if (hud != null) hud.setEnabled(true);
         Module ab = moduleManager.getModuleByName("AntiBot");
@@ -224,7 +228,7 @@ public class JayHackClient implements ClientModInitializer {
         });
 
         configManager.load();
-        System.out.println("[" + NAME + "] v" + VERSION + " PvP+Utility · Baritone=" + BaritoneCompat.isPresent());
+        System.out.println("[" + NAME + "] v" + VERSION + " · Cloth+FabricAPI+Kotlin · Baritone=" + BaritoneCompat.isPresent());
     }
 
     private void cycleProfile() {
