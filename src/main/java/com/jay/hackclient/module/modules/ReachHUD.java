@@ -24,6 +24,15 @@ public class ReachHUD extends Module {
         }
     }
 
+    /** Called from KillAura / TriggerBot when a hit lands. */
+    public static void recordHit(double dist) {
+        if (dist > 0 && dist < 16) lastReach = dist;
+    }
+
+    public static void recordHit(float dist) {
+        recordHit((double) dist);
+    }
+
     public static double lastHitDist() {
         return lastReach;
     }

@@ -14,37 +14,44 @@ public final class RenderUtil {
 
     private RenderUtil() {}
 
+    private static Vec3d cameraPos(Camera cam) {
+        // 1.21.x Yarn: getCameraPos(); some forks use getPos()
+        try {
+            return cam.getCameraPos();
+        } catch (Throwable ignored) {}
+        try {
+            return (Vec3d) Camera.class.getMethod("getPos").invoke(cam);
+        } catch (Throwable ignored) {}
+        try {
+            return (Vec3d) Camera.class.getMethod("getCameraPos").invoke(cam);
+        } catch (Throwable ignored) {}
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.player != null) {
+            return mc.player.getEyePos();
+        }
+        return Vec3d.ZERO;
+    }
+
     /**
- * @return int[]{sx, sy} or null if behind camera / off far plane
- */
+     * @return int[]{sx, sy} or null if behind camera / invalid
+     */
     public static int[] worldToScreen(double wx, double wy, double wz) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.gameRenderer == null || mc.getWindow() == null) return null;
 
         Camera cam = mc.gameRenderer.getCamera();
-        Vec3d camPos;
-        try {
-            camPos = cam.getPos();
-        } catch (Throwable t) {
-            try {
-                // older mapping alias
-                camPos = (Vec3d) Camera.class.getMethod("getCameraPos").invoke(cam);
-            } catch (Throwable t2) {
-                return null;
-            }
-        }
+        Vec3d camPos = cameraPos(cam);
 
         double dx = wx - camPos.x;
         double dy = wy - camPos.y;
         double dz = wz - camPos.z;
 
-        // Camera space: rotate world offset by inverse camera rotation
         Vector3f v = new Vector3f((float) dx, (float) dy, (float) dz);
         Quaternionf rot = new Quaternionf(cam.getRotation());
         rot.conjugate();
         v.rotate(rot);
 
-        // After conjugate, forward is -Z in camera space
+        // Forward is -Z in camera space after conjugate
         float depth = -v.z;
         if (depth < 0.05f) return null;
 
@@ -53,22 +60,16 @@ public final class RenderUtil {
 
         double fovDeg = 70.0;
         try {
-            fovDeg = mc.options.getFov().getValue().doubleValue();
-        } catch (Throwable ignored) {}
-        // Approximate FOV modifiers (sprint/effects) without full GameRenderer access
-        try {
-            float f = mc.player != null ? mc.gameRenderer.getFov(cam, mc.getRenderTickCounter().getTickProgress(false), true) : (float) fovDeg;
-            if (f > 1 && f < 180) fovDeg = f;
+            Object fovObj = mc.options.getFov().getValue();
+            if (fovObj instanceof Number n) fovDeg = n.doubleValue();
         } catch (Throwable ignored) {}
 
         double fovRad = Math.toRadians(fovDeg);
-        // Vertical FOV projection
         double scale = (sh * 0.5) / Math.tan(fovRad * 0.5);
 
         int sx = (int) Math.round(sw * 0.5 + (v.x / depth) * scale);
         int sy = (int) Math.round(sh * 0.5 - (v.y / depth) * scale);
 
-        // Allow slight off-screen for partial boxes; reject far-off
         if (sx < -sw || sx > sw * 2 || sy < -sh || sy > sh * 2) return null;
         return new int[]{sx, sy};
     }
