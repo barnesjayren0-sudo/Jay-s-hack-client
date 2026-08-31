@@ -8,10 +8,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Detached free camera — body stays put; camera flies with WASD + Space/Shift.
- * Default bind: F11.
- */
+/** Detached free camera. Default bind: F11. */
 public class Freecam extends Module {
 
     public static boolean active;
@@ -37,7 +34,6 @@ public class Freecam extends Module {
         startX = mc.player.getX();
         startY = mc.player.getY();
         startZ = mc.player.getZ();
-
         x = startX;
         y = startY + mc.player.getStandingEyeHeight();
         z = startZ;
