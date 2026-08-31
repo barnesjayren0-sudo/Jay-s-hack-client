@@ -14,6 +14,7 @@ import org.lwjgl.glfw.GLFW;
 
 import com.jay.hackclient.compat.BaritoneCommands;
 import com.jay.hackclient.compat.BaritoneCompat;
+import com.jay.hackclient.config.ConfigIO;
 import com.jay.hackclient.config.ConfigManager;
 import com.jay.hackclient.config.JayClothConfig;
 import com.jay.hackclient.event.EventBus;
@@ -38,7 +39,7 @@ import com.jay.hackclient.settings.ClientSettings;
 public class JayHackClient implements ClientModInitializer {
 
     public static final String NAME = "JAY CLIENT";
-    public static final String VERSION = "1.46.0";
+    public static final String VERSION = "1.47.0";
 
     public static JayHackClient INSTANCE;
     public static ModuleManager moduleManager;
@@ -272,7 +273,7 @@ public class JayHackClient implements ClientModInitializer {
         if (client.player == null) return;
         String[] args = message.trim().split("\\s+");
         if (args.length < 2 || args[1].equalsIgnoreCase("help")) {
-            msg("§f.jay gui|cloth|preset|profiles|hud|keys|debug|theme|toggle|wp|panic");
+            msg("§f.jay gui|preset|profiles|export|import|hud|keys|debug|theme|wp|panic");
             return;
         }
 
@@ -290,6 +291,17 @@ public class JayHackClient implements ClientModInitializer {
             case "hudedit", "hud" -> client.setScreen(new HudEditorScreen(null));
             case "keys", "keybinds" -> client.setScreen(new KeybindScreen(null));
             case "debug" -> client.setScreen(new DebugScreen(null));
+            case "export" -> ConfigIO.exportToClipboard();
+            case "import" -> {
+                if (args.length >= 3) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 2; i < args.length; i++) {
+                        if (i > 2) sb.append(' ');
+                        sb.append(args[i]);
+                    }
+                    ConfigIO.importFromString(sb.toString());
+                } else ConfigIO.importFromClipboard();
+            }
             case "theme" -> {
                 ThemeEngine.cycle();
                 configManager.save();
