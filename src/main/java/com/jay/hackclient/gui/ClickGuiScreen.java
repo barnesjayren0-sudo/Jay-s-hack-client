@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Compact floating category panels — phone-friendly sizes. */
+/** Floating category panels — compact for mobile. */
 public class ClickGuiScreen extends Screen {
 
     private static final int PANEL_W = 98;
@@ -53,6 +53,11 @@ public class ClickGuiScreen extends Screen {
         return t * t * (3f - 2f * t);
     }
 
+    private void panelBg(DrawContext ctx, int x, int y, int w, int h) {
+        ctx.fill(x + 2, y + 2, x + w + 2, y + h + 2, GuiTheme.SHADOW);
+        ctx.fill(x, y, x + w, y + h, GuiTheme.BG);
+    }
+
     private List<Module> filtered(Module.Category cat) {
         List<Module> out = new ArrayList<>();
         if (JayHackClient.moduleManager == null) return out;
@@ -69,29 +74,28 @@ public class ClickGuiScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         ensurePositions();
         float anim = openAnim();
-        int overlay = GuiTheme.withAlpha(0x000000, (int) (0x55 * anim));
-        ctx.fill(0, 0, width, height, overlay);
+        ctx.fill(0, 0, width, height, GuiTheme.withAlpha(0x000000, (int) (0x50 * anim)));
 
         int barH = 16;
         ctx.fill(0, 0, width, barH, GuiTheme.PANEL);
-        try { JayLogo.draw(ctx, 4, 2, 12); } catch (Throwable ignored) {}
-        ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 20, 4, GuiTheme.TEXT);
+        try { JayLogo.draw(ctx, 3, 2, 12); } catch (Throwable ignored) {}
+        ctx.drawTextWithShadow(textRenderer, "§bJAY§f · " + JayHackClient.VERSION, 18, 4, GuiTheme.TEXT);
 
-        int sx = width / 2 - 50;
-        int sw = 100;
+        int sx = Math.max(90, width / 2 - 48);
+        int sw = 96;
         ctx.fill(sx, 2, sx + sw, 14, GuiTheme.PANEL2);
         String st = searchFocused ? search + "§7|" : (search.isEmpty() ? "§7search" : search);
-        ctx.drawTextWithShadow(textRenderer, st, sx + 4, 4, GuiTheme.TEXT);
+        ctx.drawTextWithShadow(textRenderer, st, sx + 3, 4, GuiTheme.TEXT);
 
         String[] chips = {"sword", "anarchy", "scout", "builder"};
-        int cx = width - 8;
+        int cx = width - 6;
         for (int i = chips.length - 1; i >= 0; i--) {
             String c = chips[i];
-            int pw = textRenderer.getWidth(c) + 8;
-            cx -= pw + 3;
+            int pw = textRenderer.getWidth(c) + 6;
+            cx -= pw + 2;
             boolean on = c.equalsIgnoreCase(ClientSettings.lastProfile);
             ctx.fill(cx, 2, cx + pw, 14, on ? GuiTheme.ROW_ON : GuiTheme.PANEL2);
-            ctx.drawTextWithShadow(textRenderer, c, cx + 4, 4, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
+            ctx.drawTextWithShadow(textRenderer, c, cx + 3, 4, on ? GuiTheme.ACCENT : GuiTheme.TEXT_DIM);
         }
 
         for (Module.Category cat : Module.Category.values()) {
@@ -102,40 +106,45 @@ public class ClickGuiScreen extends Screen {
             int vis = Math.min(MAX_VISIBLE, Math.max(1, list.size()));
             int bodyH = vis * ROW_H + 2;
             int h = HEADER_H + bodyH;
-
-            ctx.fill(x + 2, y + 2, x + PANEL_W + 2, y + h + 2, GuiTheme.SHADOW);
-            ctx.fill(x, y, x + PANEL_W, y + h, GuiTheme.BG);
+            panelBg(ctx, x, y, PANEL_W, h);
             ctx.fill(x + 1, y + 1, x + PANEL_W - 1, y + HEADER_H, GuiTheme.PANEL);
-
-            String title = cat.name();
-            ctx.drawTextWithShadow(textRenderer, title, x + 4, y + 3, cat.color);
+            ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 3, y + 3, categoryColor(cat));
             String cstr = String.valueOf(list.size());
             ctx.drawTextWithShadow(textRenderer, cstr,
-                    x + PANEL_W - 4 - textRenderer.getWidth(cstr), y + 3, GuiTheme.TEXT_DIM);
+                    x + PANEL_W - 3 - textRenderer.getWidth(cstr), y + 3, GuiTheme.TEXT_DIM);
 
             int sc = scroll.getOrDefault(cat, 0);
-            if (sc > Math.max(0, list.size() - MAX_VISIBLE)) sc = Math.max(0, list.size() - MAX_VISIBLE);
+            sc = Math.max(0, Math.min(Math.max(0, list.size() - MAX_VISIBLE), sc));
             scroll.put(cat, sc);
 
             for (int row = 0; row < vis && sc + row < list.size(); row++) {
                 Module m = list.get(sc + row);
                 int ry = y + HEADER_H + 1 + row * ROW_H;
                 boolean hover = mouseX >= x && mouseX < x + PANEL_W && mouseY >= ry && mouseY < ry + ROW_H;
-                if (m.isEnabled()) {
-                    ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_ON);
-                } else if (hover) {
-                    ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_HOVER);
-                }
-                int nameColor = m.isEnabled() ? GuiTheme.ACCENT : GuiTheme.TEXT;
-                ctx.drawTextWithShadow(textRenderer, m.getName(), x + 4, ry + 2, nameColor);
+                if (m.isEnabled()) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_ON);
+                else if (hover) ctx.fill(x + 1, ry, x + PANEL_W - 1, ry + ROW_H, GuiTheme.ROW_HOVER);
+                ctx.drawTextWithShadow(textRenderer, m.getName(), x + 3, ry + 1,
+                        m.isEnabled() ? GuiTheme.ACCENT : GuiTheme.TEXT);
                 if (m.getKeyBind() > 0) {
                     String key = m.getKeyLabel();
-                    if (key.length() > 4) key = key.substring(0, 4);
+                    if (key.length() > 3) key = key.substring(0, 3);
                     ctx.drawTextWithShadow(textRenderer, key,
-                            x + PANEL_W - 4 - textRenderer.getWidth(key), ry + 2, GuiTheme.TEXT_DIM);
+                            x + PANEL_W - 3 - textRenderer.getWidth(key), ry + 1, GuiTheme.TEXT_DIM);
                 }
             }
         }
+    }
+
+    private static int categoryColor(Module.Category cat) {
+        return switch (cat) {
+            case COMBAT -> 0xFFFF5555;
+            case MOVEMENT -> 0xFF55FF55;
+            case RENDER -> 0xFF55FFFF;
+            case PLAYER -> 0xFFFFFF55;
+            case WORLD -> 0xFFAA55FF;
+            case ANARCHY -> 0xFFFFAA00;
+            case MISC -> 0xFFAAAAAA;
+        };
     }
 
     private Module.Category hitHeader(double mx, double my) {
@@ -154,19 +163,24 @@ public class ClickGuiScreen extends Screen {
         ensurePositions();
 
         if (button == 0 && my < 16) {
-            int sx = width / 2 - 50;
-            if (mx >= sx && mx <= sx + 100) {
-                searchFocused = true;
-                return true;
-            }
+            int sx = Math.max(90, width / 2 - 48);
+            if (mx >= sx && mx <= sx + 96) { searchFocused = true; return true; }
             String[] chips = {"sword", "anarchy", "scout", "builder"};
-            int cx = width - 8;
+            int cx = width - 6;
             for (int i = chips.length - 1; i >= 0; i--) {
                 String c = chips[i];
-                int pw = textRenderer.getWidth(c) + 8;
-                cx -= pw + 3;
+                int pw = textRenderer.getWidth(c) + 6;
+                cx -= pw + 2;
                 if (mx >= cx && mx <= cx + pw) {
-                    applyChip(c);
+                    switch (c) {
+                        case "sword" -> LegitProfile.applySword();
+                        case "anarchy" -> LegitProfile.applyAnarchy();
+                        case "scout" -> LegitProfile.applyScout();
+                        case "builder" -> LegitProfile.applyBuilder();
+                        default -> {}
+                    }
+                    ClientSettings.lastProfile = c;
+                    if (JayHackClient.configManager != null) JayHackClient.configManager.save();
                     return true;
                 }
             }
@@ -205,25 +219,12 @@ public class ClickGuiScreen extends Screen {
         return super.mouseClicked(click, doubled);
     }
 
-    private void applyChip(String name) {
-        switch (name.toLowerCase(Locale.ROOT)) {
-            case "sword" -> LegitProfile.applySword();
-            case "anarchy" -> LegitProfile.applyAnarchy();
-            case "scout" -> LegitProfile.applyScout();
-            case "builder" -> LegitProfile.applyBuilder();
-            default -> {}
-        }
-        ClientSettings.lastProfile = name.toLowerCase(Locale.ROOT);
-        if (JayHackClient.configManager != null) JayHackClient.configManager.save();
-    }
-
     @Override
     public boolean mouseDragged(Click click, double dx, double dy) {
         if (dragCat != null) {
-            float[] pos = GuiLayout.get(dragCat);
-            pos[0] = (float) Math.max(0, Math.min(width - PANEL_W, click.x() - dragOx));
-            pos[1] = (float) Math.max(16, Math.min(height - 40, click.y() - dragOy));
-            GuiLayout.set(dragCat, pos[0], pos[1]);
+            float nx = (float) Math.max(0, Math.min(width - PANEL_W, click.x() - dragOx));
+            float ny = (float) Math.max(16, Math.min(height - 40, click.y() - dragOy));
+            GuiLayout.set(dragCat, nx, ny);
             return true;
         }
         return super.mouseDragged(click, dx, dy);
@@ -245,7 +246,7 @@ public class ClickGuiScreen extends Screen {
             float[] pos = GuiLayout.get(cat);
             int x = (int) pos[0], y = (int) pos[1];
             List<Module> list = filtered(cat);
-            int body = Math.min(MAX_VISIBLE, Math.max(1, list.size())) * ROW_H + HEADER_H + 2;
+            int body = HEADER_H + Math.min(MAX_VISIBLE, Math.max(1, list.size())) * ROW_H + 2;
             if (mx >= x && mx < x + PANEL_W && my >= y && my < y + body) {
                 int sc = scroll.getOrDefault(cat, 0) - (int) Math.signum(v);
                 sc = Math.max(0, Math.min(Math.max(0, list.size() - MAX_VISIBLE), sc));
@@ -266,10 +267,7 @@ public class ClickGuiScreen extends Screen {
                 return true;
             }
         }
-        if (key == GLFW.GLFW_KEY_ESCAPE) {
-            client.setScreen(null);
-            return true;
-        }
+        if (key == GLFW.GLFW_KEY_ESCAPE) { client.setScreen(null); return true; }
         return super.keyPressed(input);
     }
 
