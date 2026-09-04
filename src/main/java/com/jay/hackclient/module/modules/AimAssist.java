@@ -10,11 +10,10 @@ import com.jay.hackclient.util.RotationUtil;
 import com.jay.hackclient.util.SilentRotations;
 import com.jay.hackclient.util.TargetUtil;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/** AimAssist [J] — classic soft FOV; yields to KillAura via RotationOwner. */
+/** AimAssist [J] — soft FOV; yields to KillAura via RotationOwner. */
 public class AimAssist extends Module {
 
     private long lastSilentHit = 0;
@@ -39,6 +38,13 @@ public class AimAssist extends Module {
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Mobile.shouldThrottle()) return;
+
+        // SoftBlink active → AimAssist backs off (KillAura owns rotations)
+        try {
+            Module sb = com.jay.hackclient.JayHackClient.moduleManager != null
+                    ? com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("SoftBlink") : null;
+            if (sb != null && sb.isEnabled() && !RotationOwner.canRotate("AimAssist")) return;
+        } catch (Throwable ignored) {}
 
         tickCounter++;
         if ((tickCounter & 1) != 0) return;
@@ -68,45 +74,35 @@ public class AimAssist extends Module {
         if (ClientSettings.requireAttackKey && !attacking) {
             if (dyaw > 18f) return;
             if (Humanizer.chance(40)) return;
-            if (RotationOwner.tryClaim("AimAssist", 1, 30)) RotationUtil.lookAt(target, 0.08f);
+            if (RotationOwner.tryClaim("AimAssist", 1, 45)) {
+                RotationUtil.lookAt(target, 0.07f);
+            }
             return;
         }
 
-        float strength = Math.min(0.28f, ClientSettings.aimSmooth * 0.68f);
-        if (attacking) strength = Math.min(0.33f, strength + 0.05f);
+        float strength = Math.min(0.26f, ClientSettings.aimSmooth * 0.62f);
+        if (attacking) strength = Math.min(0.30f, strength + 0.04f);
 
-        double dist = mc.player.distanceTo(target);
-        if (dist < 2.4) strength = Math.min(0.35f, strength + 0.03f);
-        if (dist > 3.5) strength *= 0.85f;
-
-        if (dyaw < ClientSettings.aimDeadzone) return;
-        if (Humanizer.shouldSkipTick()) return;
-        if (RotationOwner.tryClaim("AimAssist", 1, 40)) {
-            RotationUtil.lookAt(target, strength);
-        }
+        if (!RotationOwner.tryClaim("AimAssist", 1, 50)) return;
+        RotationUtil.lookAt(target, strength);
     }
 
     private void silentTick(PlayerEntity target) {
-        if (!SilentRotations.inFov(target, ClientSettings.aimFov)) return;
-        if (mc.interactionManager == null) return;
-
         long now = System.currentTimeMillis();
         if (now - lastSilentHit < silentDelay) return;
+        if (!mc.options.attackKey.isPressed() && ClientSettings.requireAttackKey) return;
 
-        boolean attacking = mc.options.attackKey.isPressed() || !ClientSettings.requireAttackKey;
-        if (!attacking) return;
-        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
-        if (Humanizer.shouldMiss()) {
-            lastSilentHit = now;
-            silentDelay = Humanizer.combatDelay();
-            return;
-        }
-
-        SilentRotations.silentLookForHit(target, () -> {
-            mc.interactionManager.attackEntity(mc.player, target);
-            mc.player.swingHand(Hand.MAIN_HAND);
-        });
+        if (!RotationOwner.tryClaim("AimAssist", 1, 40)) return;
+        float[] ang = SilentRotations.anglesTo(target);
+        if (ang == null) return;
+        SilentRotations.set(ang[0], ang[1]);
         lastSilentHit = now;
         silentDelay = Humanizer.combatDelay();
+    }
+
+    @Override
+    public void onDisable() {
+        RotationOwner.release("AimAssist");
+        SilentRotations.clear();
     }
 }
