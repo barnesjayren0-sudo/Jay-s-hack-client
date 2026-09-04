@@ -9,9 +9,7 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.EntityHitResult;
 
-/**
- * Switches to best hotbar sword. Yields to ShieldBreak / PotRefill via SlotLock.
- */
+/** Best hotbar sword — lowest priority; yields to totem/shield/pot/inv. */
 public class AutoSword extends Module {
 
     private long last;
@@ -31,14 +29,12 @@ public class AutoSword extends Module {
     public void onTick() {
         if (mc.player == null) return;
         if (SlotLock.isLockedByOther("AutoSword")) return;
-
-        // Don't fight shield-break mid swap
-        if ("ShieldBreak".equals(SlotLock.currentOwner())) return;
+        String owner = SlotLock.currentOwner();
+        if ("ShieldBreak".equals(owner) || "AutoTotem".equals(owner) || "InvManager".equals(owner))
+            return;
 
         long now = System.currentTimeMillis();
         if (now - last < nextDelay) return;
-
-        // Only auto-swap when looking at / near a player (reduces random swaps)
         if (!shouldSwap()) return;
 
         PlayerInventory inv = mc.player.getInventory();
@@ -56,8 +52,7 @@ public class AutoSword extends Module {
         }
 
         if (bestSlot >= 0 && inv.getSelectedSlot() != bestSlot) {
-            // Low priority — ShieldBreak (30) and PotRefill (20) win
-            if (SlotLock.tryAcquire("AutoSword", 180, 10)) {
+            if (SlotLock.tryAcquire("AutoSword", 160, SlotLock.PRIO_SWORD)) {
                 inv.setSelectedSlot(bestSlot);
                 last = now;
                 nextDelay = Humanizer.delay(150, 28, 90, 240);
@@ -76,7 +71,6 @@ public class AutoSword extends Module {
             if (p == mc.player || !p.isAlive()) continue;
             if (mc.player.distanceTo(p) < 6.0) return true;
         }
-        // Already holding sword — no need
-        return !ItemUtil.isSword(mc.player.getMainHandStack());
+        return false;
     }
 }
