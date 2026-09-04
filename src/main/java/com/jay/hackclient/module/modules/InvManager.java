@@ -127,7 +127,7 @@ public class InvManager extends Module {
     }
 
     private boolean isJunk(ItemStack s) {
-        return s.isOf(Items.DIRT) || s.isOf(Items.GRAVEL) || s.isOf(Items.NETHER_RACK)
+        return s.isOf(Items.DIRT) || s.isOf(Items.GRAVEL) || s.isOf(Items.NETHERRACK)
                 || s.isOf(Items.COBBLESTONE) || s.isOf(Items.ROTTEN_FLESH)
                 || s.isOf(Items.POISONOUS_POTATO) || s.isOf(Items.ANDESITE)
                 || s.isOf(Items.DIORITE) || s.isOf(Items.GRANITE);
