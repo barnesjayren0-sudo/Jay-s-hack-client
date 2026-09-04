@@ -1,15 +1,25 @@
 package com.jay.hackclient.util;
 
 /**
- * Only one system owns hotbar selection at a time.
- * Higher priority can steal from lower priority.
+ * Only one system owns hotbar/offhand swaps at a time.
+ * Higher priority steals from lower.
  *
  * Priority guide:
- *   ShieldBreak = 30
- *   PotRefill   = 20
- *   AutoSword   = 10
+ *   AutoTotem (critical) = 95
+ *   AutoTotem (normal)   = 40
+ *   ShieldBreak          = 50
+ *   PotRefill / AutoPot  = 35
+ *   InvManager           = 20
+ *   AutoSword            = 10
  */
 public final class SlotLock {
+
+    public static final int PRIO_TOTEM_CRIT = 95;
+    public static final int PRIO_SHIELD = 50;
+    public static final int PRIO_TOTEM = 40;
+    public static final int PRIO_POT = 35;
+    public static final int PRIO_INV = 20;
+    public static final int PRIO_SWORD = 10;
 
     private static String owner = null;
     private static long until = 0;
@@ -24,7 +34,6 @@ public final class SlotLock {
     public static boolean tryAcquire(String module, long ms, int prio) {
         long now = System.currentTimeMillis();
         if (owner != null && !owner.equals(module) && now < until) {
-            // Higher priority may steal
             if (prio <= priority) return false;
         }
         owner = module;
@@ -38,7 +47,7 @@ public final class SlotLock {
     }
 
     public static void release(String module) {
-        if (module.equals(owner)) {
+        if (module != null && module.equals(owner)) {
             owner = null;
             until = 0;
             priority = 0;
@@ -51,7 +60,11 @@ public final class SlotLock {
     }
 
     public static String currentOwner() {
-        if (System.currentTimeMillis() >= until) return null;
+        if (System.currentTimeMillis() >= until) {
+            owner = null;
+            priority = 0;
+            return null;
+        }
         return owner;
     }
 }
