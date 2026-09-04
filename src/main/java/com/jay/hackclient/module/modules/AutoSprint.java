@@ -6,7 +6,7 @@ import com.jay.hackclient.module.setting.BoolSetting;
 /** Keep sprint while moving forward. */
 public class AutoSprint extends Module {
 
-    public final BoolSetting omni = new BoolSetting("Omni", "Sprint in all directions", false);
+    public final BoolSetting omni = new BoolSetting("Omni", "Sprint on strafe too", false);
     public final BoolSetting hungry = new BoolSetting("HungerCheck", "Stop under 6 hunger", true);
 
     public AutoSprint() {
@@ -22,12 +22,12 @@ public class AutoSprint extends Module {
         if (hungry.get() && mc.player.getHungerManager().getFoodLevel() <= 6) return;
         if (mc.player.horizontalCollision) return;
 
-        boolean moving = omni.get()
-                ? (mc.player.input.movementForward != 0 || mc.player.input.movementSideways != 0)
-                : mc.player.input.movementForward > 0;
+        boolean forward = mc.options.forwardKey.isPressed();
+        boolean side = mc.options.leftKey.isPressed() || mc.options.rightKey.isPressed();
+        boolean moving = omni.get() ? (forward || side || mc.options.backKey.isPressed()) : forward;
 
-        if (moving && mc.player.isOnGround() || moving && !mc.player.isOnGround()) {
-            if (!mc.player.isSprinting()) mc.player.setSprinting(true);
+        if (moving && !mc.player.isSprinting()) {
+            mc.player.setSprinting(true);
         }
     }
 }

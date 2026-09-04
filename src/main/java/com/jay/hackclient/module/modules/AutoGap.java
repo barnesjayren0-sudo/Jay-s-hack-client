@@ -3,94 +3,83 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import com.jay.hackclient.util.MathUtil;
+import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.SlotLock;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 
-/** Eat gap when HP low — optional combat-only. */
+/** Eat gap when HP low — kit/UHC staple. */
 public class AutoGap extends Module {
 
-    public final NumberSetting health = new NumberSetting("Health", "Eat under this HP", 14.0, 4.0, 20.0, 0.5);
-    public final BoolSetting combatOnly = new BoolSetting("CombatOnly", "Only when enemy nearby", true);
-    public final NumberSetting range = new NumberSetting("Range", "Enemy range for combat", 8.0, 3.0, 16.0, 0.5);
+    public final NumberSetting health = new NumberSetting("Health", "Eat under HP", 12, 4, 20, 1);
+    public final BoolSetting combatOnly = new BoolSetting("CombatOnly", "Only after damage", true);
+    public final BoolSetting goldenOnly = new BoolSetting("Golden", "Prefer enchanted gap", true);
 
     private long lastEat;
+    private long lastHurt;
     private int savedSlot = -1;
 
     public AutoGap() {
-        super("AutoGap", "Gapple at low HP (UHC/kit)", Category.PLAYER);
+        super("AutoGap", "Eat gapple under HP", Category.PLAYER);
         addSetting(health);
         addSetting(combatOnly);
-        addSetting(range);
+        addSetting(goldenOnly);
+    }
+
+    @Override
+    public void onDisable() {
+        restoreSlot();
+    }
+
+    private void restoreSlot() {
+        if (savedSlot >= 0 && mc.player != null) {
+            try { mc.player.getInventory().setSelectedSlot(savedSlot); } catch (Throwable ignored) {}
+            savedSlot = -1;
+            SlotLock.release("AutoGap");
+        }
     }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
-        if (mc.player.isUsingItem()) return;
-        if (SlotLock.isLockedByOther("AutoGap")) return;
-
-        if (savedSlot >= 0) {
-            try { mc.player.getInventory().setSelectedSlot(savedSlot); } catch (Throwable ignored) {}
-            savedSlot = -1;
-            SlotLock.release("AutoGap");
-        }
+        if (mc.player.hurtTime > 0) lastHurt = System.currentTimeMillis();
 
         float hp = mc.player.getHealth() + mc.player.getAbsorptionAmount();
-        if (hp > health.getFloat()) return;
-        if (combatOnly.get() && !enemyNearby()) return;
+        if (hp > health.getFloat()) {
+            if (mc.player.isUsingItem()) return;
+            restoreSlot();
+            return;
+        }
+        if (combatOnly.get() && System.currentTimeMillis() - lastHurt > 3500) return;
+        if (mc.player.isUsingItem()) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastEat < MathUtil.randomDelay(700, 1100)) return;
+        if (now - lastEat < Humanizer.swapDelay()) return;
+        if (SlotLock.isLockedByOther("AutoGap")) return;
 
         int slot = findGap();
         if (slot < 0) return;
-        if (!SlotLock.tryAcquire("AutoGap", 1800, 25)) return;
+        if (!SlotLock.tryAcquire("AutoGap", 800, SlotLock.PRIO_POT)) return;
 
-        int prev = 0;
-        try { prev = mc.player.getInventory().getSelectedSlot(); } catch (Throwable ignored) {}
-        try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {}
-        mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-
-        if (mc.player.isUsingItem()) {
-            savedSlot = prev;
-        } else {
-            try { mc.player.getInventory().setSelectedSlot(prev); } catch (Throwable ignored) {}
-            SlotLock.release("AutoGap");
+        if (savedSlot < 0) savedSlot = mc.player.getInventory().getSelectedSlot();
+        mc.player.getInventory().setSelectedSlot(slot);
+        try {
+            mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+            lastEat = now;
+        } catch (Throwable ignored) {
+            restoreSlot();
         }
-        lastEat = now;
-    }
-
-    private boolean enemyNearby() {
-        if (mc.world == null) return false;
-        double r = range.get();
-        for (PlayerEntity p : mc.world.getPlayers()) {
-            if (p == mc.player || !p.isAlive()) continue;
-            try { if (AntiBot.isBot(p)) continue; } catch (Throwable ignored) {}
-            if (mc.player.distanceTo(p) <= r) return true;
-        }
-        // also if recently hurt
-        return mc.player.hurtTime > 0;
-    }
-
-    @Override
-    public void onDisable() {
-        if (mc.player != null && savedSlot >= 0) {
-            try { mc.player.getInventory().setSelectedSlot(savedSlot); } catch (Throwable ignored) {}
-        }
-        savedSlot = -1;
-        SlotLock.release("AutoGap");
     }
 
     private int findGap() {
+        int normal = -1;
         for (int i = 0; i < 9; i++) {
             ItemStack s = mc.player.getInventory().getStack(i);
-            if (s.isOf(Items.GOLDEN_APPLE) || s.isOf(Items.ENCHANTED_GOLDEN_APPLE)) return i;
+            if (s.isOf(Items.ENCHANTED_GOLDEN_APPLE)) return i;
+            if (s.isOf(Items.GOLDEN_APPLE)) normal = i;
         }
-        return -1;
+        return goldenOnly.get() && normal < 0 ? -1 : normal;
     }
 }

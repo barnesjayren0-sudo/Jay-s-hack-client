@@ -1,64 +1,55 @@
 package com.jay.hackclient.module.modules;
 
-import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.Humanizer;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
 
+/** S-tap sprint reset alternative. */
 public class STap extends Module {
 
-    private long until = 0;
-    private boolean active;
-    private boolean wasForward;
+    public final NumberSetting holdMs = new NumberSetting("Hold", "S hold ms", 70, 30, 140, 5);
+
+    private long until;
+    private boolean holding;
 
     public STap() {
-        super("STap", "S-tap sprint reset after hits", Category.COMBAT);
-    }
-
-    @Override
-    public void onEnable() {
-        // Mutual exclude WTap
-        Module w = JayHackClient.moduleManager != null
-                ? JayHackClient.moduleManager.getModuleByName("WTap") : null;
-        if (w != null && w.isEnabled()) w.setEnabled(false);
+        super("STap", "Back-tap sprint reset", Category.COMBAT);
+        addSetting(holdMs);
     }
 
     @Override
     public void onDisable() {
-        active = false;
+        if (holding && mc.options != null) {
+            mc.options.backKey.setPressed(false);
+        }
+        holding = false;
         until = 0;
     }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.options == null) return;
-
         long now = System.currentTimeMillis();
-
-        if (active && now < until) {
-            mc.player.setSprinting(false);
-            if (mc.player.forwardSpeed > 0.01f) mc.player.forwardSpeed = 0;
+        if (now < until) {
+            mc.options.backKey.setPressed(true);
+            holding = true;
             return;
         }
-
-        if (active && now >= until) {
-            active = false;
-            if (wasForward && mc.player.forwardSpeed >= 0) mc.player.setSprinting(true);
+        if (holding) {
+            mc.options.backKey.setPressed(false);
+            holding = false;
         }
 
-        if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
-        Entity e = ((EntityHitResult) mc.crosshairTarget).getEntity();
-        if (!(e instanceof PlayerEntity)) return;
-        if (mc.player.handSwingTicks != 1) return;
-        if (Humanizer.shouldMiss()) return;
-        if (!Humanizer.chance(70)) return;
+        if (!mc.player.handSwinging || mc.player.handSwingTicks > 3) return;
+        if (!(mc.crosshairTarget instanceof EntityHitResult ehr)) return;
+        if (!(ehr.getEntity() instanceof PlayerEntity)) return;
+        if (!mc.options.forwardKey.isPressed()) return;
 
-        wasForward = mc.player.forwardSpeed > 0 || mc.options.forwardKey.isPressed();
-        active = true;
-        until = now + Humanizer.tapResetMs();
-        mc.player.setSprinting(false);
+        until = now + Math.max(30, (int) holdMs.get());
+        mc.options.forwardKey.setPressed(false);
+        mc.options.backKey.setPressed(true);
+        holding = true;
     }
 }

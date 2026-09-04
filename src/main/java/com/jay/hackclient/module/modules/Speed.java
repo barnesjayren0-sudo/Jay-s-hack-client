@@ -3,16 +3,15 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import net.minecraft.util.math.Vec3d;
 
-/** Light speed boost — soft modes for mobile/legit. */
+/** Soft ground speed — keep subtle for ghost play. */
 public class Speed extends Module {
 
-    public final ModeSetting mode = new ModeSetting("Mode", "Boost style", "Strafe", "Strafe", "Ground", "Off");
-    public final NumberSetting multiplier = new NumberSetting("Multiplier", "Speed factor", 1.12, 1.0, 1.35, 0.01);
+    public final ModeSetting mode = new ModeSetting("Mode", "Style", "Legit", "Legit", "Strafe");
+    public final NumberSetting multiplier = new NumberSetting("Speed", "Ground multiplier", 1.12, 1.0, 1.35, 0.01);
 
     public Speed() {
-        super("Speed", "Soft speed boost", Category.MOVEMENT);
+        super("Speed", "Soft movement speed", Category.MOVEMENT);
         addSetting(mode);
         addSetting(multiplier);
     }
@@ -20,23 +19,19 @@ public class Speed extends Module {
     @Override
     public void onTick() {
         if (mc.player == null) return;
-        if ("Off".equals(mode.get())) return;
-        if (mc.player.getAbilities().flying || mc.player.isGliding()) return;
-        if (mc.player.isTouchingWater() || mc.player.isInLava()) return;
+        if (!mc.player.isOnGround()) return;
+        if (mc.player.isSneaking() || mc.player.isUsingItem()) return;
+        if (mc.player.horizontalCollision) return;
 
         double m = multiplier.get();
-        if (m <= 1.0) return;
+        if ("Legit".equals(mode.get())) m = Math.min(m, 1.15);
 
-        if ("Ground".equals(mode.get()) && !mc.player.isOnGround()) return;
+        var v = mc.player.getVelocity();
+        double speed = Math.sqrt(v.x * v.x + v.z * v.z);
+        if (speed < 0.08) return;
+        if (speed > 0.35) return; // already fast
 
-        Vec3d v = mc.player.getVelocity();
-        double hx = v.x;
-        double hz = v.z;
-        double speed = Math.sqrt(hx * hx + hz * hz);
-        if (speed < 0.05) return;
-
-        // Cap so it doesn't look blatant
-        double factor = Math.min(m, 1.28);
-        mc.player.setVelocity(hx * factor, v.y, hz * factor);
+        double scale = m;
+        mc.player.setVelocity(v.x * scale, v.y, v.z * scale);
     }
 }

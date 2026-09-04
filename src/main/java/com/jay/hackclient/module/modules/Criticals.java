@@ -2,33 +2,30 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.ModeSetting;
-import com.jay.hackclient.module.setting.BoolSetting;
 
-/** Prefer critical hits — packet or jump assist. */
+/** Prefer crit timing — pairs with CritAssist. */
 public class Criticals extends Module {
 
-    public final ModeSetting mode = new ModeSetting("Mode", "Crit style", "Jump", "Jump", "Off");
-    public final BoolSetting onlyWeapon = new BoolSetting("OnlyWeapon", "Sword/axe only", true);
+    public final ModeSetting mode = new ModeSetting("Mode", "Style", "Jump", "Jump", "Packet");
 
     public Criticals() {
         super("Criticals", "Help land critical hits", Category.COMBAT);
         addSetting(mode);
-        addSetting(onlyWeapon);
-    }
-
-    @Override
-    public void onEnable() {
-        // Share flag with CritAssist path
-        com.jay.hackclient.settings.ClientSettings.critTiming = !"Off".equals(mode.get());
-    }
-
-    @Override
-    public void onDisable() {
-        com.jay.hackclient.settings.ClientSettings.critTiming = false;
     }
 
     @Override
     public void onTick() {
-        com.jay.hackclient.settings.ClientSettings.critTiming = isEnabled() && !"Off".equals(mode.get());
+        // CritAssist / ComboHit read this module being enabled
+        // Packet mode is intentionally soft / no forced packets here for safety
+    }
+
+    public static boolean isActive() {
+        try {
+            if (com.jay.hackclient.JayHackClient.moduleManager == null) return false;
+            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Criticals");
+            return m != null && m.isEnabled();
+        } catch (Throwable t) {
+            return false;
+        }
     }
 }
