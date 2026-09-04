@@ -18,6 +18,11 @@ public class ModuleManager {
     private boolean extrasRegistered = false;
 
     public void register(Module module) {
+        if (module == null) return;
+        // Avoid duplicate names
+        for (Module m : modules) {
+            if (m.getName().equalsIgnoreCase(module.getName())) return;
+        }
         modules.add(module);
     }
 
@@ -30,6 +35,7 @@ public class ModuleManager {
         for (Module m : modules) {
             if (m.isEnabled()) list.add(m);
         }
+        list.sort(Comparator.comparing(Module::getName, String.CASE_INSENSITIVE_ORDER));
         return list;
     }
 
@@ -46,8 +52,7 @@ public class ModuleManager {
         String q = query == null ? "" : query.trim().toLowerCase();
         List<Module> list = new ArrayList<>();
         for (Module m : modules) {
-            if (q.isEmpty() || m.getName().toLowerCase().contains(q)
-                    || m.getDescription().toLowerCase().contains(q)) {
+            if (q.isEmpty() || m.getSearchBlob().contains(q)) {
                 list.add(m);
             }
         }
@@ -56,6 +61,7 @@ public class ModuleManager {
     }
 
     public Module getModuleByName(String name) {
+        if (name == null) return null;
         for (Module m : modules) {
             if (m.getName().equalsIgnoreCase(name)) return m;
         }
@@ -85,9 +91,16 @@ public class ModuleManager {
 
     public void disableCombat() {
         for (Module m : modules) {
-            if (!m.isEnabled()) continue;
-            Module.Category c = m.getCategory();
-            if (c == Module.Category.COMBAT || c == Module.Category.PLAYER) {
+            if (m.getCategory() == Module.Category.COMBAT && m.isEnabled()) {
+                m.setEnabled(false);
+            }
+        }
+    }
+
+    public void disableCombatAndPlayer() {
+        for (Module m : modules) {
+            if ((m.getCategory() == Module.Category.COMBAT
+                    || m.getCategory() == Module.Category.PLAYER) && m.isEnabled()) {
                 m.setEnabled(false);
             }
         }
@@ -143,19 +156,18 @@ public class ModuleManager {
         if (frozen) return;
         pollKeybinds();
         for (Module m : modules) {
-            if (m.isEnabled()) {
-                try {
-                    m.onTick();
-                    m.markTickHealthy();
-                } catch (Throwable e) {
-                    int streak = m.markTickError();
-                    System.err.println("[JayHack] " + m.getName() + " tick error (#" + streak + "): " + e.getMessage());
-                    if (streak >= 3) {
-                        try {
-                            m.setEnabled(false);
-                            com.jay.hackclient.util.Notifications.push(m.getName(), "disabled after repeated errors");
-                        } catch (Throwable ignored) {}
-                    }
+            if (!m.isEnabled()) continue;
+            try {
+                m.onTick();
+                m.markTickHealthy();
+            } catch (Throwable e) {
+                int streak = m.markTickError();
+                System.err.println("[JayHack] " + m.getName() + " tick error (#" + streak + "): " + e.getMessage());
+                if (streak >= 3) {
+                    try {
+                        m.setEnabled(false);
+                        com.jay.hackclient.util.Notifications.push(m.getName(), "disabled after repeated errors");
+                    } catch (Throwable ignored) {}
                 }
             }
         }

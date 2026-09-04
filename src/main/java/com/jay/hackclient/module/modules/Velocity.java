@@ -6,13 +6,11 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Horizontal knockback reduction — Y never modified by default.
- * Actual packet scaling is applied in EntityVelocity mixin.
- */
+/** Horizontal KB reduce — Y untouched by default. Packet scale in mixin. */
 public class Velocity extends Module {
 
     public static long lastPacketMs = 0;
+    private String lastMode = "";
 
     public final ModeSetting mode = new ModeSetting("Mode", "Preset strength", "Soft", "Soft", "Medium", "Strong", "Custom");
     public final NumberSetting horizontal = new NumberSetting("Horizontal", "Keep fraction of KB", 0.55, 0.35, 1.0, 0.01);
@@ -28,14 +26,16 @@ public class Velocity extends Module {
 
     @Override
     public void onTick() {
-        // Sync mode presets into ClientSettings used by mixin
         String m = mode.get();
-        if (!"Custom".equals(m)) {
-            ClientSettings.applyVelocityMode(m.toLowerCase());
-            horizontal.set(ClientSettings.velocityHorizontal);
-        } else {
-            ClientSettings.velocityHorizontal = horizontal.get();
-            ClientSettings.velocityVertical = vertical.get();
+        if (!m.equals(lastMode) || "Custom".equals(m)) {
+            lastMode = m;
+            if (!"Custom".equals(m)) {
+                ClientSettings.applyVelocityMode(m.toLowerCase());
+                horizontal.set(ClientSettings.velocityHorizontal);
+            } else {
+                ClientSettings.velocityHorizontal = horizontal.get();
+                ClientSettings.velocityVertical = vertical.get();
+            }
         }
     }
 

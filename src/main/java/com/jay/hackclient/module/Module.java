@@ -52,6 +52,26 @@ public abstract class Module {
         }
     }
 
+    /** Lowercase blob for ClickGUI search (name + desc + setting names). */
+    public String getSearchBlob() {
+        StringBuilder sb = new StringBuilder(name.toLowerCase());
+        sb.append(' ').append(description.toLowerCase());
+        sb.append(' ').append(category.displayName.toLowerCase());
+        for (Setting s : settings) {
+            try {
+                sb.append(' ').append(s.getName().toLowerCase());
+            } catch (Throwable ignored) {}
+        }
+        return sb.toString();
+    }
+
+    /** ArrayList / HUD label with optional key. */
+    public String getHudLabel() {
+        String key = getKeyLabel();
+        if (key.isEmpty()) return name;
+        return name + " §8[§7" + key + "§8]";
+    }
+
     public void toggle() {
         setEnabled(!enabled);
     }
@@ -138,7 +158,10 @@ public abstract class Module {
         if (n != null) return n.toUpperCase();
         return switch (keyBind) {
             case GLFW.GLFW_KEY_RIGHT_SHIFT -> "RShift";
+            case GLFW.GLFW_KEY_LEFT_SHIFT -> "LShift";
             case GLFW.GLFW_KEY_DELETE -> "DEL";
+            case GLFW.GLFW_KEY_F11 -> "F11";
+            case GLFW.GLFW_KEY_RIGHT_CONTROL -> "RCtrl";
             default -> "#" + keyBind;
         };
     }
