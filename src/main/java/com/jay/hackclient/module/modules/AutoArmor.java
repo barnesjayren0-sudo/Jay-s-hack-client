@@ -2,22 +2,22 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.SlotLock;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.equipment.ArmorMaterial;
 import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.screen.slot.SlotActionType;
 
-/** Equip best armor by material tier + prefer higher count durability. */
+/** Equip best armor by tier + durability. */
 public class AutoArmor extends Module {
 
-    public final NumberSetting delay = new NumberSetting("Delay", "Ms between swaps", 350, 150, 800, 25);
+    public final NumberSetting delay = new NumberSetting("Delay", "Ms between swaps", 180, 80, 400, 10);
 
     private long last;
 
     public AutoArmor() {
-        super("AutoArmor", "Equip best armor by tier", Category.PLAYER);
+        super("AutoArmor", "Best armor in inventory", Category.PLAYER);
         addSetting(delay);
     }
 
@@ -28,9 +28,8 @@ public class AutoArmor extends Module {
         if (SlotLock.isLockedByOther("AutoArmor")) return;
 
         long now = System.currentTimeMillis();
-        if (now - last < delay.getInt()) return;
+        if (now - last < Math.max(delay.getInt(), Humanizer.swapDelay())) return;
 
-        // Armor slots in player inventory: 36+ armor is different — use equipment
         if (trySlot(EquipmentSlot.HEAD, ItemTags.HEAD_ARMOR)) { last = now; return; }
         if (trySlot(EquipmentSlot.CHEST, ItemTags.CHEST_ARMOR)) { last = now; return; }
         if (trySlot(EquipmentSlot.LEGS, ItemTags.LEG_ARMOR)) { last = now; return; }
@@ -53,7 +52,6 @@ public class AutoArmor extends Module {
         }
         if (bestInv < 0) return false;
 
-        // Click equip: armor slots 5-8 in player screen handler (head=5 ... feet=8)
         int armorSlot = switch (slot) {
             case HEAD -> 5;
             case CHEST -> 6;
@@ -64,7 +62,7 @@ public class AutoArmor extends Module {
         if (armorSlot < 0) return false;
 
         try {
-            if (!SlotLock.tryAcquire("AutoArmor", 300, 4)) return false;
+            if (!SlotLock.tryAcquire("AutoArmor", 320, SlotLock.PRIO_INV)) return false;
             int sync = mc.player.playerScreenHandler.syncId;
             int from = bestInv < 9 ? 36 + bestInv : bestInv;
             mc.interactionManager.clickSlot(sync, from, 0, SlotActionType.PICKUP, mc.player);

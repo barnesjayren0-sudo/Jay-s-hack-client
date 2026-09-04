@@ -3,12 +3,11 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
 import net.minecraft.client.option.GameOptions;
-import net.minecraft.util.PlayerInput;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
-/** Detached free camera. Default bind: F11. */
+/** Detached free camera. Bind: F11. */
 public class Freecam extends Module {
 
     public static boolean active;
@@ -51,14 +50,10 @@ public class Freecam extends Module {
     public void onTick() {
         if (!active || mc.player == null || mc.world == null) return;
 
+        // Keep body frozen at start pos
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setPosition(startX, startY, startZ);
-
-        try {
-            if (mc.player.input != null) {
-                mc.player.input.playerInput = PlayerInput.DEFAULT;
-            }
-        } catch (Throwable ignored) {}
+        mc.player.fallDistance = 0;
 
         yaw = mc.player.getYaw();
         pitch = mc.player.getPitch();
@@ -82,7 +77,7 @@ public class Freecam extends Module {
         double sin = MathHelper.sin(yawRad);
         double cos = MathHelper.cos(yawRad);
 
-        x += (strafe * cos - forward * sin) * spd;
+        x += (forward * -sin + strafe * cos) * spd;
         z += (forward * cos + strafe * sin) * spd;
         y += up * spd;
     }

@@ -47,6 +47,12 @@ public class KillAura extends Module {
     }
 
     @Override
+    public void onDisable() {
+        lockedTargetId = -1;
+        RotationOwner.release("KillAura");
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
@@ -63,33 +69,37 @@ public class KillAura extends Module {
             return;
         }
 
-        if (comboHit.get() && !ComboHit.shouldAttack(mc.player, target)) {
-            return;
-        }
+        try {
+            if (comboHit.get() && !ComboHit.shouldAttack(mc.player, target)) return;
+        } catch (Throwable ignored) {}
 
         aimTick++;
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
             if ((aimTick & 1) == 0 && Humanizer.chance(35)) {
-                if (RotationOwner.tryClaim("KillAura", 2, 50))
-                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.35f);
+                if (RotationOwner.tryClaim("KillAura", 2, 55))
+                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.32f);
             }
             return;
         }
 
         if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
-        if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player) && comboHit.get()) {
-            if (!mc.player.isOnGround()) return;
-        }
+        try {
+            if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player) && comboHit.get()) {
+                if (!mc.player.isOnGround()) return;
+            }
+        } catch (Throwable ignored) {}
+
         if (Humanizer.shouldMiss()) {
             lastAttack = now;
             nextDelay = Humanizer.combatDelay();
             return;
         }
 
-        if (RotationOwner.tryClaim("KillAura", 2, 80))
-            RotationUtil.lookAt(target, Math.min(0.38f, ClientSettings.aimSmooth * 1.05f));
-        ReachHUD.recordHit(mc.player.distanceTo(target));
+        if (RotationOwner.tryClaim("KillAura", 2, 85))
+            RotationUtil.lookAt(target, Math.min(0.36f, ClientSettings.aimSmooth * 1.0f));
+
+        try { ReachHUD.recordHit(mc.player.distanceTo(target)); } catch (Throwable ignored) {}
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
 
@@ -99,8 +109,14 @@ public class KillAura extends Module {
 
     private double effectiveRange() {
         double r = range.get();
-        if (Reach.isActive()) r = Math.min(r, Reach.getReach() + 0.08);
-        return r;
+        // Reach module extends — never shrink Aura below its own setting incorrectly
+        if (Reach.isActive()) {
+            r = Math.max(r, Reach.getReach());
+        }
+        try {
+            r += Hitboxes.getExpand() * 0.5;
+        } catch (Throwable ignored) {}
+        return Math.min(r, 4.5);
     }
 
     private PlayerEntity pickTarget(double range, float fov) {
@@ -128,16 +144,12 @@ public class KillAura extends Module {
     private boolean isInCone(PlayerEntity p, double range, float fov) {
         if (p == mc.player || !p.isAlive() || p.isSpectator()) return false;
         if (mc.player.distanceTo(p) > range) return false;
+        try {
+            if (AntiBot.isBot(p)) return false;
+        } catch (Throwable ignored) {}
         float yaw = (float) (Math.atan2(p.getZ() - mc.player.getZ(),
                 p.getX() - mc.player.getX()) * (180.0 / Math.PI)) - 90f;
         float dyaw = Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
-        return dyaw <= fov;
-    }
-
-    @Override
-    public void onDisable() {
-        lockedTargetId = -1;
-        targetLockedUntil = 0;
-        RotationOwner.release("KillAura");
+        return dyaw <= fov * 0.5f;
     }
 }

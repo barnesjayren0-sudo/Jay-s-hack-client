@@ -2,27 +2,28 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
-import net.minecraft.util.math.Vec3d;
 
-/** Soft blink pulse — short hold after combat. */
+/**
+ * Soft blink — velocity damp only (no setPosition — was causing desync).
+ */
 public class SoftBlink extends Module {
 
-    public final NumberSetting holdMs = new NumberSetting("HoldMs", "Hold duration", 80, 40, 200, 5);
-    public final NumberSetting cooldown = new NumberSetting("Cooldown", "Ms between pulses", 400, 200, 1200, 50);
+    public final NumberSetting holdMs = new NumberSetting("HoldMs", "Hold duration", 70, 40, 180, 5);
+    public final NumberSetting cooldown = new NumberSetting("Cooldown", "Ms between pulses", 450, 200, 1200, 50);
+    public final NumberSetting damp = new NumberSetting("Damp", "XZ velocity scale", 0.40, 0.15, 0.7, 0.05);
 
     private long pulseUntil;
     private long lastPulse;
-    private Vec3d holdPos;
 
     public SoftBlink() {
         super("SoftBlink", "Short soft lag pulse in combat", Category.COMBAT);
         addSetting(holdMs);
         addSetting(cooldown);
+        addSetting(damp);
     }
 
     @Override
     public void onDisable() {
-        holdPos = null;
         pulseUntil = 0;
     }
 
@@ -31,25 +32,18 @@ public class SoftBlink extends Module {
         if (mc.player == null) return;
         long now = System.currentTimeMillis();
 
-        if (now < pulseUntil && holdPos != null) {
-            mc.player.setVelocity(mc.player.getVelocity().multiply(0.35, 1.0, 0.35));
-            double dx = holdPos.x - mc.player.getX();
-            double dz = holdPos.z - mc.player.getZ();
-            if (dx * dx + dz * dz > 0.04) {
-                mc.player.setPosition(
-                        holdPos.x * 0.3 + mc.player.getX() * 0.7,
-                        mc.player.getY(),
-                        holdPos.z * 0.3 + mc.player.getZ() * 0.7
-                );
-            }
+        if (now < pulseUntil) {
+            double d = damp.get();
+            var v = mc.player.getVelocity();
+            mc.player.setVelocity(v.x * d, v.y, v.z * d);
             return;
         }
 
-        boolean combat = mc.player.hurtTime > 0 || mc.player.getAttackCooldownProgress(0.5f) < 0.3f;
+        boolean combat = mc.player.hurtTime > 0
+                || (mc.player.getAttackCooldownProgress(0.5f) < 0.35f && mc.player.handSwinging);
         if (!combat) return;
         if (now - lastPulse < cooldown.getInt()) return;
 
-        holdPos = new Vec3d(mc.player.getX(), mc.player.getY(), mc.player.getZ());
         pulseUntil = now + holdMs.getInt();
         lastPulse = now;
     }
