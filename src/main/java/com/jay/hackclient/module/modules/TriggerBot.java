@@ -4,10 +4,9 @@ import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.CombatManager;
+import com.jay.hackclient.util.CombatRequirements;
 import com.jay.hackclient.util.Humanizer;
-import com.jay.hackclient.util.ItemUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
@@ -40,9 +39,8 @@ public class TriggerBot extends Module {
 
     @Override
     public void onTick() {
-        if (!CombatManager.canCombatModulesRun()) return;
+        if (!CombatRequirements.standardCombat(weaponOnly.get(), true)) return;
         if (mc.player == null || mc.interactionManager == null) return;
-        if (weaponOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.player.isUsingItem()) return;
         if (Humanizer.shouldSkipTick()) return;
         if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
@@ -63,10 +61,14 @@ public class TriggerBot extends Module {
         try { maxDist += Math.min(0.1, Hitboxes.getExpand()); } catch (Throwable ignored) {}
         if (mc.player.distanceTo(player) > maxDist) return;
 
-        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < minCooldown.getFloat()) return;
+        if (!CombatRequirements.cooldownReady(minCooldown.getFloat())) return;
         try {
-            if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)) return;
-            if (!ComboHit.shouldAttack(mc.player, player)) return;
+            if (com.jay.hackclient.settings.ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player)) {
+                // If Criticals/CritAssist on, wait for window unless ComboHit says otherwise
+                if (!ComboHit.shouldAttack(mc.player, player)) return;
+            } else if (!ComboHit.shouldAttack(mc.player, player)) {
+                return;
+            }
         } catch (Throwable ignored) {}
 
         long now = System.currentTimeMillis();
@@ -84,5 +86,6 @@ public class TriggerBot extends Module {
         CombatManager.onAttack();
         lastAttack = now;
         nextDelay = Humanizer.combatDelay();
+        setTag(String.format("%.1f", mc.player.distanceTo(player)));
     }
 }
