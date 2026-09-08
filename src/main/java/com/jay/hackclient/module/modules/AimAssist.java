@@ -16,7 +16,6 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/** Ghost AimAssist — sticky target + sigmoid smooth (LB-inspired pipeline). */
 public class AimAssist extends Module {
 
     private long lastSilentHit = 0;
@@ -46,7 +45,7 @@ public class AimAssist extends Module {
 
     @Override
     public void onTick() {
-        if (!CombatManager.canCombatModulesRun()) return;
+        if (!CombatManager.canRotate()) return;
         if (mc.player == null || mc.world == null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Mobile.shouldThrottle()) return;
@@ -71,7 +70,6 @@ public class AimAssist extends Module {
             return;
         }
 
-        // Drop lock if out of extended FOV/range
         if (mc.player.distanceTo(target) > range + 0.6) {
             TargetTracker.clear();
             setTag(null);
