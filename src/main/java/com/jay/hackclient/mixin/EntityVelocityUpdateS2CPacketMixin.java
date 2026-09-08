@@ -19,53 +19,35 @@ public class EntityVelocityUpdateS2CPacketMixin {
         at = @At("RETURN"),
         cancellable = true
     )
-    private void jay$modifyVelocity(
-        CallbackInfoReturnable<Vec3d> cir
-    ) {
-        if (JayHackClient.moduleManager == null) {
-            return;
-        }
+    private void jay$modifyVelocity(CallbackInfoReturnable<Vec3d> cir) {
+        if (JayHackClient.moduleManager == null) return;
 
-        Module mod =
-            JayHackClient.moduleManager.getModuleByName("Velocity");
-
-        if (mod == null || !mod.isEnabled()) {
-            return;
-        }
+        Module mod = JayHackClient.moduleManager.getModuleByName("Velocity");
+        if (mod == null || !mod.isEnabled()) return;
 
         EntityVelocityUpdateS2CPacket packet =
-            (EntityVelocityUpdateS2CPacket) (Object) this;
+                (EntityVelocityUpdateS2CPacket) (Object) this;
 
         var mc = net.minecraft.client.MinecraftClient.getInstance();
+        if (mc.player == null) return;
+        if (packet.getEntityId() != mc.player.getId()) return;
 
-        if (mc.player == null) {
-            return;
-        }
-
-        if (packet.getEntityId() != mc.player.getId()) {
-            return;
-        }
-
-        // The packet is already scoped to the local player; avoid changing
-        // routine velocity updates outside the hurt window.
         if (ClientSettings.velocityOnlyWhenHurt && mc.player.hurtTime <= 0) {
             return;
         }
 
         Vec3d original = cir.getReturnValue();
-        if (original == null) {
-            return;
-        }
+        if (original == null) return;
 
         double horizontal = Velocity.horizontalFactor();
+        // 1.0 = chance skipped → vanilla packet
+        if (horizontal >= 0.999) return;
 
-        cir.setReturnValue(
-            new Vec3d(
+        cir.setReturnValue(new Vec3d(
                 original.x * horizontal,
-                original.y,              // Y untouched
+                original.y,
                 original.z * horizontal
-            )
-        );
+        ));
 
         Velocity.lastPacketMs = System.currentTimeMillis();
     }

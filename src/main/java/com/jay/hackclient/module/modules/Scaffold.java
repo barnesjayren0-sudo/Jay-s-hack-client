@@ -4,6 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.Humanizer;
 import net.minecraft.item.BlockItem;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -13,17 +14,19 @@ import net.minecraft.util.math.Vec3d;
 
 /**
  * Scaffold — Normal / Telly / Godbridge / Tower.
- * Soft pitch restore so SafeWalk never sticks; no forced sneak.
+ * Speed limiter + sprint control (LB ScaffoldSpeedLimiter / SprintControl ideas).
  */
 public class Scaffold extends Module {
 
     public final ModeSetting mode = new ModeSetting("Mode", "Place style",
             "Telly", "Normal", "Telly", "Godbridge", "Tower");
-    public final NumberSetting delay = new NumberSetting("Delay", "Base place ms", 45, 25, 120, 5);
+    public final NumberSetting delay = new NumberSetting("Delay", "Base place ms", 50, 30, 140, 5);
+    public final NumberSetting minInterval = new NumberSetting("MinInterval", "Hard min ms between places", 35, 20, 100, 5);
     public final BoolSetting autoJump = new BoolSetting("AutoJump", "Jump when grounded (Telly)", true);
     public final NumberSetting airTicks = new NumberSetting("AirTicks", "Min air ticks before place", 2, 0, 8, 1);
     public final BoolSetting rotate = new BoolSetting("Rotate", "Pitch down when placing", true);
     public final BoolSetting sprint = new BoolSetting("Sprint", "Keep sprint on Telly", true);
+    public final BoolSetting sprintPlace = new BoolSetting("SprintPlace", "Allow sprint while placing", true);
     public final BoolSetting retryFail = new BoolSetting("Retry", "Faster retry after failed place", true);
     public final BoolSetting onlyWhenForward = new BoolSetting("ForwardOnly", "Only place while moving forward", false);
 
@@ -33,15 +36,19 @@ public class Scaffold extends Module {
     private int failStreak;
     private int towerHoldTicks;
     private int pitchHoldTicks;
+    private int placesThisSecond;
+    private long secondStamp;
 
     public Scaffold() {
         super("Scaffold", "Telly / Normal / Godbridge / Tower", Category.WORLD);
         addSetting(mode);
         addSetting(delay);
+        addSetting(minInterval);
         addSetting(autoJump);
         addSetting(airTicks);
         addSetting(rotate);
         addSetting(sprint);
+        addSetting(sprintPlace);
         addSetting(retryFail);
         addSetting(onlyWhenForward);
     }
@@ -53,6 +60,7 @@ public class Scaffold extends Module {
         failStreak = 0;
         towerHoldTicks = 0;
         pitchHoldTicks = 0;
+        placesThisSecond = 0;
     }
 
     @Override
@@ -72,6 +80,14 @@ public class Scaffold extends Module {
         }
 
         String m = mode.get();
+        long now = System.currentTimeMillis();
+
+        // Rate window — max ~12 places/sec even if delay is low
+        if (now - secondStamp >= 1000) {
+            secondStamp = now;
+            placesThisSecond = 0;
+        }
+        if (placesThisSecond >= 12) return;
 
         if (mc.player.isOnGround()) {
             ticksInAir = 0;
@@ -82,21 +98,27 @@ public class Scaffold extends Module {
             ticksInAir++;
         }
 
-        // Cap how long we hold aim-down
         if (pitchHoldTicks > 0) {
             pitchHoldTicks--;
             if (pitchHoldTicks == 0) restorePitchSoft();
         }
 
-        long now = System.currentTimeMillis();
+        // Speed limiter: base delay + hard min interval + jitter
         long cd = (long) delay.get();
+        cd = Math.max(cd, (long) minInterval.get());
+        cd += Humanizer.delay(5, 8, 0, 20);
         if (retryFail.get() && failStreak > 0) {
-            cd = Math.max(20, cd - failStreak * 8L);
+            cd = Math.max((long) minInterval.get(), cd - failStreak * 6L);
         }
         if (now - lastPlace < cd) return;
 
         if ("Telly".equals(m) && ticksInAir < airTicks.getInt()) return;
         if ("Godbridge".equals(m) && !mc.player.isOnGround() && ticksInAir < 1) return;
+
+        // Sprint control while placing
+        if (!sprintPlace.get() && mc.player.isSprinting()) {
+            mc.player.setSprinting(false);
+        }
 
         BlockPos below = BlockPos.ofFloored(mc.player.getX(), mc.player.getY() - 0.05, mc.player.getZ());
         if ("Tower".equals(m)) {
@@ -117,7 +139,14 @@ public class Scaffold extends Module {
         if (ok) {
             lastPlace = now;
             failStreak = 0;
-            pitchHoldTicks = 4; // short hold then soft restore
+            placesThisSecond++;
+            pitchHoldTicks = 3;
+            setTag(m + " " + placesThisSecond + "/s");
+
+            if (sprint.get() && sprintPlace.get() && "Telly".equals(m)
+                    && mc.options.forwardKey.isPressed()) {
+                mc.player.setSprinting(true);
+            }
         } else {
             failStreak = Math.min(5, failStreak + 1);
         }
@@ -170,9 +199,9 @@ public class Scaffold extends Module {
     private void aimDown() {
         if (mc.player == null) return;
         if (Float.isNaN(savedPitch)) savedPitch = mc.player.getPitch();
-        float target = 76f + (float) (Math.random() * 4.0);
+        float target = 75f + (float) (Math.random() * 4.0);
         float cur = mc.player.getPitch();
-        mc.player.setPitch(cur + (target - cur) * 0.28f);
+        mc.player.setPitch(cur + (target - cur) * 0.24f);
     }
 
     private void restorePitchSoft() {

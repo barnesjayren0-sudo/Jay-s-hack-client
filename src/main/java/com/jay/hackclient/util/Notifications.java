@@ -9,89 +9,123 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/** Stacked toasts with styles and durations. */
+/**
+ * Stacked toasts — styles inspired by client notification stacks (info/success/warn/error).
+ */
 public final class Notifications {
 
     public enum Style { INFO, SUCCESS, WARN, ERROR }
 
-    private static final List<Toast> toasts = new ArrayList<>();
+    private static final List<Toast> TOASTS = new ArrayList<>();
+    private static final int MAX = 6;
 
     private Notifications() {}
 
-    public static void push(String title, String message) {
-        push(title, message, Style.INFO, 3200);
+    public static void push(String title, String body) {
+        push(title, body, Style.INFO, 2200);
     }
 
-    public static void push(String message) {
-        push("Jay", message, Style.INFO, 3200);
+    public static void push(String title, String body, Style style) {
+        push(title, body, style, 2200);
     }
 
-    public static void success(String title, String message) {
-        push(title, message, Style.SUCCESS, 2800);
-    }
-
-    public static void warn(String title, String message) {
-        push(title, message, Style.WARN, 4000);
-    }
-
-    public static void error(String title, String message) {
-        push(title, message, Style.ERROR, 4500);
-    }
-
-    public static void push(String title, String message, Style style, int lifeMs) {
-        toasts.add(0, new Toast(title, message, style, System.currentTimeMillis(), lifeMs));
-        while (toasts.size() > 6) toasts.remove(toasts.size() - 1);
-    }
-
-    public static void render(DrawContext ctx) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null) return;
-        TextRenderer tr = mc.textRenderer;
-        int y = 28;
-        long now = System.currentTimeMillis();
-        Iterator<Toast> it = toasts.iterator();
-        while (it.hasNext()) {
-            Toast t = it.next();
-            long age = now - t.born;
-            if (age > t.life) {
-                it.remove();
-                continue;
+    public static void push(String title, String body, Style style, long durationMs) {
+        if (title == null) title = "";
+        if (body == null) body = "";
+        synchronized (TOASTS) {
+            TOASTS.add(0, new Toast(title, body, style == null ? Style.INFO : style,
+                    System.currentTimeMillis(), Math.max(800, durationMs)));
+            while (TOASTS.size() > MAX) {
+                TOASTS.remove(TOASTS.size() - 1);
             }
-            float alpha = 1f;
-            int fade = 500;
-            if (age > t.life - fade) alpha = (t.life - age) / (float) fade;
-            if (age < 120) alpha = age / 120f;
-
-            int aw = Math.min(200, Math.max(tr.getWidth(t.title), tr.getWidth(t.message)) + 16);
-            int x = mc.getWindow().getScaledWidth() - aw - 8;
-            int a = Math.max(0, Math.min(255, (int) (alpha * 230)));
-            int bg = GuiTheme.withAlpha(0x121520, a);
-            int accent = switch (t.style) {
-                case SUCCESS -> GuiTheme.SUCCESS;
-                case WARN -> 0xFFFFC857;
-                case ERROR -> GuiTheme.DANGER;
-                default -> GuiTheme.ACCENT;
-            };
-            ctx.fill(x, y, x + aw, y + 28, bg);
-            ctx.fill(x, y, x + 2, y + 28, GuiTheme.withAlpha(accent & 0xFFFFFF, a));
-            ctx.drawTextWithShadow(tr, t.title, x + 8, y + 4, GuiTheme.withAlpha(0xFFFFFF, a));
-            ctx.drawTextWithShadow(tr, t.message, x + 8, y + 15, GuiTheme.withAlpha(0xAAAAAA, a));
-            y += 32;
         }
     }
 
-    private static final class Toast {
-        final String title, message;
-        final Style style;
-        final long born;
-        final int life;
+    public static void success(String title, String body) {
+        push(title, body, Style.SUCCESS, 2000);
+    }
 
-        Toast(String title, String message, Style style, long born, int life) {
+    public static void warn(String title, String body) {
+        push(title, body, Style.WARN, 2600);
+    }
+
+    public static void error(String title, String body) {
+        push(title, body, Style.ERROR, 3200);
+    }
+
+    public static void moduleEnabled(String name) {
+        success(name, "enabled");
+    }
+
+    public static void moduleDisabled(String name) {
+        push(name, "disabled", Style.INFO, 1600);
+    }
+
+    public static void render(DrawContext ctx, int screenW, int screenH) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null) return;
+        TextRenderer fr = mc.textRenderer;
+        long now = System.currentTimeMillis();
+
+        synchronized (TOASTS) {
+            Iterator<Toast> it = TOASTS.iterator();
+            int y = 12;
+            while (it.hasNext()) {
+                Toast t = it.next();
+                long age = now - t.created;
+                if (age > t.duration) {
+                    it.remove();
+                    continue;
+                }
+
+                float life = 1f - (age / (float) t.duration);
+                int alpha = (int) (Math.min(1f, life * 4f) * 220);
+                int bg = (alpha << 24) | (colorFor(t.style) & 0xFFFFFF);
+                int accent = (0xFF << 24) | accentFor(t.style);
+
+                int w = Math.max(120, fr.getWidth(t.title) + fr.getWidth(t.body) + 28);
+                int x = screenW - w - 10;
+
+                ctx.fill(x, y, x + w, y + 22, bg);
+                ctx.fill(x, y, x + 3, y + 22, accent);
+                fr.drawWithShadow(ctx.getMatrices(), t.title, x + 8, y + 3, 0xFFFFFFFF);
+                fr.drawWithShadow(ctx.getMatrices(), t.body, x + 8, y + 12, 0xFFCCCCCC);
+                y += 26;
+            }
+        }
+    }
+
+    private static int colorFor(Style s) {
+        return switch (s) {
+            case SUCCESS -> 0x10261A;
+            case WARN -> 0x2A2208;
+            case ERROR -> 0x2A1010;
+            default -> 0x12151C;
+        };
+    }
+
+    private static int accentFor(Style s) {
+        return switch (s) {
+            case SUCCESS -> 0x3DFF8A;
+            case WARN -> 0xFFC93D;
+            case ERROR -> 0xFF5A5A;
+            default -> GuiTheme.accent() & 0xFFFFFF;
+        };
+    }
+
+    private static final class Toast {
+        final String title;
+        final String body;
+        final Style style;
+        final long created;
+        final long duration;
+
+        Toast(String title, String body, Style style, long created, long duration) {
             this.title = title;
-            this.message = message;
+            this.body = body;
             this.style = style;
-            this.born = born;
-            this.life = life;
+            this.created = created;
+            this.duration = duration;
         }
     }
 }
