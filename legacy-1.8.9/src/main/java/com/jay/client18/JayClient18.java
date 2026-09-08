@@ -2,17 +2,17 @@ package com.jay.client18;
 
 import com.jay.client18.config.ConfigManager;
 import com.jay.client18.gui.ClickGuiScreen;
+import com.jay.client18.mixin.ChatHook;
 import com.jay.client18.module.Module;
 import com.jay.client18.module.ModuleManager;
 import com.jay.client18.module.modules.*;
+import com.jay.client18.render.HudRenderer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiChat;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.input.Keyboard;
 
@@ -50,9 +50,14 @@ public class JayClient18 {
         moduleManager.register(new ArrayListMod());
         moduleManager.register(new MiddleClickFriend());
 
+        // ArrayList on by default
+        Module arr = moduleManager.get("ArrayList");
+        if (arr != null) arr.setEnabled(true);
+
         configManager.load();
         MinecraftForge.EVENT_BUS.register(this);
-        MinecraftForge.EVENT_BUS.register(new com.jay.client18.render.HudRenderer());
+        MinecraftForge.EVENT_BUS.register(new HudRenderer());
+        MinecraftForge.EVENT_BUS.register(new ChatHook());
         System.out.println("[" + NAME + "] v" + VERSION + " loaded");
     }
 
@@ -62,14 +67,12 @@ public class JayClient18 {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        // GUI key
         boolean rs = Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
         if (rs && !wasRightShift && mc.currentScreen == null) {
             mc.displayGuiScreen(new ClickGuiScreen());
         }
         wasRightShift = rs;
 
-        // Panic
         boolean del = Keyboard.isKeyDown(Keyboard.KEY_DELETE);
         if (del && !wasDelete) {
             moduleManager.panic();
@@ -79,11 +82,6 @@ public class JayClient18 {
         wasDelete = del;
 
         moduleManager.onTick();
-    }
-
-    @SubscribeEvent
-    public void onKey(InputEvent.KeyInputEvent e) {
-        // module keybinds polled in ModuleManager
     }
 
     public static void handleChat(String message) {
@@ -116,7 +114,7 @@ public class JayClient18 {
             return;
         }
         if (a[2].equalsIgnoreCase("list")) {
-            msg("§f" + String.join(", ", moduleManager.getFriends()));
+            msg("§f" + join(moduleManager.getFriends()));
             return;
         }
         if (a.length < 4) return;
@@ -131,18 +129,19 @@ public class JayClient18 {
         }
     }
 
+    private static String join(java.util.List<String> list) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(list.get(i));
+        }
+        return sb.toString();
+    }
+
     public static void msg(String s) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer != null) {
             mc.thePlayer.addChatMessage(new ChatComponentText("§8[§bJay§8] " + s));
-        }
-    }
-
-    public static void toggle(String name) {
-        Module m = moduleManager.get(name);
-        if (m != null) {
-            m.toggle();
-            configManager.save();
         }
     }
 }
