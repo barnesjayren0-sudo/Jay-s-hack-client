@@ -5,7 +5,7 @@ import net.minecraft.client.MinecraftClient;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Delays + randomness; pingScaleDelays widens windows on high latency. */
+/** Delays + randomness tuned for ghost play. */
 public final class Humanizer {
 
     private Humanizer() {}
@@ -17,28 +17,19 @@ public final class Humanizer {
         int v = (int) Math.round(g);
         if (v < minMs) v = minMs;
         if (v > maxMs) v = maxMs;
-        if (R.nextInt(100) < 10) v += R.nextInt(50, 140);
+        // Occasional human hesitation
+        if (R.nextInt(100) < 14) v += R.nextInt(40, 160);
         return scaleByPing(v);
     }
 
-    /**
-     * Real ping scaling:
-     *  - ≤50ms: unchanged
-     *  - 50–150: +20% of (ping-50)
-     *  - 150+: +20% of excess + flat 30–80ms jitter
-     * Capped so it never becomes unplayable.
-     */
     private static int scaleByPing(int ms) {
         if (!ClientSettings.pingScaleDelays) return ms;
         int ping = getPing();
         if (ping <= 50) return ms;
-        int extra = (int) ((ping - 50) * 0.20);
-        if (ping > 150) {
-            extra += 30 + R.nextInt(50);
-        } else if (ping > 100) {
-            extra += R.nextInt(20);
-        }
-        extra = Math.min(extra, 180);
+        int extra = (int) ((ping - 50) * 0.22);
+        if (ping > 150) extra += 35 + R.nextInt(55);
+        else if (ping > 100) extra += R.nextInt(25);
+        extra = Math.min(extra, 200);
         return ms + extra;
     }
 
@@ -57,33 +48,32 @@ public final class Humanizer {
         int min = ClientSettings.combatDelayMin;
         int max = ClientSettings.combatDelayMax;
         int mean = (min + max) / 2;
-        int std = Math.max(20, (max - min) / 3);
+        int std = Math.max(25, (max - min) / 3);
         return delay(mean, std, min, max);
     }
 
     public static int clickDelay() {
         return delay(
                 (ClientSettings.clickDelayMin + ClientSettings.clickDelayMax) / 2,
-                18, ClientSettings.clickDelayMin, ClientSettings.clickDelayMax);
+                22, ClientSettings.clickDelayMin, ClientSettings.clickDelayMax);
     }
 
     public static int swapDelay() {
-        return delay(100, 30, 55, 200);
+        return delay(120, 35, 70, 220);
     }
 
-    /** Sprint-reset window (W-tap / S-tap), also ping-scaled. */
     public static int tapResetMs() {
-        return delay(85, 22, 45, 160);
+        return delay(90, 25, 50, 170);
     }
 
     public static float aimJitter() {
-        return (float) (R.nextGaussian() * 0.4);
+        return (float) (R.nextGaussian() * 0.45);
     }
 
     public static float aimSmooth(float base) {
-        float n = base + (float) (R.nextGaussian() * 0.035);
-        if (n < 0.10f) n = 0.10f;
-        if (n > 0.85f) n = 0.85f;
+        float n = base + (float) (R.nextGaussian() * 0.028);
+        if (n < 0.08f) n = 0.08f;
+        if (n > 0.40f) n = 0.40f;
         return n;
     }
 

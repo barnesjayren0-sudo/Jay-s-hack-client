@@ -2,22 +2,24 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.settings.ClientSettings;
 
-/** Soft reach extension for combat modules. */
+/** Soft reach — default barely above vanilla. */
 public class Reach extends Module {
 
-    private static double reach = 3.2;
+    private static double reach = 3.05;
 
-    public final NumberSetting distance = new NumberSetting("Distance", "Attack range", 3.2, 3.0, 3.5, 0.05);
+    public final NumberSetting distance = new NumberSetting("Distance", "Attack range", 3.05, 3.0, 3.25, 0.01);
 
     public Reach() {
-        super("Reach", "Slightly extended attack range", Category.COMBAT);
+        super("Reach", "Tiny reach extension (ghost)", Category.COMBAT);
         addSetting(distance);
     }
 
     @Override
     public void onTick() {
-        reach = distance.get();
+        reach = Math.min(3.25, distance.get());
+        ClientSettings.reachDistance = reach;
     }
 
     @Override
@@ -40,6 +42,6 @@ public class Reach extends Module {
     }
 
     public static void setReach(double v) {
-        reach = Math.max(3.0, Math.min(3.6, v));
+        reach = Math.max(3.0, Math.min(3.25, v));
     }
 }

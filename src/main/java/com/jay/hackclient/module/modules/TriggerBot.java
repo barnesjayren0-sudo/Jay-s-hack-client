@@ -14,17 +14,18 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import org.lwjgl.glfw.GLFW;
 
+/** Preferred combat module for ghost play — crosshair only. */
 public class TriggerBot extends Module {
 
     public final BoolSetting playersOnly = new BoolSetting("Players", "Players only", true);
     public final BoolSetting weaponOnly = new BoolSetting("Weapon", "Sword/axe only", true);
-    public final NumberSetting minCooldown = new NumberSetting("Cooldown", "Min attack progress", 0.88, 0.5, 1.0, 0.01);
+    public final NumberSetting minCooldown = new NumberSetting("Cooldown", "Min attack progress", 0.90, 0.7, 1.0, 0.01);
 
     private long lastAttack = 0;
-    private int nextDelay = 550;
+    private int nextDelay = 620;
 
     public TriggerBot() {
-        super("TriggerBot", "Hit on crosshair — [T]", Category.COMBAT);
+        super("TriggerBot", "Ghost crosshair hits — [T]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_T);
         addSetting(playersOnly);
         addSetting(weaponOnly);
@@ -49,14 +50,6 @@ public class TriggerBot extends Module {
         Entity entity = hit.getEntity();
         if (!(entity instanceof PlayerEntity player)) {
             if (playersOnly.get()) return;
-            // non-player entity hit path
-            long now = System.currentTimeMillis();
-            if (now - lastAttack < nextDelay) return;
-            if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < minCooldown.getFloat()) return;
-            mc.interactionManager.attackEntity(mc.player, entity);
-            mc.player.swingHand(Hand.MAIN_HAND);
-            lastAttack = now;
-            nextDelay = Humanizer.combatDelay();
             return;
         }
 
@@ -65,8 +58,8 @@ public class TriggerBot extends Module {
         if (JayHackClient.friendManager != null
                 && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
 
-        double maxDist = Reach.isActive() ? Reach.getReach() + 0.15 : 3.15;
-        try { maxDist += Hitboxes.getExpand(); } catch (Throwable ignored) {}
+        double maxDist = Reach.isActive() ? Math.min(Reach.getReach(), 3.2) : 3.05;
+        try { maxDist += Math.min(0.1, Hitboxes.getExpand()); } catch (Throwable ignored) {}
         if (mc.player.distanceTo(player) > maxDist) return;
 
         if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < minCooldown.getFloat()) return;

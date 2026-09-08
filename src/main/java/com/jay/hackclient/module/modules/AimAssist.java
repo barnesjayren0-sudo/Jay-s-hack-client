@@ -13,15 +13,15 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/** AimAssist [J] — soft FOV; yields to KillAura via RotationOwner. */
+/** Ghost AimAssist — classic soft only by default; yields to KillAura. */
 public class AimAssist extends Module {
 
     private long lastSilentHit = 0;
-    private int silentDelay = 550;
+    private int silentDelay = 600;
     private int tickCounter = 0;
 
     public AimAssist() {
-        super("AimAssist", "Soft aim FOV cone — [J]", Category.COMBAT);
+        super("AimAssist", "Ghost soft FOV aim — [J]", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_J);
     }
 
@@ -33,24 +33,31 @@ public class AimAssist extends Module {
     }
 
     @Override
+    public void onDisable() {
+        RotationOwner.release("AimAssist");
+        SilentRotations.clear();
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
         if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Mobile.shouldThrottle()) return;
+        if (Humanizer.shouldSkipTick()) return;
 
-        // SoftBlink active → AimAssist backs off (KillAura owns rotations)
         try {
             Module sb = com.jay.hackclient.JayHackClient.moduleManager != null
                     ? com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("SoftBlink") : null;
-            if (sb != null && sb.isEnabled() && !RotationOwner.canRotate("AimAssist")) return;
+            if (sb != null && sb.isEnabled()) return;
         } catch (Throwable ignored) {}
 
         tickCounter++;
+        // Aim at most every 2nd tick
         if ((tickCounter & 1) != 0) return;
 
         double range = ClientSettings.aimRange;
-        if (Reach.isActive()) range = Math.max(range, Reach.getReach() + 0.6);
+        if (Reach.isActive()) range = Math.min(range, Reach.getReach() + 0.35);
 
         PlayerEntity target = TargetUtil.findCombatTarget(range, ClientSettings.aimFov);
         if (target == null) return;
@@ -68,41 +75,28 @@ public class AimAssist extends Module {
 
         float dyaw = Math.abs(MathHelper.wrapDegrees(ang[0] - mc.player.getYaw()));
         if (dyaw > ClientSettings.aimFov) return;
+        if (dyaw < ClientSettings.aimDeadzone && Humanizer.chance(50)) return;
 
         boolean attacking = mc.options.attackKey.isPressed();
+        if (ClientSettings.requireAttackKey && !attacking) return;
 
-        if (ClientSettings.requireAttackKey && !attacking) {
-            if (dyaw > 18f) return;
-            if (Humanizer.chance(40)) return;
-            if (RotationOwner.tryClaim("AimAssist", 1, 45)) {
-                RotationUtil.lookAt(target, 0.07f);
-            }
-            return;
-        }
+        float strength = Humanizer.aimSmooth(ClientSettings.aimSmooth);
+        if (!attacking) strength *= 0.7f;
 
-        float strength = Math.min(0.26f, ClientSettings.aimSmooth * 0.62f);
-        if (attacking) strength = Math.min(0.30f, strength + 0.04f);
-
-        if (!RotationOwner.tryClaim("AimAssist", 1, 50)) return;
+        if (!RotationOwner.tryClaim("AimAssist", 1, 45)) return;
         RotationUtil.lookAt(target, strength);
     }
 
     private void silentTick(PlayerEntity target) {
+        // Silent is higher risk — keep rare + delayed
         long now = System.currentTimeMillis();
         if (now - lastSilentHit < silentDelay) return;
-        if (!mc.options.attackKey.isPressed() && ClientSettings.requireAttackKey) return;
-
-        if (!RotationOwner.tryClaim("AimAssist", 1, 40)) return;
+        if (!mc.options.attackKey.isPressed()) return;
+        if (!RotationOwner.tryClaim("AimAssist", 1, 35)) return;
         float[] ang = SilentRotations.anglesTo(target);
         if (ang == null) return;
         SilentRotations.set(ang[0], ang[1]);
         lastSilentHit = now;
-        silentDelay = Humanizer.combatDelay();
-    }
-
-    @Override
-    public void onDisable() {
-        RotationOwner.release("AimAssist");
-        SilentRotations.clear();
+        silentDelay = Humanizer.combatDelay() + 80;
     }
 }

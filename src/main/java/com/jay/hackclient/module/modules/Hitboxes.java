@@ -2,22 +2,24 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.settings.ClientSettings;
 
-/** Soft hitbox expand for targeting (client-side). */
+/** Tiny expand only — large values are obvious. */
 public class Hitboxes extends Module {
 
-    private static double expand = 0.15;
+    private static double expand = 0.04;
 
-    public final NumberSetting size = new NumberSetting("Expand", "Extra hit radius", 0.15, 0.0, 0.6, 0.05);
+    public final NumberSetting size = new NumberSetting("Expand", "Extra radius", 0.04, 0.0, 0.20, 0.01);
 
     public Hitboxes() {
-        super("Hitboxes", "Slightly larger enemy hitboxes", Category.COMBAT);
+        super("Hitboxes", "Tiny hitbox expand (ghost)", Category.COMBAT);
         addSetting(size);
     }
 
     @Override
     public void onTick() {
-        expand = size.get();
+        expand = Math.min(0.20, size.get());
+        ClientSettings.hitboxExpand = expand;
     }
 
     @Override
@@ -37,6 +39,6 @@ public class Hitboxes extends Module {
     }
 
     public static void setExpand(double v) {
-        expand = Math.max(0.0, Math.min(0.8, v));
+        expand = Math.max(0.0, Math.min(0.25, v));
     }
 }

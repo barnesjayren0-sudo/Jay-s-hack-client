@@ -15,26 +15,31 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/** KillAura [R] — priority rotation owner over AimAssist. */
+/**
+ * Soft single-target aura — ghost defaults.
+ * Prefer TriggerBot + AimAssist on screened servers; keep this OFF if possible.
+ */
 public class KillAura extends Module {
 
-    public final NumberSetting range = new NumberSetting("Range", "Attack range", 3.2, 2.5, 4.5, 0.05);
-    public final NumberSetting fov = new NumberSetting("FOV", "Cone degrees", 70, 30, 180, 5);
+    public final NumberSetting range = new NumberSetting("Range", "Attack range", 3.05, 2.8, 3.3, 0.05);
+    public final NumberSetting fov = new NumberSetting("FOV", "Cone degrees", 50, 25, 90, 5);
     public final BoolSetting weaponsOnly = new BoolSetting("WeaponsOnly", "Sword/axe only", true);
+    public final BoolSetting requireClick = new BoolSetting("RequireClick", "Need attack key", true);
     public final BoolSetting comboHit = new BoolSetting("ComboHit", "Use ComboHit timing", true);
 
     private long lastAttack = 0;
-    private int nextDelay = 560;
+    private int nextDelay = 620;
     private int lockedTargetId = -1;
     private long targetLockedUntil = 0;
     private int aimTick;
 
     public KillAura() {
-        super("KillAura", "Auto attack — bind [R]", Category.COMBAT);
+        super("KillAura", "Soft single-target (use sparingly)", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_R);
         addSetting(range);
         addSetting(fov);
         addSetting(weaponsOnly);
+        addSetting(requireClick);
         addSetting(comboHit);
     }
 
@@ -57,11 +62,13 @@ public class KillAura extends Module {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) return;
         if (weaponsOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
+        if (requireClick.get() && !mc.options.attackKey.isPressed()) return;
         if (Humanizer.shouldSkipTick()) return;
         if (Mobile.shouldThrottle()) return;
 
-        double r = effectiveRange();
-        float f = fov.getFloat();
+        double r = Math.min(range.get(), 3.3);
+        if (Reach.isActive()) r = Math.min(r, Reach.getReach() + 0.05);
+        float f = Math.min(fov.getFloat(), 90f);
 
         PlayerEntity target = pickTarget(r, f);
         if (target == null) {
@@ -76,19 +83,14 @@ public class KillAura extends Module {
         aimTick++;
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            if ((aimTick & 1) == 0 && Humanizer.chance(35)) {
-                if (RotationOwner.tryClaim("KillAura", 2, 55))
-                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.32f);
+            if ((aimTick & 3) == 0 && Humanizer.chance(25)) {
+                if (RotationOwner.tryClaim("KillAura", 2, 50))
+                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.25f);
             }
             return;
         }
 
-        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.88f) return;
-        try {
-            if (ClientSettings.critTiming && !CritAssist.canAttackNow(mc.player) && comboHit.get()) {
-                if (!mc.player.isOnGround()) return;
-            }
-        } catch (Throwable ignored) {}
+        if (ClientSettings.cooldownCheck && mc.player.getAttackCooldownProgress(0.5f) < 0.90f) return;
 
         if (Humanizer.shouldMiss()) {
             lastAttack = now;
@@ -96,8 +98,8 @@ public class KillAura extends Module {
             return;
         }
 
-        if (RotationOwner.tryClaim("KillAura", 2, 85))
-            RotationUtil.lookAt(target, Math.min(0.36f, ClientSettings.aimSmooth * 1.0f));
+        if (RotationOwner.tryClaim("KillAura", 2, 70))
+            RotationUtil.lookAt(target, Math.min(0.28f, ClientSettings.aimSmooth * 0.9f));
 
         try { ReachHUD.recordHit(mc.player.distanceTo(target)); } catch (Throwable ignored) {}
         mc.interactionManager.attackEntity(mc.player, target);
@@ -107,36 +109,18 @@ public class KillAura extends Module {
         nextDelay = Humanizer.combatDelay();
     }
 
-    private double effectiveRange() {
-        double r = range.get();
-        // Reach module extends — never shrink Aura below its own setting incorrectly
-        if (Reach.isActive()) {
-            r = Math.max(r, Reach.getReach());
-        }
-        try {
-            r += Hitboxes.getExpand() * 0.5;
-        } catch (Throwable ignored) {}
-        return Math.min(r, 4.5);
-    }
-
     private PlayerEntity pickTarget(double range, float fov) {
         long now = System.currentTimeMillis();
-
-        if (lockedTargetId != -1 && now < targetLockedUntil && !ClientSettings.auraMultiTarget) {
+        if (lockedTargetId != -1 && now < targetLockedUntil) {
             for (PlayerEntity p : mc.world.getPlayers()) {
-                if (p.getId() == lockedTargetId && isInCone(p, range, fov)) {
-                    return p;
-                }
+                if (p.getId() == lockedTargetId && isInCone(p, range, fov)) return p;
             }
             lockedTargetId = -1;
         }
-
         PlayerEntity best = TargetUtil.findCombatTarget(range, fov);
         if (best != null) {
-            if (best.getId() != lockedTargetId) {
-                lockedTargetId = best.getId();
-                targetLockedUntil = now + Humanizer.combatDelay() + 180L;
-            }
+            lockedTargetId = best.getId();
+            targetLockedUntil = now + Humanizer.combatDelay() + 200L;
         }
         return best;
     }
@@ -144,9 +128,7 @@ public class KillAura extends Module {
     private boolean isInCone(PlayerEntity p, double range, float fov) {
         if (p == mc.player || !p.isAlive() || p.isSpectator()) return false;
         if (mc.player.distanceTo(p) > range) return false;
-        try {
-            if (AntiBot.isBot(p)) return false;
-        } catch (Throwable ignored) {}
+        try { if (AntiBot.isBot(p)) return false; } catch (Throwable ignored) {}
         float yaw = (float) (Math.atan2(p.getZ() - mc.player.getZ(),
                 p.getX() - mc.player.getX()) * (180.0 / Math.PI)) - 90f;
         float dyaw = Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
