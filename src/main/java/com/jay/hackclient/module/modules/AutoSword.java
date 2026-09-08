@@ -9,9 +9,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 
-/**
- * Quiet best-weapon swap (LB AutoWeapon concept, delayed + slot lock).
- */
+/** Quiet best-weapon swap — delayed + slot lock. */
 public class AutoSword extends Module {
 
     public final BoolSetting onlyInCombat = new BoolSetting("OnlyCombat", "Only while in combat", true);
@@ -28,7 +26,7 @@ public class AutoSword extends Module {
     public void onTick() {
         if (mc.player == null) return;
         if (onlyInCombat.get() && !CombatManager.isDuringCombat()) return;
-        if (!SlotLock.tryAcquire("AutoSword", SlotLock.PRIO_SWORD)) return;
+        if (!SlotLock.tryAcquire("AutoSword", 120, SlotLock.PRIO_SWORD)) return;
 
         long now = System.currentTimeMillis();
         if (now - last < nextDelay) return;
@@ -45,24 +43,18 @@ public class AutoSword extends Module {
             }
         }
 
-        if (best >= 0 && mc.player.getInventory().selectedSlot != best) {
-            // Prefer accessor path used elsewhere if present
-            try {
-                mc.player.getInventory().selectedSlot = best;
-            } catch (Throwable t) {
-                try {
-                    // Fabric 1.21 may need slot sync via interactionManager
-                    mc.player.getInventory().setSelectedSlot(best);
-                } catch (Throwable ignored) {}
+        if (best >= 0) {
+            int current = mc.player.getInventory().getSelectedSlot();
+            if (current != best) {
+                mc.player.getInventory().setSelectedSlot(best);
+                last = now;
+                nextDelay = Humanizer.swapDelay();
             }
-            last = now;
-            nextDelay = Humanizer.swapDelay();
         }
     }
 
     private float scoreWeapon(ItemStack s) {
         Item it = s.getItem();
-        // Prefer swords over axes slightly for 1.9+ PvP default
         if (it == Items.NETHERITE_SWORD) return 20;
         if (it == Items.DIAMOND_SWORD) return 18;
         if (it == Items.IRON_SWORD) return 14;
