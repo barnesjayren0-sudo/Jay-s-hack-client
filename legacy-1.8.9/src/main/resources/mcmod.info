@@ -1,0 +1,15 @@
+[
+{
+  "modid": "${modid}",
+  "name": "Jay Client 1.8.9",
+  "description": "Ghost utility client for 1.8.9 BedWars / PvP.",
+  "version": "${version}",
+  "mcversion": "1.8.9",
+  "url": "",
+  "authorList": ["barnesjayren0-sudo"],
+  "credits": "Jay Client",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

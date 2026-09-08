@@ -1,0 +1,45 @@
+buildscript {
+    repositories {
+        maven { url = "https://maven.minecraftforge.net" }
+        mavenCentral()
+    }
+    dependencies {
+        classpath('net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT') {
+            changing = true
+        }
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+
+version = project.mod_version
+group = "com.jay.client18"
+archivesBaseName = "jayclient-1.8.9"
+
+sourceCompatibility = targetCompatibility = '1.8'
+
+minecraft {
+    version = "1.8.9-11.15.1.2318-1.8.9"
+    runDir = "run"
+    mappings = "stable_22"
+}
+
+jar {
+    manifest {
+        attributes(
+            'FMLCorePluginContainsFMLMod': 'true'
+        )
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "modid", project.modid
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'modid': project.modid
+    }
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
