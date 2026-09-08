@@ -7,6 +7,7 @@ import com.jay.client18.module.Module;
 import com.jay.client18.module.ModuleManager;
 import com.jay.client18.module.modules.*;
 import com.jay.client18.render.HudRenderer;
+import com.soursome.module.Soursome;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.common.MinecraftForge;
@@ -49,8 +50,8 @@ public class JayClient18 {
         moduleManager.register(new FullBright());
         moduleManager.register(new ArrayListMod());
         moduleManager.register(new MiddleClickFriend());
+        moduleManager.register(new Soursome());
 
-        // ArrayList on by default
         Module arr = moduleManager.get("ArrayList");
         if (arr != null) arr.setEnabled(true);
 
