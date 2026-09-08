@@ -1,6 +1,7 @@
 package com.jay.client18.module.modules;
 
 import com.jay.client18.module.Module;
+import com.jay.client18.util.Humanizer;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
@@ -9,14 +10,16 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.Vec3;
 import org.lwjgl.input.Keyboard;
 
+/** Quiet bridge assist — soft pitch, humanized place delay. */
 public class Scaffold extends Module {
 
     private long lastPlace;
     private float savedPitch = Float.NaN;
     private int pitchTicks;
+    private int placeDelay = 55;
 
     public Scaffold() {
-        super("Scaffold", "Bridge assist", Category.MOVEMENT);
+        super("Scaffold", "Silent bridge assist", Category.MOVEMENT);
         setKeyBind(Keyboard.KEY_G);
     }
 
@@ -40,21 +43,22 @@ public class Scaffold extends Module {
         }
 
         long now = System.currentTimeMillis();
-        if (now - lastPlace < 45) return;
+        if (now - lastPlace < placeDelay) return;
 
         BlockPos below = new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 0.05, mc.thePlayer.posZ);
         if (!mc.theWorld.isAirBlock(below)) return;
 
         if (tryPlace(below)) {
             lastPlace = now;
-            pitchTicks = 4;
+            placeDelay = 45 + Humanizer.delay(12, 8);
+            pitchTicks = 3;
         }
     }
 
     private boolean tryPlace(BlockPos target) {
         EnumFacing[] faces = {
                 EnumFacing.DOWN, EnumFacing.NORTH, EnumFacing.SOUTH,
-                EnumFacing.EAST, EnumFacing.WEST, EnumFacing.UP
+                EnumFacing.EAST, EnumFacing.WEST
         };
         for (int i = 0; i < faces.length; i++) {
             EnumFacing face = faces[i];
@@ -85,18 +89,20 @@ public class Scaffold extends Module {
 
     private void aimDown() {
         if (Float.isNaN(savedPitch)) savedPitch = mc.thePlayer.rotationPitch;
-        float target = 76f + (float) (Math.random() * 3);
-        mc.thePlayer.rotationPitch = mc.thePlayer.rotationPitch + (target - mc.thePlayer.rotationPitch) * 0.3f;
+        float target = 74f + (float) (Math.random() * 4);
+        float cur = mc.thePlayer.rotationPitch;
+        mc.thePlayer.rotationPitch = cur + (target - cur) * 0.22f;
     }
 
     private void softRestore() {
         if (Float.isNaN(savedPitch)) return;
-        mc.thePlayer.rotationPitch = mc.thePlayer.rotationPitch + (savedPitch - mc.thePlayer.rotationPitch) * 0.45f;
-        if (Math.abs(mc.thePlayer.rotationPitch - savedPitch) < 1.5f) restorePitch();
+        float cur = mc.thePlayer.rotationPitch;
+        mc.thePlayer.rotationPitch = cur + (savedPitch - cur) * 0.4f;
+        if (Math.abs(mc.thePlayer.rotationPitch - savedPitch) < 2f) restorePitch();
     }
 
     private void restorePitch() {
-        if (!Float.isNaN(savedPitch)) {
+        if (!Float.isNaN(savedPitch) && mc.thePlayer != null) {
             mc.thePlayer.rotationPitch = savedPitch;
         }
         savedPitch = Float.NaN;

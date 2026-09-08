@@ -7,13 +7,13 @@ public class FullBright extends Module {
     private float oldGamma = 1f;
 
     public FullBright() {
-        super("FullBright", "Max gamma", Category.RENDER);
+        super("FullBright", "Gamma boost", Category.RENDER);
     }
 
     @Override
     public void onEnable() {
         oldGamma = mc.gameSettings.gammaSetting;
-        mc.gameSettings.gammaSetting = 16f;
+        mc.gameSettings.gammaSetting = 12f;
     }
 
     @Override
@@ -23,6 +23,9 @@ public class FullBright extends Module {
 
     @Override
     public void onTick() {
-        mc.gameSettings.gammaSetting = 16f;
+        // Keep stable without spamming option writes every tick if already set
+        if (mc.gameSettings.gammaSetting < 10f) {
+            mc.gameSettings.gammaSetting = 12f;
+        }
     }
 }

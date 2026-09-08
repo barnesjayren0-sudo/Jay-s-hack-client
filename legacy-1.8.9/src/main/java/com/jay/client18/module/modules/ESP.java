@@ -11,9 +11,10 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.opengl.GL11;
 
+/** Quiet player boxes — friends skipped, limited range. */
 public class ESP extends Module {
 
-    public double range = 64;
+    public double range = 48;
     private boolean registered;
 
     public ESP() {
@@ -28,14 +29,10 @@ public class ESP extends Module {
         }
     }
 
-    @Override
-    public void onDisable() {
-        // keep registered; draw only when enabled
-    }
-
     @SubscribeEvent
     public void onRender(RenderWorldLastEvent e) {
         if (!isEnabled() || mc.thePlayer == null || mc.theWorld == null) return;
+        if (mc.gameSettings.hideGUI) return;
 
         for (EntityPlayer p : CombatUtil.playersInRange(range)) {
             if (CombatUtil.isFriend(p)) continue;
@@ -57,7 +54,8 @@ public class ESP extends Module {
         GlStateManager.enableBlend();
         GlStateManager.disableTexture2D();
         GlStateManager.disableDepth();
-        GL11.glLineWidth(1.5f);
+        GL11.glLineWidth(1.2f);
+        GL11.glColor4f(0.24f, 0.86f, 1.0f, 0.55f);
         RenderGlobal.drawSelectionBoundingBox(bb);
         GlStateManager.enableDepth();
         GlStateManager.enableTexture2D();

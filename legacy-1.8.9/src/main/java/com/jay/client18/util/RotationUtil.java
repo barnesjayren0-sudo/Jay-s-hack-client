@@ -12,7 +12,7 @@ public final class RotationUtil {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || e == null) return null;
         double dx = e.posX - mc.thePlayer.posX;
-        double dy = (e.posY + e.getEyeHeight() * 0.9) - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight());
+        double dy = (e.posY + e.getEyeHeight() * 0.85) - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight());
         double dz = e.posZ - mc.thePlayer.posZ;
         double dist = MathHelper.sqrt_double(dx * dx + dz * dz);
         float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
@@ -20,17 +20,29 @@ public final class RotationUtil {
         return new float[]{yaw, pitch};
     }
 
+    /** Soft look with small jitter — never snaps. */
     public static void softLook(Entity e, float strength) {
         Minecraft mc = Minecraft.getMinecraft();
         float[] a = anglesTo(e);
         if (a == null || mc.thePlayer == null) return;
+
+        float strength2 = Humanizer.soft(strength);
         float yaw = mc.thePlayer.rotationYaw;
         float pitch = mc.thePlayer.rotationPitch;
         float dy = MathHelper.wrapAngleTo180_float(a[0] - yaw);
         float dp = a[1] - pitch;
-        strength = Math.max(0.05f, Math.min(1.0f, strength));
-        mc.thePlayer.rotationYaw = yaw + dy * strength;
-        mc.thePlayer.rotationPitch = MathHelper.clamp_float(pitch + dp * strength, -90f, 90f);
+
+        // Cap max step per tick so it doesn't look like silent snap
+        if (dy > 8f) dy = 8f;
+        if (dy < -8f) dy = -8f;
+        if (dp > 5f) dp = 5f;
+        if (dp < -5f) dp = -5f;
+
+        dy += Humanizer.aimJitter();
+        dp += Humanizer.aimJitter() * 0.5f;
+
+        mc.thePlayer.rotationYaw = yaw + dy * strength2;
+        mc.thePlayer.rotationPitch = MathHelper.clamp_float(pitch + dp * strength2, -90f, 90f);
     }
 
     public static float yawDiff(Entity e) {

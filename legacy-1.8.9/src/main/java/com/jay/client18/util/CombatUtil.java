@@ -37,13 +37,16 @@ public final class CombatUtil {
             if (!(o instanceof EntityPlayer)) continue;
             EntityPlayer p = (EntityPlayer) o;
             if (p == mc.thePlayer || p.isDead || p.getHealth() <= 0) continue;
+            if (p.isInvisible()) continue;
             if (isFriend(p)) continue;
             double d = mc.thePlayer.getDistanceToEntity(p);
             if (d > range) continue;
-            if (RotationUtil.yawDiff(p) > fov * 0.5f) continue;
-            // prefer closest
-            if (d < bestScore) {
-                bestScore = d;
+            float yaw = RotationUtil.yawDiff(p);
+            if (yaw > fov * 0.5f) continue;
+            // score: prefer closer + more on-crosshair
+            double score = d + yaw * 0.04;
+            if (score < bestScore) {
+                bestScore = score;
                 best = p;
             }
         }
