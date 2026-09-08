@@ -1,5 +1,7 @@
 package com.jay.hackclient.module;
 
+import com.jay.hackclient.util.RotationSystem;
+import com.jay.hackclient.util.Sequence;
 import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 
@@ -19,7 +21,6 @@ public class ModuleManager {
 
     public void register(Module module) {
         if (module == null) return;
-        // Avoid duplicate names
         for (Module m : modules) {
             if (m.getName().equalsIgnoreCase(module.getName())) return;
         }
@@ -74,6 +75,7 @@ public class ModuleManager {
 
     public void panic() {
         frozen = true;
+        Sequence.clear();
         for (Module m : modules) {
             if (m.isEnabled()) m.setEnabled(false);
         }
@@ -84,6 +86,7 @@ public class ModuleManager {
     }
 
     public void disableAll() {
+        Sequence.clear();
         for (Module m : modules) {
             if (m.isEnabled()) m.setEnabled(false);
         }
@@ -154,7 +157,12 @@ public class ModuleManager {
             }
         }
         if (frozen) return;
+
+        // LiquidBounce-inspired: keep combat values in a safe band every tick
+        try { RotationSystem.applyGhostCaps(); } catch (Throwable ignored) {}
+
         pollKeybinds();
+
         for (Module m : modules) {
             if (!m.isEnabled()) continue;
             try {
@@ -171,5 +179,8 @@ public class ModuleManager {
                 }
             }
         }
+
+        // Delayed actions (after modules)
+        try { Sequence.tick(); } catch (Throwable ignored) {}
     }
 }
