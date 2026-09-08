@@ -1,26 +1,25 @@
 package com.jay.hackclient.util;
 
+import com.jay.hackclient.settings.ClientSettings;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import com.jay.hackclient.settings.ClientSettings;
 
 public final class RotationUtil {
 
     private RotationUtil() {}
 
-    /**
-     * Smooth classic aim without per-tick jitter (that caused the wiggle).
-     * Deadzone: if already close enough to target angles, do nothing.
-     */
     public static void lookAt(Entity target, float smoothness) {
+        lookAt(target, smoothness, AngleSmooth.Mode.SIGMOID);
+    }
+
+    public static void lookAt(Entity target, float smoothness, AngleSmooth.Mode mode) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || target == null) return;
 
         Vec3d eyes = mc.player.getEyePos();
-        // Stable body aim — no random offset each tick
-        Vec3d pos = target.getEntityPos().add(0.0, target.getHeight() * 0.75, 0.0);
+        Vec3d pos = target.getEntityPos().add(0.0, target.getHeight() * 0.72, 0.0);
 
         double dx = pos.x - eyes.x;
         double dy = pos.y - eyes.y;
@@ -35,18 +34,21 @@ public final class RotationUtil {
         float yawDiff = MathHelper.wrapDegrees(targetYaw - mc.player.getYaw());
         float pitchDiff = targetPitch - mc.player.getPitch();
 
-        // Deadzone — stop micro-correcting (main stutter source)
         if (Math.abs(yawDiff) < ClientSettings.aimDeadzone
-                && Math.abs(pitchDiff) < ClientSettings.aimDeadzone * 0.85f) return;
+                && Math.abs(pitchDiff) < ClientSettings.aimDeadzone * 0.85f) {
+            return;
+        }
 
-        // Cap how much we can turn per tick so it never snaps/fights hard
-        float maxStep = MathHelper.clamp(ClientSettings.aimMaxStep, 2.0f, 6.0f);
-        yawDiff = MathHelper.clamp(yawDiff, -maxStep, maxStep);
-        pitchDiff = MathHelper.clamp(pitchDiff, -maxStep * 0.7f, maxStep * 0.7f);
+        float maxStep = MathHelper.clamp(ClientSettings.aimMaxStep, 2.0f, 5.5f);
+        float t = MathHelper.clamp(smoothness, 0.08f, 0.35f);
 
-        float t = MathHelper.clamp(smoothness, 0.08f, 0.45f); // hard cap — never aggressive
+        float[] next = AngleSmooth.stepTowards(
+                mc.player.getYaw(), mc.player.getPitch(),
+                targetYaw, targetPitch,
+                t, maxStep, mode
+        );
 
-        mc.player.setYaw(mc.player.getYaw() + yawDiff * t);
-        mc.player.setPitch(MathHelper.clamp(mc.player.getPitch() + pitchDiff * t, -90f, 90f));
+        mc.player.setYaw(next[0]);
+        mc.player.setPitch(next[1]);
     }
 }

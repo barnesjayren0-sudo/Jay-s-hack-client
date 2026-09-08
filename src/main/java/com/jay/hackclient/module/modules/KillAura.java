@@ -4,21 +4,21 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
+import com.jay.hackclient.util.AngleSmooth;
+import com.jay.hackclient.util.CombatManager;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.Mobile;
 import com.jay.hackclient.util.RotationOwner;
 import com.jay.hackclient.util.RotationUtil;
+import com.jay.hackclient.util.TargetTracker;
 import com.jay.hackclient.util.TargetUtil;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Soft single-target aura — ghost defaults.
- * Prefer TriggerBot + AimAssist on screened servers; keep this OFF if possible.
- */
+/** Soft single-target aura with sticky tracker (LB-inspired requirements). */
 public class KillAura extends Module {
 
     public final NumberSetting range = new NumberSetting("Range", "Attack range", 3.05, 2.8, 3.3, 0.05);
@@ -29,8 +29,6 @@ public class KillAura extends Module {
 
     private long lastAttack = 0;
     private int nextDelay = 620;
-    private int lockedTargetId = -1;
-    private long targetLockedUntil = 0;
     private int aimTick;
 
     public KillAura() {
@@ -47,20 +45,21 @@ public class KillAura extends Module {
     public void onEnable() {
         nextDelay = Humanizer.combatDelay();
         lastAttack = 0;
-        lockedTargetId = -1;
         aimTick = 0;
+        TargetTracker.clear();
     }
 
     @Override
     public void onDisable() {
-        lockedTargetId = -1;
+        TargetTracker.clear();
         RotationOwner.release("KillAura");
+        setTag(null);
     }
 
     @Override
     public void onTick() {
+        if (!CombatManager.canCombatModulesRun()) return;
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        if (mc.currentScreen != null) return;
         if (weaponsOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (requireClick.get() && !mc.options.attackKey.isPressed()) return;
         if (Humanizer.shouldSkipTick()) return;
@@ -70,11 +69,15 @@ public class KillAura extends Module {
         if (Reach.isActive()) r = Math.min(r, Reach.getReach() + 0.05);
         float f = Math.min(fov.getFloat(), 90f);
 
-        PlayerEntity target = pickTarget(r, f);
-        if (target == null) {
-            lockedTargetId = -1;
+        PlayerEntity raw = TargetUtil.findCombatTarget(r, f);
+        PlayerEntity target = TargetTracker.prefer(raw, nextDelay + 200L);
+        if (target == null || !isInCone(target, r + 0.4, f + 15f)) {
+            TargetTracker.clear();
+            setTag(null);
             return;
         }
+
+        setTag(String.format("%.1f", mc.player.distanceTo(target)));
 
         try {
             if (comboHit.get() && !ComboHit.shouldAttack(mc.player, target)) return;
@@ -83,9 +86,9 @@ public class KillAura extends Module {
         aimTick++;
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) {
-            if ((aimTick & 3) == 0 && Humanizer.chance(25)) {
-                if (RotationOwner.tryClaim("KillAura", 2, 50))
-                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.25f);
+            if ((aimTick & 3) == 0 && Humanizer.chance(20)) {
+                if (RotationOwner.tryClaim("KillAura", 2, 45))
+                    RotationUtil.lookAt(target, ClientSettings.aimSmooth * 0.22f, AngleSmooth.Mode.SIGMOID);
             }
             return;
         }
@@ -98,31 +101,16 @@ public class KillAura extends Module {
             return;
         }
 
-        if (RotationOwner.tryClaim("KillAura", 2, 70))
-            RotationUtil.lookAt(target, Math.min(0.28f, ClientSettings.aimSmooth * 0.9f));
+        if (RotationOwner.tryClaim("KillAura", 2, 65))
+            RotationUtil.lookAt(target, Math.min(0.26f, ClientSettings.aimSmooth * 0.85f), AngleSmooth.Mode.SIGMOID);
 
         try { ReachHUD.recordHit(mc.player.distanceTo(target)); } catch (Throwable ignored) {}
         mc.interactionManager.attackEntity(mc.player, target);
         mc.player.swingHand(Hand.MAIN_HAND);
+        CombatManager.onAttack();
 
         lastAttack = now;
         nextDelay = Humanizer.combatDelay();
-    }
-
-    private PlayerEntity pickTarget(double range, float fov) {
-        long now = System.currentTimeMillis();
-        if (lockedTargetId != -1 && now < targetLockedUntil) {
-            for (PlayerEntity p : mc.world.getPlayers()) {
-                if (p.getId() == lockedTargetId && isInCone(p, range, fov)) return p;
-            }
-            lockedTargetId = -1;
-        }
-        PlayerEntity best = TargetUtil.findCombatTarget(range, fov);
-        if (best != null) {
-            lockedTargetId = best.getId();
-            targetLockedUntil = now + Humanizer.combatDelay() + 200L;
-        }
-        return best;
     }
 
     private boolean isInCone(PlayerEntity p, double range, float fov) {

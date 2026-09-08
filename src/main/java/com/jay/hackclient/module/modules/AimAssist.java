@@ -2,18 +2,21 @@ package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.settings.ClientSettings;
+import com.jay.hackclient.util.AngleSmooth;
+import com.jay.hackclient.util.CombatManager;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import com.jay.hackclient.util.Mobile;
 import com.jay.hackclient.util.RotationOwner;
 import com.jay.hackclient.util.RotationUtil;
 import com.jay.hackclient.util.SilentRotations;
+import com.jay.hackclient.util.TargetTracker;
 import com.jay.hackclient.util.TargetUtil;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
 
-/** Ghost AimAssist — classic soft only by default; yields to KillAura. */
+/** Ghost AimAssist — sticky target + sigmoid smooth (LB-inspired pipeline). */
 public class AimAssist extends Module {
 
     private long lastSilentHit = 0;
@@ -30,18 +33,21 @@ public class AimAssist extends Module {
         silentDelay = Humanizer.combatDelay();
         lastSilentHit = 0;
         tickCounter = 0;
+        TargetTracker.clear();
     }
 
     @Override
     public void onDisable() {
         RotationOwner.release("AimAssist");
         SilentRotations.clear();
+        TargetTracker.clear();
+        setTag(null);
     }
 
     @Override
     public void onTick() {
+        if (!CombatManager.canCombatModulesRun()) return;
         if (mc.player == null || mc.world == null) return;
-        if (mc.currentScreen != null) return;
         if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (Mobile.shouldThrottle()) return;
         if (Humanizer.shouldSkipTick()) return;
@@ -53,14 +59,26 @@ public class AimAssist extends Module {
         } catch (Throwable ignored) {}
 
         tickCounter++;
-        // Aim at most every 2nd tick
         if ((tickCounter & 1) != 0) return;
 
         double range = ClientSettings.aimRange;
         if (Reach.isActive()) range = Math.min(range, Reach.getReach() + 0.35);
 
-        PlayerEntity target = TargetUtil.findCombatTarget(range, ClientSettings.aimFov);
-        if (target == null) return;
+        PlayerEntity raw = TargetUtil.findCombatTarget(range, ClientSettings.aimFov);
+        PlayerEntity target = TargetTracker.prefer(raw, Humanizer.combatDelay() + 150L);
+        if (target == null) {
+            setTag(null);
+            return;
+        }
+
+        // Drop lock if out of extended FOV/range
+        if (mc.player.distanceTo(target) > range + 0.6) {
+            TargetTracker.clear();
+            setTag(null);
+            return;
+        }
+
+        setTag(String.format("%.1f", mc.player.distanceTo(target)));
 
         if ("silent".equalsIgnoreCase(ClientSettings.aimMode)) {
             silentTick(target);
@@ -75,20 +93,19 @@ public class AimAssist extends Module {
 
         float dyaw = Math.abs(MathHelper.wrapDegrees(ang[0] - mc.player.getYaw()));
         if (dyaw > ClientSettings.aimFov) return;
-        if (dyaw < ClientSettings.aimDeadzone && Humanizer.chance(50)) return;
+        if (dyaw < ClientSettings.aimDeadzone && Humanizer.chance(55)) return;
 
         boolean attacking = mc.options.attackKey.isPressed();
         if (ClientSettings.requireAttackKey && !attacking) return;
 
         float strength = Humanizer.aimSmooth(ClientSettings.aimSmooth);
-        if (!attacking) strength *= 0.7f;
+        if (!attacking) strength *= 0.65f;
 
-        if (!RotationOwner.tryClaim("AimAssist", 1, 45)) return;
-        RotationUtil.lookAt(target, strength);
+        if (!RotationOwner.tryClaim("AimAssist", 1, 40)) return;
+        RotationUtil.lookAt(target, strength, AngleSmooth.Mode.SIGMOID);
     }
 
     private void silentTick(PlayerEntity target) {
-        // Silent is higher risk — keep rare + delayed
         long now = System.currentTimeMillis();
         if (now - lastSilentHit < silentDelay) return;
         if (!mc.options.attackKey.isPressed()) return;

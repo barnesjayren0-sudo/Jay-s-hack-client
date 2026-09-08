@@ -5,6 +5,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
+import com.jay.hackclient.util.CombatManager;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
 import net.minecraft.entity.Entity;
@@ -14,7 +15,6 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import org.lwjgl.glfw.GLFW;
 
-/** Preferred combat module for ghost play — crosshair only. */
 public class TriggerBot extends Module {
 
     public final BoolSetting playersOnly = new BoolSetting("Players", "Players only", true);
@@ -40,9 +40,10 @@ public class TriggerBot extends Module {
 
     @Override
     public void onTick() {
+        if (!CombatManager.canCombatModulesRun()) return;
         if (mc.player == null || mc.interactionManager == null) return;
         if (weaponOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (mc.currentScreen != null || mc.player.isUsingItem()) return;
+        if (mc.player.isUsingItem()) return;
         if (Humanizer.shouldSkipTick()) return;
         if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
 
@@ -80,6 +81,7 @@ public class TriggerBot extends Module {
         try { ReachHUD.recordHit(mc.player.distanceTo(player)); } catch (Throwable ignored) {}
         mc.interactionManager.attackEntity(mc.player, player);
         mc.player.swingHand(Hand.MAIN_HAND);
+        CombatManager.onAttack();
         lastAttack = now;
         nextDelay = Humanizer.combatDelay();
     }
