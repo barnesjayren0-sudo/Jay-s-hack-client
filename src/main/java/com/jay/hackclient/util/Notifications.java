@@ -9,9 +9,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * Stacked toasts — styles inspired by client notification stacks (info/success/warn/error).
- */
+/** Stacked toasts with info/success/warn/error styles. */
 public final class Notifications {
 
     public enum Style { INFO, SUCCESS, WARN, ERROR }
@@ -81,7 +79,7 @@ public final class Notifications {
                 float life = 1f - (age / (float) t.duration);
                 int alpha = (int) (Math.min(1f, life * 4f) * 220);
                 int bg = (alpha << 24) | (colorFor(t.style) & 0xFFFFFF);
-                int accent = (0xFF << 24) | accentFor(t.style);
+                int accent = (0xFF << 24) | (accentFor(t.style) & 0xFFFFFF);
 
                 int w = Math.max(120, fr.getWidth(t.title) + fr.getWidth(t.body) + 28);
                 int x = screenW - w - 10;
@@ -109,7 +107,7 @@ public final class Notifications {
             case SUCCESS -> 0x3DFF8A;
             case WARN -> 0xFFC93D;
             case ERROR -> 0xFF5A5A;
-            default -> GuiTheme.accent() & 0xFFFFFF;
+            default -> GuiTheme.ACCENT;
         };
     }
 
