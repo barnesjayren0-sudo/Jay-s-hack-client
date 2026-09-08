@@ -30,6 +30,9 @@ public abstract class Module {
     private int runtimeErrorStreak = 0;
     private final List<Setting> settings = new ArrayList<>();
 
+    /** LiquidBounce-style tag shown in ArrayList (optional). */
+    private String tag = null;
+
     public Module(String name, String description, Category category) {
         this.name = name;
         this.description = description;
@@ -52,7 +55,6 @@ public abstract class Module {
         }
     }
 
-    /** Lowercase blob for ClickGUI search (name + desc + setting names). */
     public String getSearchBlob() {
         StringBuilder sb = new StringBuilder(name.toLowerCase());
         sb.append(' ').append(description.toLowerCase());
@@ -65,11 +67,20 @@ public abstract class Module {
         return sb.toString();
     }
 
-    /** ArrayList / HUD label with optional key. */
     public String getHudLabel() {
         String key = getKeyLabel();
-        if (key.isEmpty()) return name;
-        return name + " §8[§7" + key + "§8]";
+        String base = name;
+        if (tag != null && !tag.isEmpty()) base = name + " §7" + tag;
+        if (key.isEmpty()) return base;
+        return base + " §8[§7" + key + "§8]";
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
+
+    public String getTag() {
+        return tag;
     }
 
     public void toggle() {
@@ -93,6 +104,7 @@ public abstract class Module {
             try { onDisable(); } catch (Throwable t) {
                 System.err.println("[Jay] " + name + " onDisable: " + t.getMessage());
             }
+            tag = null;
             notify("disabled");
             try { ToggleSounds.play(false); } catch (Throwable ignored) {}
             try { Notifications.push(name, "disabled"); } catch (Throwable ignored) {}
