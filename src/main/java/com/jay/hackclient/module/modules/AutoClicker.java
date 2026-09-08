@@ -6,10 +6,14 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.CombatManager;
 import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.ItemUtil;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
 /**
- * Humanized hold-click (LB AutoClicker idea, ghost CPS band).
+ * Humanized hold-click.
+ * Does NOT force attackKey.setPressed(true) every tick (that stuck the key).
  */
 public class AutoClicker extends Module {
 
@@ -17,7 +21,7 @@ public class AutoClicker extends Module {
     public final NumberSetting maxCps = new NumberSetting("MaxCPS", "Max clicks/sec", 11, 5, 16, 1);
     public final BoolSetting weaponsOnly = new BoolSetting("WeaponsOnly", "Sword/axe only", true);
     public final BoolSetting onEntity = new BoolSetting("OnEntity", "Only when aiming entity", true);
-    public final BoolSetting breakBlocks = new BoolSetting("Blocks", "Allow on blocks", false);
+    public final BoolSetting breakBlocks = new BoolSetting("Blocks", "Allow mining clicks", false);
 
     private long lastClick;
     private int nextDelay = 110;
@@ -40,7 +44,7 @@ public class AutoClicker extends Module {
     @Override
     public void onTick() {
         if (!CombatManager.canCombatModulesRun()) return;
-        if (mc.player == null || mc.options == null) return;
+        if (mc.player == null || mc.options == null || mc.interactionManager == null) return;
         if (!mc.options.attackKey.isPressed()) return;
         if (weaponsOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
         if (mc.player.isUsingItem()) return;
@@ -51,7 +55,8 @@ public class AutoClicker extends Module {
             if (t == HitResult.Type.ENTITY) {
                 // ok
             } else if (t == HitResult.Type.BLOCK && breakBlocks.get()) {
-                // ok
+                // vanilla hold handles block breaking — don't spam
+                return;
             } else {
                 return;
             }
@@ -60,41 +65,38 @@ public class AutoClicker extends Module {
         long now = System.currentTimeMillis();
         if (now - lastClick < nextDelay) return;
 
-        // Micro-pause like a real hand
         if (Humanizer.chance(8)) {
             lastClick = now;
             nextDelay = 40 + Humanizer.delay(25, 10, 20, 80);
             return;
         }
 
-        // Simulate click pulse via attack key press state is already held;
-        // trigger a swing through interaction when entity targeted
-        if (mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.ENTITY
-                && mc.interactionManager != null) {
-            // Let TriggerBot/KA own entity hits if enabled — only fill gaps
-            try {
-                Module tb = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("TriggerBot");
-                Module ka = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("KillAura");
-                if ((tb != null && tb.isEnabled()) || (ka != null && ka.isEnabled())) {
-                    lastClick = now;
-                    nextDelay = Humanizer.clickDelay();
-                    return;
-                }
-            } catch (Throwable ignored) {}
-        }
-
-        // Click via left-click simulation path used by client
+        // Yield to TriggerBot / KillAura
         try {
-            mc.options.attackKey.setPressed(true);
+            Module tb = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("TriggerBot");
+            Module ka = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("KillAura");
+            if ((tb != null && tb.isEnabled()) || (ka != null && ka.isEnabled())) {
+                lastClick = now;
+                nextDelay = Humanizer.clickDelay();
+                return;
+            }
         } catch (Throwable ignored) {}
+
+        // Entity hit path only — no sticky key simulation
+        if (mc.crosshairTarget instanceof EntityHitResult ehr) {
+            Entity e = ehr.getEntity();
+            if (e != null && e.isAlive()) {
+                mc.interactionManager.attackEntity(mc.player, e);
+                mc.player.swingHand(Hand.MAIN_HAND);
+                CombatManager.onAttack();
+            }
+        }
 
         lastClick = now;
         int min = Math.min(minCps.getInt(), maxCps.getInt());
         int max = Math.max(minCps.getInt(), maxCps.getInt());
-        nextDelay = Humanizer.clickDelay();
-        // blend with CPS settings
         int cps = min + (int) (Math.random() * (max - min + 1));
-        nextDelay = Math.max(nextDelay, 1000 / Math.max(1, cps));
+        nextDelay = Math.max(Humanizer.clickDelay(), 1000 / Math.max(1, cps));
         setTag(String.valueOf(cps));
     }
 }

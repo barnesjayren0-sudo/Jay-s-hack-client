@@ -61,7 +61,7 @@ public final class Notifications {
 
     public static void render(DrawContext ctx, int screenW, int screenH) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null) return;
+        if (mc == null || ctx == null) return;
         TextRenderer fr = mc.textRenderer;
         long now = System.currentTimeMillis();
 
@@ -79,15 +79,16 @@ public final class Notifications {
                 float life = 1f - (age / (float) t.duration);
                 int alpha = (int) (Math.min(1f, life * 4f) * 220);
                 int bg = (alpha << 24) | (colorFor(t.style) & 0xFFFFFF);
-                int accent = (0xFF << 24) | (accentFor(t.style) & 0xFFFFFF);
+                int accent = 0xFF000000 | (accentFor(t.style) & 0xFFFFFF);
 
                 int w = Math.max(120, fr.getWidth(t.title) + fr.getWidth(t.body) + 28);
                 int x = screenW - w - 10;
 
                 ctx.fill(x, y, x + w, y + 22, bg);
                 ctx.fill(x, y, x + 3, y + 22, accent);
-                fr.drawWithShadow(ctx.getMatrices(), t.title, x + 8, y + 3, 0xFFFFFFFF);
-                fr.drawWithShadow(ctx.getMatrices(), t.body, x + 8, y + 12, 0xFFCCCCCC);
+                // 1.21.x API: DrawContext.drawTextWithShadow(TextRenderer, ...)
+                ctx.drawTextWithShadow(fr, t.title, x + 8, y + 3, 0xFFFFFFFF);
+                ctx.drawTextWithShadow(fr, t.body, x + 8, y + 12, 0xFFCCCCCC);
                 y += 26;
             }
         }
