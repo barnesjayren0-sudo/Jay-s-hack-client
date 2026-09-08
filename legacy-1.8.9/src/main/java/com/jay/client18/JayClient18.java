@@ -22,7 +22,7 @@ public class JayClient18 {
 
     public static final String MODID = "jayclient18";
     public static final String NAME = "Jay Client 1.8.9";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.1.1";
 
     public static JayClient18 INSTANCE;
     public static ModuleManager moduleManager;
@@ -47,6 +47,7 @@ public class JayClient18 {
         moduleManager.register(new SafeWalk());
         moduleManager.register(new Scaffold());
         moduleManager.register(new ESP());
+        moduleManager.register(new BedESP());
         moduleManager.register(new FullBright());
         moduleManager.register(new ArrayListMod());
         moduleManager.register(new MiddleClickFriend());
