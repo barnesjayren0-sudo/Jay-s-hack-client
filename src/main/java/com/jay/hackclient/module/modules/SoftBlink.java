@@ -1,50 +1,58 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.BoolSetting;
+import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.RealPackets;
 
-/**
- * Soft blink — velocity damp only (no setPosition — was causing desync).
- */
+/** SoftBlink — Damp / GroundSpoof / Combo pulse. Real on-ground packets. */
 public class SoftBlink extends Module {
 
-    public final NumberSetting holdMs = new NumberSetting("HoldMs", "Hold duration", 70, 40, 180, 5);
-    public final NumberSetting cooldown = new NumberSetting("Cooldown", "Ms between pulses", 450, 200, 1200, 50);
-    public final NumberSetting damp = new NumberSetting("Damp", "XZ velocity scale", 0.40, 0.15, 0.7, 0.05);
+    public final ModeSetting mode = new ModeSetting("Mode", "Pulse style", "Damp", "Damp", "GroundSpoof", "Combo");
+    public final NumberSetting holdMs = new NumberSetting("Hold Ms", "Pulse duration", 70, 30, 200, 5);
+    public final NumberSetting cooldown = new NumberSetting("Cooldown", "Ms between pulses", 400, 150, 1200, 50);
+    public final NumberSetting damp = new NumberSetting("Damp", "XZ velocity scale", 0.35, 0.1, 0.8, 0.05);
+    public final BoolSetting onHurt = new BoolSetting("On Hurt", "Pulse when hurt", true);
+    public final BoolSetting onHit = new BoolSetting("On Hit", "Pulse after you hit", true);
 
-    private long pulseUntil;
-    private long lastPulse;
+    private long pulseUntil, lastPulse;
 
     public SoftBlink() {
         super("SoftBlink", "Short soft lag pulse in combat", Category.COMBAT);
-        addSetting(holdMs);
-        addSetting(cooldown);
-        addSetting(damp);
+        addSetting(mode); addSetting(holdMs); addSetting(cooldown); addSetting(damp);
+        addSetting(onHurt); addSetting(onHit);
     }
 
-    @Override
-    public void onDisable() {
-        pulseUntil = 0;
-    }
+    @Override public void onDisable() { pulseUntil = 0; setTag(null); }
 
     @Override
     public void onTick() {
         if (mc.player == null) return;
         long now = System.currentTimeMillis();
+        if (now < pulseUntil) { applyPulse(); setTag("pulse"); return; }
+        boolean combat = false;
+        if (onHurt.get() && mc.player.hurtTime > 0) combat = true;
+        if (onHit.get() && mc.player.getAttackCooldownProgress(0.5f) < 0.4f && mc.player.handSwinging) combat = true;
+        if (!combat) { setTag(null); return; }
+        if (now - lastPulse < cooldown.get()) return;
+        pulseUntil = now + (long) holdMs.get();
+        lastPulse = now;
+    }
 
-        if (now < pulseUntil) {
+    private void applyPulse() {
+        String m = mode.get();
+        if ("Damp".equals(m) || "Combo".equals(m)) {
             double d = damp.get();
             var v = mc.player.getVelocity();
             mc.player.setVelocity(v.x * d, v.y, v.z * d);
-            return;
         }
+        if ("GroundSpoof".equals(m) || "Combo".equals(m)) {
+            RealPackets.sendOnGround(!mc.player.isOnGround());
+        }
+    }
 
-        boolean combat = mc.player.hurtTime > 0
-                || (mc.player.getAttackCooldownProgress(0.5f) < 0.35f && mc.player.handSwinging);
-        if (!combat) return;
-        if (now - lastPulse < cooldown.getInt()) return;
-
-        pulseUntil = now + holdMs.getInt();
-        lastPulse = now;
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }
