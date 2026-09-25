@@ -4,254 +4,172 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import com.jay.hackclient.util.Humanizer;
+import com.jay.hackclient.util.RealPackets;
 import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
-/**
- * Scaffold — Normal / Telly / Godbridge / Tower.
- * Speed limiter + sprint control (LB ScaffoldSpeedLimiter / SprintControl ideas).
- */
+/** Scaffold — Normal / Telly / Godbridge / Tower / Expand. Real look + slot packets. */
 public class Scaffold extends Module {
 
-    public final ModeSetting mode = new ModeSetting("Mode", "Place style",
-            "Telly", "Normal", "Telly", "Godbridge", "Tower");
-    public final NumberSetting delay = new NumberSetting("Delay", "Base place ms", 50, 30, 140, 5);
-    public final NumberSetting minInterval = new NumberSetting("MinInterval", "Hard min ms between places", 35, 20, 100, 5);
-    public final BoolSetting autoJump = new BoolSetting("AutoJump", "Jump when grounded (Telly)", true);
-    public final NumberSetting airTicks = new NumberSetting("AirTicks", "Min air ticks before place", 2, 0, 8, 1);
-    public final BoolSetting rotate = new BoolSetting("Rotate", "Pitch down when placing", true);
-    public final BoolSetting sprint = new BoolSetting("Sprint", "Keep sprint on Telly", true);
-    public final BoolSetting sprintPlace = new BoolSetting("SprintPlace", "Allow sprint while placing", true);
-    public final BoolSetting retryFail = new BoolSetting("Retry", "Faster retry after failed place", true);
-    public final BoolSetting onlyWhenForward = new BoolSetting("ForwardOnly", "Only place while moving forward", false);
+    public final ModeSetting mode = new ModeSetting("Mode", "Place style", "Telly", "Normal", "Telly", "Godbridge", "Tower", "Expand");
+    public final NumberSetting delay = new NumberSetting("Delay", "Base place ms", 45, 20, 150, 5);
+    public final NumberSetting expand = new NumberSetting("Expand", "Blocks ahead", 1, 0, 3, 1);
+    public final NumberSetting towerSpeed = new NumberSetting("Tower Speed", "Tower boost", 0.42, 0.3, 0.6, 0.01);
+    public final BoolSetting autoJump = new BoolSetting("Auto Jump", "Jump on Telly/Tower", true);
+    public final BoolSetting rotate = new BoolSetting("Rotate", "Look at place face", true);
+    public final BoolSetting silentRotate = new BoolSetting("Silent", "Server look only", false);
+    public final BoolSetting sprint = new BoolSetting("Sprint", "Keep sprint", true);
+    public final BoolSetting autoSwitch = new BoolSetting("Auto Switch", "Switch to blocks", true);
+    public final BoolSetting tower = new BoolSetting("Tower", "Tower when space held", true);
+    public final BoolSetting realPackets = new BoolSetting("Real Packets", "Vanilla look/slot", true);
 
     private long lastPlace;
     private int ticksInAir;
-    private float savedPitch = Float.NaN;
-    private int failStreak;
-    private int towerHoldTicks;
-    private int pitchHoldTicks;
+    private float savedPitch = Float.NaN, savedYaw = Float.NaN;
+    private int prevSlot = -1;
     private int placesThisSecond;
     private long secondStamp;
 
     public Scaffold() {
-        super("Scaffold", "Telly / Normal / Godbridge / Tower", Category.WORLD);
-        addSetting(mode);
-        addSetting(delay);
-        addSetting(minInterval);
-        addSetting(autoJump);
-        addSetting(airTicks);
-        addSetting(rotate);
-        addSetting(sprint);
-        addSetting(sprintPlace);
-        addSetting(retryFail);
-        addSetting(onlyWhenForward);
+        super("Scaffold", "Telly / Normal / Godbridge / Tower / Expand", Category.WORLD);
+        addSetting(mode); addSetting(delay); addSetting(expand); addSetting(towerSpeed);
+        addSetting(autoJump); addSetting(rotate); addSetting(silentRotate); addSetting(sprint);
+        addSetting(autoSwitch); addSetting(tower); addSetting(realPackets);
     }
 
-    @Override
-    public void onDisable() {
-        forceRestorePitch();
-        ticksInAir = 0;
-        failStreak = 0;
-        towerHoldTicks = 0;
-        pitchHoldTicks = 0;
-        placesThisSecond = 0;
-    }
+    @Override public void onDisable() { restoreLook(); restoreSlot(); ticksInAir = 0; placesThisSecond = 0; setTag(null); }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        if (mc.currentScreen != null) {
-            forceRestorePitch();
-            return;
+        if (mc.currentScreen != null) { restoreLook(); return; }
+        if (autoSwitch.get() && !holdingBlock()) {
+            int slot = findBlockSlot();
+            if (slot >= 0) switchSlot(slot);
         }
-        if (!holdingBlock()) {
-            forceRestorePitch();
-            return;
-        }
-        if (onlyWhenForward.get() && !mc.options.forwardKey.isPressed()) {
-            restorePitchSoft();
-            return;
-        }
+        if (!holdingBlock()) { restoreLook(); setTag("no blocks"); return; }
 
         String m = mode.get();
         long now = System.currentTimeMillis();
-
-        // Rate window — max ~12 places/sec even if delay is low
-        if (now - secondStamp >= 1000) {
-            secondStamp = now;
-            placesThisSecond = 0;
-        }
-        if (placesThisSecond >= 12) return;
+        if (now - secondStamp >= 1000) { secondStamp = now; placesThisSecond = 0; }
+        if (placesThisSecond >= 14) return;
 
         if (mc.player.isOnGround()) {
             ticksInAir = 0;
-            if (!"Tower".equals(m)) restorePitchSoft();
-            if ("Telly".equals(m)) tellyGround();
-            if ("Tower".equals(m)) towerGround();
-        } else {
-            ticksInAir++;
-        }
+            if ("Telly".equals(m) && autoJump.get() && mc.options.forwardKey.isPressed()) mc.player.jump();
+            if ("Tower".equals(m) || (tower.get() && mc.options.jumpKey.isPressed())) towerTick();
+        } else ticksInAir++;
 
-        if (pitchHoldTicks > 0) {
-            pitchHoldTicks--;
-            if (pitchHoldTicks == 0) restorePitchSoft();
-        }
+        if (now - lastPlace < delay.get()) return;
+        if ("Telly".equals(m) && !mc.player.isOnGround() && ticksInAir < 2) return;
 
-        // Speed limiter: base delay + hard min interval + jitter
-        long cd = (long) delay.get();
-        cd = Math.max(cd, (long) minInterval.get());
-        cd += Humanizer.delay(5, 8, 0, 20);
-        if (retryFail.get() && failStreak > 0) {
-            cd = Math.max((long) minInterval.get(), cd - failStreak * 6L);
-        }
-        if (now - lastPlace < cd) return;
-
-        if ("Telly".equals(m) && ticksInAir < airTicks.getInt()) return;
-        if ("Godbridge".equals(m) && !mc.player.isOnGround() && ticksInAir < 1) return;
-
-        // Sprint control while placing
-        if (!sprintPlace.get() && mc.player.isSprinting()) {
-            mc.player.setSprinting(false);
-        }
-
-        BlockPos below = BlockPos.ofFloored(mc.player.getX(), mc.player.getY() - 0.05, mc.player.getZ());
-        if ("Tower".equals(m)) {
-            below = mc.player.getBlockPos().down();
-        }
-
-        boolean ok = tryPlace(below);
-        if (!ok && ("Telly".equals(m) || "Normal".equals(m))) {
-            Vec3d look = mc.player.getRotationVector();
-            BlockPos edge = below.add(
-                    (int) Math.round(look.x),
-                    0,
-                    (int) Math.round(look.z)
-            );
-            ok = tryPlace(edge);
-        }
-
-        if (ok) {
-            lastPlace = now;
-            failStreak = 0;
-            placesThisSecond++;
-            pitchHoldTicks = 3;
-            setTag(m + " " + placesThisSecond + "/s");
-
-            if (sprint.get() && sprintPlace.get() && "Telly".equals(m)
-                    && mc.options.forwardKey.isPressed()) {
-                mc.player.setSprinting(true);
-            }
-        } else {
-            failStreak = Math.min(5, failStreak + 1);
-        }
-    }
-
-    private void tellyGround() {
-        if (autoJump.get() && mc.options.forwardKey.isPressed() && mc.player.isOnGround()) {
-            mc.player.jump();
-        }
         if (sprint.get() && mc.options.forwardKey.isPressed()) {
             mc.player.setSprinting(true);
+            if (realPackets.get()) RealPackets.startSprint();
         }
+
+        BlockPos below = BlockPos.ofFloored(mc.player.getX(), mc.player.getY() - 0.2, mc.player.getZ());
+        if ("Tower".equals(m) || (tower.get() && mc.options.jumpKey.isPressed())) below = mc.player.getBlockPos().down();
+
+        boolean ok = tryPlace(below);
+        if (!ok || "Expand".equals(m) || "Godbridge".equals(m)) {
+            Vec3d look = mc.player.getRotationVector();
+            int n = "Expand".equals(m) ? (int) expand.get() : 1;
+            for (int i = 1; i <= Math.max(1, n); i++) {
+                BlockPos ahead = below.add((int) Math.round(look.x * i), 0, (int) Math.round(look.z * i));
+                if (tryPlace(ahead)) { ok = true; break; }
+            }
+        }
+        if (ok) { lastPlace = now; placesThisSecond++; setTag(m + " " + placesThisSecond + "/s"); }
     }
 
-    private void towerGround() {
-        if (mc.options.jumpKey.isPressed() || autoJump.get()) {
-            if (mc.player.isOnGround()) {
-                mc.player.jump();
-                towerHoldTicks = 4;
-            }
-        }
-        if (towerHoldTicks > 0) {
-            towerHoldTicks--;
-            if (mc.player.getVelocity().y < 0.2) {
-                mc.player.setVelocity(mc.player.getVelocity().x, 0.42, mc.player.getVelocity().z);
-            }
-        }
+    private void towerTick() {
+        if (!mc.options.jumpKey.isPressed() && !autoJump.get()) return;
+        if (mc.player.isOnGround()) mc.player.jump();
+        var v = mc.player.getVelocity();
+        if (v.y < 0.25) mc.player.setVelocity(v.x, towerSpeed.get(), v.z);
     }
 
     private boolean tryPlace(BlockPos target) {
-        if (target == null) return false;
-        if (!mc.world.getBlockState(target).isReplaceable()) return false;
-
-        Direction[] order = {
-                Direction.DOWN,
-                Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST,
-                Direction.UP
-        };
+        if (target == null || !mc.world.getBlockState(target).isReplaceable()) return false;
+        Direction[] order = { Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP };
         for (Direction dir : order) {
             BlockPos neighbor = target.offset(dir);
-            if (mc.world.getBlockState(neighbor).isAir()) continue;
-            if (mc.world.getBlockState(neighbor).isReplaceable()) continue;
-
-            if (rotate.get()) aimDown();
-            if (placeAgainst(neighbor, dir.getOpposite())) return true;
+            if (mc.world.getBlockState(neighbor).isAir() || mc.world.getBlockState(neighbor).isReplaceable()) continue;
+            Direction face = dir.getOpposite();
+            if (rotate.get()) aimAt(neighbor, face);
+            if (placeAgainst(neighbor, face)) return true;
         }
         return false;
     }
 
-    private void aimDown() {
-        if (mc.player == null) return;
-        if (Float.isNaN(savedPitch)) savedPitch = mc.player.getPitch();
-        float target = 75f + (float) (Math.random() * 4.0);
-        float cur = mc.player.getPitch();
-        mc.player.setPitch(cur + (target - cur) * 0.24f);
-    }
-
-    private void restorePitchSoft() {
-        if (Float.isNaN(savedPitch) || mc.player == null) return;
-        float cur = mc.player.getPitch();
-        float next = cur + (savedPitch - cur) * 0.4f;
-        mc.player.setPitch(next);
-        if (Math.abs(next - savedPitch) < 1.5f) {
-            mc.player.setPitch(savedPitch);
-            savedPitch = Float.NaN;
+    private void aimAt(BlockPos neighbor, Direction face) {
+        Vec3d hit = Vec3d.ofCenter(neighbor).add(face.getOffsetX()*0.5, face.getOffsetY()*0.5, face.getOffsetZ()*0.5);
+        Vec3d eyes = mc.player.getEyePos();
+        double dx = hit.x - eyes.x, dy = hit.y - eyes.y, dz = hit.z - eyes.z;
+        double horiz = Math.sqrt(dx*dx + dz*dz);
+        float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        float pitch = Math.max(-90f, Math.min(90f, (float)-Math.toDegrees(Math.atan2(dy, horiz))));
+        if (Float.isNaN(savedPitch)) { savedPitch = mc.player.getPitch(); savedYaw = mc.player.getYaw(); }
+        if (silentRotate.get() && realPackets.get()) RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
+        else {
+            mc.player.setYaw(yaw); mc.player.setPitch(pitch);
+            if (realPackets.get()) RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
         }
     }
 
-    private void forceRestorePitch() {
-        if (!Float.isNaN(savedPitch) && mc.player != null) {
+    private void restoreLook() {
+        if (mc.player == null || Float.isNaN(savedPitch)) return;
+        if (!silentRotate.get()) {
             mc.player.setPitch(savedPitch);
+            if (!Float.isNaN(savedYaw)) mc.player.setYaw(savedYaw);
         }
-        savedPitch = Float.NaN;
-        pitchHoldTicks = 0;
+        if (realPackets.get()) RealPackets.sendLook(Float.isNaN(savedYaw)?mc.player.getYaw():savedYaw, savedPitch, mc.player.isOnGround());
+        savedPitch = Float.NaN; savedYaw = Float.NaN;
     }
 
     private boolean placeAgainst(BlockPos neighbor, Direction face) {
         Hand hand = Hand.MAIN_HAND;
-        if (!(mc.player.getMainHandStack().getItem() instanceof BlockItem)
-                && mc.player.getOffHandStack().getItem() instanceof BlockItem) {
+        if (!(mc.player.getMainHandStack().getItem() instanceof BlockItem) && mc.player.getOffHandStack().getItem() instanceof BlockItem)
             hand = Hand.OFF_HAND;
-        }
-        Vec3d hit = Vec3d.ofCenter(neighbor).add(
-                face.getOffsetX() * 0.5,
-                face.getOffsetY() * 0.5,
-                face.getOffsetZ() * 0.5
-        );
+        Vec3d hit = Vec3d.ofCenter(neighbor).add(face.getOffsetX()*0.5, face.getOffsetY()*0.5, face.getOffsetZ()*0.5);
         BlockHitResult bhr = new BlockHitResult(hit, face, neighbor, false);
         try {
             var result = mc.interactionManager.interactBlock(mc.player, hand, bhr);
             mc.player.swingHand(hand);
             return result != null && result.isAccepted();
         } catch (Exception e) {
-            try {
-                mc.interactionManager.interactBlock(mc.player, hand, bhr);
-                mc.player.swingHand(hand);
-                return true;
-            } catch (Exception e2) {
-                return false;
-            }
+            try { mc.interactionManager.interactBlock(mc.player, hand, bhr); mc.player.swingHand(hand); return true; }
+            catch (Exception e2) { return false; }
         }
     }
 
     private boolean holdingBlock() {
-        return mc.player.getMainHandStack().getItem() instanceof BlockItem
-                || mc.player.getOffHandStack().getItem() instanceof BlockItem;
+        return mc.player.getMainHandStack().getItem() instanceof BlockItem || mc.player.getOffHandStack().getItem() instanceof BlockItem;
+    }
+    private int findBlockSlot() {
+        for (int i = 0; i < 9; i++) {
+            ItemStack s = mc.player.getInventory().getStack(i);
+            if (!s.isEmpty() && s.getItem() instanceof BlockItem) return i;
+        }
+        return -1;
+    }
+    private void switchSlot(int slot) {
+        if (prevSlot < 0) prevSlot = mc.player.getInventory().selectedSlot;
+        if (realPackets.get()) RealPackets.selectSlot(slot); else mc.player.getInventory().selectedSlot = slot;
+    }
+    private void restoreSlot() {
+        if (prevSlot >= 0 && mc.player != null) {
+            if (realPackets.get()) RealPackets.selectSlot(prevSlot); else mc.player.getInventory().selectedSlot = prevSlot;
+        }
+        prevSlot = -1;
+    }
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }
