@@ -1,117 +1,94 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
-import com.jay.hackclient.settings.ClientSettings;
-import com.jay.hackclient.util.AngleSmooth;
-import com.jay.hackclient.util.CombatManager;
-import com.jay.hackclient.util.Humanizer;
-import com.jay.hackclient.util.ItemUtil;
-import com.jay.hackclient.util.Mobile;
-import com.jay.hackclient.util.RotationOwner;
-import com.jay.hackclient.util.RotationUtil;
+import com.jay.hackclient.module.setting.BoolSetting;
+import com.jay.hackclient.module.setting.ModeSetting;
+import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.RealPackets;
 import com.jay.hackclient.util.SilentRotations;
-import com.jay.hackclient.util.TargetTracker;
 import com.jay.hackclient.util.TargetUtil;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
-import org.lwjgl.glfw.GLFW;
+import net.minecraft.util.math.Vec3d;
 
+/** AimAssist — real packets only. Smooth / Silent / Snap. */
 public class AimAssist extends Module {
 
-    private long lastSilentHit = 0;
-    private int silentDelay = 600;
-    private int tickCounter = 0;
+    public final ModeSetting mode = new ModeSetting("Mode", "Aim style", "Smooth", "Smooth", "Silent", "Snap");
+    public final NumberSetting range = new NumberSetting("Range", "Assist range", 4.5, 2.5, 8.0, 0.1);
+    public final NumberSetting fov = new NumberSetting("FOV", "Assist FOV", 60, 10, 180, 5);
+    public final NumberSetting speed = new NumberSetting("Speed", "Aim speed", 0.35, 0.05, 1.0, 0.05);
+    public final BoolSetting playersOnly = new BoolSetting("Players Only", "Only players", true);
+    public final BoolSetting weaponsOnly = new BoolSetting("Weapons Only", "Only when holding weapon", false);
+    public final BoolSetting realPackets = new BoolSetting("Real Packets", "Send vanilla look packets", true);
 
     public AimAssist() {
-        super("AimAssist", "Ghost soft FOV aim — [J]", Category.COMBAT);
-        setKeyBind(GLFW.GLFW_KEY_J);
-    }
-
-    @Override
-    public void onEnable() {
-        silentDelay = Humanizer.combatDelay();
-        lastSilentHit = 0;
-        tickCounter = 0;
-        TargetTracker.clear();
-    }
-
-    @Override
-    public void onDisable() {
-        RotationOwner.release("AimAssist");
-        SilentRotations.clear();
-        TargetTracker.clear();
-        setTag(null);
+        super("AimAssist", "Smooth / silent aim assist", Category.COMBAT);
+        addSetting(mode); addSetting(range); addSetting(fov); addSetting(speed);
+        addSetting(playersOnly); addSetting(weaponsOnly); addSetting(realPackets);
     }
 
     @Override
     public void onTick() {
-        if (!CombatManager.canRotate()) return;
         if (mc.player == null || mc.world == null) return;
-        if (!ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (Mobile.shouldThrottle()) return;
-        if (Humanizer.shouldSkipTick()) return;
-
+        if (weaponsOnly.get()) {
+            String n = mc.player.getMainHandStack().getItem().toString().toLowerCase();
+            if (!n.contains("sword") && !n.contains("axe")) return;
+        }
+        PlayerEntity target = null;
+        try { target = TargetUtil.findCombatTarget(range.get(), fov.getFloat()); } catch (Throwable ignored) {}
+        if (target == null) target = nearest(range.get(), fov.getFloat());
+        if (target == null) { setTag(null); return; }
         try {
-            Module sb = com.jay.hackclient.JayHackClient.moduleManager != null
-                    ? com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("SoftBlink") : null;
-            if (sb != null && sb.isEnabled()) return;
+            if (JayHackClient.friendManager != null
+                    && JayHackClient.friendManager.isFriend(target.getName().getString())) return;
         } catch (Throwable ignored) {}
-
-        tickCounter++;
-        if ((tickCounter & 1) != 0) return;
-
-        double range = ClientSettings.aimRange;
-        if (Reach.isActive()) range = Math.min(range, Reach.getReach() + 0.35);
-
-        PlayerEntity raw = TargetUtil.findCombatTarget(range, ClientSettings.aimFov);
-        PlayerEntity target = TargetTracker.prefer(raw, Humanizer.combatDelay() + 150L);
-        if (target == null) {
-            setTag(null);
+        setTag(target.getName().getString());
+        float[] ang = anglesTo(target);
+        if (ang == null) return;
+        if ("Silent".equals(mode.get())) {
+            if (realPackets.get()) RealPackets.sendLook(ang[0], ang[1], mc.player.isOnGround());
             return;
         }
-
-        if (mc.player.distanceTo(target) > range + 0.6) {
-            TargetTracker.clear();
-            setTag(null);
-            return;
-        }
-
-        setTag(String.format("%.1f", mc.player.distanceTo(target)));
-
-        if ("silent".equalsIgnoreCase(ClientSettings.aimMode)) {
-            silentTick(target);
-        } else {
-            classicTick(target);
-        }
+        float smooth = "Snap".equals(mode.get()) ? 1.0f : (float) speed.get();
+        float curYaw = mc.player.getYaw(), curPitch = mc.player.getPitch();
+        float dyaw = MathHelper.wrapDegrees(ang[0] - curYaw);
+        float dpitch = ang[1] - curPitch;
+        float newYaw = curYaw + dyaw * smooth;
+        float newPitch = MathHelper.clamp(curPitch + dpitch * smooth, -90f, 90f);
+        mc.player.setYaw(newYaw);
+        mc.player.setPitch(newPitch);
+        if (realPackets.get()) RealPackets.sendLook(newYaw, newPitch, mc.player.isOnGround());
     }
 
-    private void classicTick(PlayerEntity target) {
-        float[] ang = SilentRotations.anglesTo(target);
-        if (ang == null) return;
-
-        float dyaw = Math.abs(MathHelper.wrapDegrees(ang[0] - mc.player.getYaw()));
-        if (dyaw > ClientSettings.aimFov) return;
-        if (dyaw < ClientSettings.aimDeadzone && Humanizer.chance(55)) return;
-
-        boolean attacking = mc.options.attackKey.isPressed();
-        if (ClientSettings.requireAttackKey && !attacking) return;
-
-        float strength = Humanizer.aimSmooth(ClientSettings.aimSmooth);
-        if (!attacking) strength *= 0.65f;
-
-        if (!RotationOwner.tryClaim("AimAssist", 1, 40)) return;
-        RotationUtil.lookAt(target, strength, AngleSmooth.Mode.SIGMOID);
+    private PlayerEntity nearest(double range, float fovDeg) {
+        PlayerEntity best = null; double bestD = range;
+        for (PlayerEntity p : mc.world.getPlayers()) {
+            if (p == mc.player || !p.isAlive() || p.isSpectator()) continue;
+            try { if (AntiBot.isBot(p)) continue; } catch (Throwable ignored) {}
+            double d = mc.player.distanceTo(p);
+            if (d > bestD) continue;
+            float[] a = anglesTo(p);
+            if (a == null) continue;
+            if (Math.abs(MathHelper.wrapDegrees(a[0] - mc.player.getYaw())) > fovDeg * 0.5f) continue;
+            bestD = d; best = p;
+        }
+        return best;
     }
 
-    private void silentTick(PlayerEntity target) {
-        long now = System.currentTimeMillis();
-        if (now - lastSilentHit < silentDelay) return;
-        if (!mc.options.attackKey.isPressed()) return;
-        if (!RotationOwner.tryClaim("AimAssist", 1, 35)) return;
-        float[] ang = SilentRotations.anglesTo(target);
-        if (ang == null) return;
-        SilentRotations.set(ang[0], ang[1]);
-        lastSilentHit = now;
-        silentDelay = Humanizer.combatDelay() + 80;
+    private float[] anglesTo(PlayerEntity target) {
+        try { float[] a = SilentRotations.anglesTo(target); if (a != null) return a; } catch (Throwable ignored) {}
+        Vec3d eyes = mc.player.getEyePos();
+        Vec3d pos = target.getPos().add(0, target.getHeight() * 0.9, 0);
+        double dx = pos.x - eyes.x, dy = pos.y - eyes.y, dz = pos.z - eyes.z;
+        double h = Math.sqrt(dx * dx + dz * dz);
+        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
+        float pitch = (float) -(MathHelper.atan2(dy, h) * (180.0 / Math.PI));
+        return new float[]{yaw, MathHelper.clamp(pitch, -90f, 90f)};
+    }
+
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }
