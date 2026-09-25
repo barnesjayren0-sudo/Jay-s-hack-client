@@ -23,7 +23,8 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * KillAura — real packets only.
- * FIRST PERSON → Silent. THIRD PERSON → Track.
+ * FIRST PERSON → Silent (look packet only at attack time).
+ * THIRD PERSON → Track.
  * Respects BackTrack for slightly out-of-range targets.
  */
 public class KillAura extends Module {
@@ -131,6 +132,7 @@ public class KillAura extends Module {
             }
         } catch (Throwable ignored) {}
 
+        // One look packet right before hit (Silent + Track)
         if (realPackets.get() && !"None".equals(rot)) {
             RealPackets.sendLook(ang[0], ang[1], mc.player.isOnGround());
         }
@@ -155,9 +157,9 @@ public class KillAura extends Module {
         return m;
     }
 
+    /** Store angles only — look packet is sent once at attack time. */
     private void applySilent(float[] ang) {
         silentYaw = ang[0]; silentPitch = ang[1]; hasSilent = true;
-        if (realPackets.get()) RealPackets.sendLook(ang[0], ang[1], mc.player.isOnGround());
     }
 
     private void applyTrack(float[] ang) {
@@ -169,7 +171,7 @@ public class KillAura extends Module {
         float newPitch = MathHelper.clamp(curPitch + dpitch * smooth, -90f, 90f);
         mc.player.setYaw(newYaw);
         mc.player.setPitch(newPitch);
-        if (realPackets.get()) RealPackets.sendLook(newYaw, newPitch, mc.player.isOnGround());
+        // Track updates client view; server look still only at attack to limit spam
     }
 
     private void doAttack(PlayerEntity target) {
@@ -191,7 +193,7 @@ public class KillAura extends Module {
 
     private PlayerEntity findTarget(double range, float fovDeg) {
         PlayerEntity best = null;
-        double bestDist = range + 1.5;
+        double bestDist = range + 2.5; // room for BackTrack targets
         try {
             PlayerEntity util = TargetUtil.findCombatTarget(range, fovDeg >= 360 ? 360 : fovDeg);
             if (util != null && isValid(util, range, fovDeg)) return util;
@@ -207,7 +209,6 @@ public class KillAura extends Module {
     private boolean isValid(PlayerEntity p, double range, float fovDeg) {
         if (p == null || p == mc.player || !p.isAlive() || p.isSpectator()) return false;
         double dist = mc.player.distanceTo(p);
-        // Allow slightly out-of-range if BackTrack has a valid historical hit
         if (dist > range && !BackTrack.allowsHit(p)) return false;
         try { if (AntiBot.isBot(p)) return false; } catch (Throwable ignored) {}
         try {
@@ -237,14 +238,6 @@ public class KillAura extends Module {
         float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
         float pitch = (float) -(MathHelper.atan2(dy, horiz) * (180.0 / Math.PI));
         return new float[]{yaw, MathHelper.clamp(pitch, -90f, 90f)};
-    }
-
-    private void setTag(String t) {
-        try {
-            var f = Module.class.getDeclaredField("tag");
-            f.setAccessible(true);
-            f.set(this, t);
-        } catch (Throwable ignored) {}
     }
 
     public PlayerEntity getCurrentTarget() { return currentTarget; }
