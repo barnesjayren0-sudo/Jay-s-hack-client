@@ -1,6 +1,7 @@
 package com.jay.hackclient.module;
 
 import com.jay.hackclient.module.modules.AttributeSwap;
+import com.jay.hackclient.module.modules.BackTrack;
 import com.jay.hackclient.module.modules.HandAnimation;
 import com.jay.hackclient.module.modules.SprintReset;
 
@@ -13,6 +14,7 @@ public final class ModuleBootstrap {
         tryRegister(mm, "AttributeSwap", () -> new AttributeSwap());
         tryRegister(mm, "HandAnimation", () -> new HandAnimation());
         tryRegister(mm, "SprintReset", () -> new SprintReset());
+        tryRegister(mm, "BackTrack", () -> new BackTrack());
     }
 
     private static void tryRegister(ModuleManager mm, String name, java.util.function.Supplier<Module> factory) {
