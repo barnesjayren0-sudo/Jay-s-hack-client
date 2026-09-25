@@ -6,6 +6,7 @@
     "CameraMixin",
     "EntityMixin",
     "EntityVelocityUpdateS2CPacketMixin",
+    "HandAnimationMixin",
     "LivingEntityAccessor",
     "PlayerEntityMixin"
   ],
