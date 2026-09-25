@@ -7,60 +7,31 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.RealPackets;
 import net.minecraft.util.math.Vec3d;
 
-/**
- * Speed — multi-mode (Orchard / Ghost style).
- * Vanilla, BHop, LowHop, YPort, Strafe, OnGround, Timer, Custom.
- * Real PlayerMoveC2SPacket only — NO custom packets.
- */
+/** Speed — multi-mode. Real packets optional and throttled (spam = rubberband). */
 public class Speed extends Module {
 
     public final ModeSetting mode = new ModeSetting(
             "Mode", "Speed style", "BHop",
             "Vanilla", "BHop", "LowHop", "YPort", "Strafe", "OnGround", "Timer", "Custom"
     );
-    public final NumberSetting speed = new NumberSetting(
-            "Speed", "Horizontal speed factor", 1.25, 1.0, 3.0, 0.05
-    );
-    public final NumberSetting hopHeight = new NumberSetting(
-            "Hop Height", "Jump velocity for hop modes", 0.42, 0.1, 0.7, 0.01
-    );
-    public final NumberSetting timerSpeed = new NumberSetting(
-            "Timer", "Timer multiplier (Timer mode)", 1.15, 1.0, 2.0, 0.05
-    );
-    public final NumberSetting friction = new NumberSetting(
-            "Friction", "Ground friction (lower = more slide)", 0.6, 0.2, 1.0, 0.05
-    );
-    public final NumberSetting airSpeed = new NumberSetting(
-            "Air Speed", "Air acceleration (Strafe/BHop)", 0.03, 0.01, 0.12, 0.005
-    );
-    public final BoolSetting autoJump = new BoolSetting(
-            "Auto Jump", "Jump automatically when moving", true
-    );
-    public final BoolSetting pauseInLiquid = new BoolSetting(
-            "Pause Liquid", "Disable in water/lava", true
-    );
-    public final BoolSetting pauseSneak = new BoolSetting(
-            "Pause Sneak", "Disable while sneaking", true
-    );
-    public final BoolSetting realPackets = new BoolSetting(
-            "Real Packets", "Sync position with vanilla move packets", true
-    );
+    public final NumberSetting speed = new NumberSetting("Speed", "Horizontal speed factor", 1.25, 1.0, 3.0, 0.05);
+    public final NumberSetting hopHeight = new NumberSetting("Hop Height", "Jump velocity", 0.42, 0.1, 0.7, 0.01);
+    public final NumberSetting timerSpeed = new NumberSetting("Timer", "Timer multiplier", 1.15, 1.0, 2.0, 0.05);
+    public final NumberSetting friction = new NumberSetting("Friction", "Ground friction", 0.6, 0.2, 1.0, 0.05);
+    public final NumberSetting airSpeed = new NumberSetting("Air Speed", "Air acceleration", 0.03, 0.01, 0.12, 0.005);
+    public final BoolSetting autoJump = new BoolSetting("Auto Jump", "Jump when moving", true);
+    public final BoolSetting pauseInLiquid = new BoolSetting("Pause Liquid", "Disable in water/lava", true);
+    public final BoolSetting pauseSneak = new BoolSetting("Pause Sneak", "Disable while sneaking", true);
+    public final BoolSetting realPackets = new BoolSetting("Real Packets", "Sync pos (OFF recommended)", false);
 
-    private int groundTicks;
-    private int airTicks;
+    private int groundTicks, airTicks;
+    private long lastSync;
 
     public Speed() {
         super("Speed", "Multi-mode speed (BHop, LowHop, YPort, Strafe…)", Category.MOVEMENT);
-        addSetting(mode);
-        addSetting(speed);
-        addSetting(hopHeight);
-        addSetting(timerSpeed);
-        addSetting(friction);
-        addSetting(airSpeed);
-        addSetting(autoJump);
-        addSetting(pauseInLiquid);
-        addSetting(pauseSneak);
-        addSetting(realPackets);
+        addSetting(mode); addSetting(speed); addSetting(hopHeight); addSetting(timerSpeed);
+        addSetting(friction); addSetting(airSpeed); addSetting(autoJump);
+        addSetting(pauseInLiquid); addSetting(pauseSneak); addSetting(realPackets);
     }
 
     @Override public void onEnable() { groundTicks = 0; airTicks = 0; setTag(mode.get()); }
@@ -72,12 +43,9 @@ public class Speed extends Module {
         if (mc.player.getAbilities().flying) return;
         if (pauseSneak.get() && mc.player.isSneaking()) return;
         if (pauseInLiquid.get() && (mc.player.isTouchingWater() || mc.player.isInLava())) return;
-
         setTag(mode.get());
         boolean onGround = mc.player.isOnGround();
-        if (onGround) { groundTicks++; airTicks = 0; }
-        else { airTicks++; groundTicks = 0; }
-
+        if (onGround) { groundTicks++; airTicks = 0; } else { airTicks++; groundTicks = 0; }
         switch (mode.get()) {
             case "Vanilla" -> tickVanilla();
             case "BHop" -> tickBHop(onGround);
@@ -227,14 +195,10 @@ public class Speed extends Module {
     }
 
     private void maybeSync() {
-        if (realPackets.get()) RealPackets.syncPosition();
-    }
-
-    private void setTag(String t) {
-        try {
-            var f = Module.class.getDeclaredField("tag");
-            f.setAccessible(true);
-            f.set(this, t);
-        } catch (Throwable ignored) {}
+        if (!realPackets.get()) return;
+        long now = System.currentTimeMillis();
+        if (now - lastSync < 50) return; // max ~20/s — avoids rubberband
+        lastSync = now;
+        RealPackets.syncPosition();
     }
 }
