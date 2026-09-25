@@ -7,15 +7,13 @@ import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.entity.Entity;
 
-/**
- * RealPackets — ONLY vanilla Fabric/Minecraft C2S packets.
- * No custom packet classes. Orchard / Ghost style.
- */
+/** RealPackets — ONLY vanilla Fabric/Minecraft C2S packets. */
 public final class RealPackets {
 
     private RealPackets() {}
@@ -94,6 +92,15 @@ public final class RealPackets {
         if (n == null || p == null || target == null) return;
         n.sendPacket(PlayerInteractEntityC2SPacket.attack(target, p.isSneaking()));
         p.swingHand(Hand.MAIN_HAND);
+    }
+
+    public static void selectSlot(int slot) {
+        ClientPlayNetworkHandler n = net();
+        if (n == null) return;
+        if (slot < 0 || slot > 8) return;
+        n.sendPacket(new UpdateSelectedSlotC2SPacket(slot));
+        ClientPlayerEntity p = player();
+        if (p != null) p.getInventory().selectedSlot = slot;
     }
 
     public static void startDestroyBlock(BlockPos pos, Direction face) {
