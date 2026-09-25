@@ -1,36 +1,20 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import net.minecraft.util.math.Vec3d;
-import org.lwjgl.glfw.GLFW;
+import com.jay.hackclient.util.RealPackets;
 
-/**
- * Instant vertical clip by a set amount (up on enable).
- * Toggle again to clip down the same amount.
- */
 public class YClip extends Module {
-
-    public final NumberSetting amount = new NumberSetting("Amount", "Blocks to clip", 3.0, 1.0, 20.0, 1.0);
-    private boolean up = true;
-
-    public YClip() {
-        super("YClip", "Vertical clip up/down", Category.ANARCHY);
-        setKeyBind(GLFW.GLFW_KEY_V);
-        addSetting(amount);
-    }
-
-    @Override
-    public void onEnable() {
-        if (mc.player == null) {
-            setEnabled(false);
-            return;
-        }
-        double dy = up ? amount.getFloat() : -amount.getFloat();
-        mc.player.setPosition(mc.player.getX(), mc.player.getY() + dy, mc.player.getZ());
-        mc.player.setVelocity(Vec3d.ZERO);
-        up = !up;
-        // one-shot
-        setEnabled(false);
+    public final NumberSetting amount = new NumberSetting("Amount", "Y offset", -2.0, -10.0, 10.0, 0.5);
+    public final BoolSetting realPackets = new BoolSetting("Real Packets", "Position packets", true);
+    public final BoolSetting once = new BoolSetting("Once", "Disable after one clip", true);
+    public YClip() { super("YClip", "Vertical position clip", Category.MOVEMENT); addSetting(amount); addSetting(realPackets); addSetting(once); }
+    @Override public void onEnable() {
+        if (mc.player == null) return;
+        double x = mc.player.getX(), y = mc.player.getY() + amount.get(), z = mc.player.getZ();
+        mc.player.setPosition(x, y, z);
+        if (realPackets.get()) { RealPackets.sendPosition(x, y, z, false); RealPackets.syncPosition(); }
+        if (once.get()) setEnabled(false);
     }
 }
