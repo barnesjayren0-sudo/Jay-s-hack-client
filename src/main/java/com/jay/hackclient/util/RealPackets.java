@@ -100,7 +100,16 @@ public final class RealPackets {
         if (slot < 0 || slot > 8) return;
         n.sendPacket(new UpdateSelectedSlotC2SPacket(slot));
         ClientPlayerEntity p = player();
-        if (p != null) p.getInventory().selectedSlot = slot;
+        if (p == null) return;
+        try {
+            p.getInventory().selectedSlot = slot;
+        } catch (Throwable t) {
+            try {
+                var inv = p.getInventory();
+                var m = inv.getClass().getMethod("setSelectedSlot", int.class);
+                m.invoke(inv, slot);
+            } catch (Throwable ignored) {}
+        }
     }
 
     public static void startDestroyBlock(BlockPos pos, Direction face) {
