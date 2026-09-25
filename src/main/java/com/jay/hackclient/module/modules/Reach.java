@@ -4,44 +4,40 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
 
-/** Soft reach — default barely above vanilla. */
+/** Reach — soft attack range (no custom packets). */
 public class Reach extends Module {
 
     private static double reach = 3.05;
-
-    public final NumberSetting distance = new NumberSetting("Distance", "Attack range", 3.05, 3.0, 3.25, 0.01);
+    public final NumberSetting distance = new NumberSetting("Distance", "Attack range", 3.1, 3.0, 4.0, 0.05);
 
     public Reach() {
-        super("Reach", "Tiny reach extension (ghost)", Category.COMBAT);
+        super("Reach", "Attack range extension", Category.COMBAT);
         addSetting(distance);
     }
 
-    @Override
-    public void onTick() {
-        reach = Math.min(3.25, distance.get());
-        ClientSettings.reachDistance = reach;
+    @Override public void onTick() {
+        reach = distance.get();
+        try { ClientSettings.reachDistance = reach; } catch (Throwable ignored) {}
+        setTag(String.format("%.2f", reach));
     }
 
-    @Override
-    public void onDisable() {
+    @Override public void onDisable() {
         reach = 3.0;
+        try { ClientSettings.reachDistance = 3.0; } catch (Throwable ignored) {}
+        setTag(null);
     }
 
     public static boolean isActive() {
         try {
-            if (com.jay.hackclient.JayHackClient.moduleManager == null) return false;
             Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Reach");
             return m != null && m.isEnabled();
-        } catch (Throwable t) {
-            return false;
-        }
+        } catch (Throwable t) { return false; }
     }
 
-    public static double getReach() {
-        return isActive() ? reach : 3.0;
-    }
+    public static double getReach() { return isActive() ? reach : 3.0; }
+    public static void setReach(double v) { reach = Math.max(3.0, Math.min(6.0, v)); }
 
-    public static void setReach(double v) {
-        reach = Math.max(3.0, Math.min(3.25, v));
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

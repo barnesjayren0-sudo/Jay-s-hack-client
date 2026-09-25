@@ -4,31 +4,23 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
-import com.jay.hackclient.util.Humanizer;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Ghost velocity — chance to skip (vanilla), else soft horizontal keep.
- * Y always untouched.
- */
+/** Velocity — knockback reduction. Soft/Medium/Strong/Custom/JumpReset. */
 public class Velocity extends Module {
 
     public static long lastPacketMs = 0;
     private String lastMode = "";
 
-    public final ModeSetting mode = new ModeSetting("Mode", "Preset", "Soft", "Soft", "Medium", "Strong", "Custom");
-    public final NumberSetting horizontal = new NumberSetting("Horizontal", "Keep fraction", 0.68, 0.45, 1.0, 0.01);
-    public final NumberSetting vertical = new NumberSetting("Vertical", "Y keep (1=vanilla)", 1.0, 0.85, 1.0, 0.05);
-    /** % of knockback packets we actually modify (rest stay vanilla). */
-    public final NumberSetting chance = new NumberSetting("Chance", "% packets to modify", 85, 40, 100, 5);
+    public final ModeSetting mode = new ModeSetting("Mode", "Preset", "Soft", "Soft", "Medium", "Strong", "Custom", "JumpReset");
+    public final NumberSetting horizontal = new NumberSetting("Horizontal", "Keep fraction", 0.68, 0.0, 1.0, 0.01);
+    public final NumberSetting vertical = new NumberSetting("Vertical", "Y keep", 1.0, 0.0, 1.0, 0.05);
+    public final NumberSetting chance = new NumberSetting("Chance", "% packets to modify", 90, 10, 100, 5);
 
     public Velocity() {
-        super("Velocity", "Soft horizontal KB (ghost)", Category.COMBAT);
+        super("Velocity", "Knockback reduction (ghost)", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_N);
-        addSetting(mode);
-        addSetting(horizontal);
-        addSetting(vertical);
-        addSetting(chance);
+        addSetting(mode); addSetting(horizontal); addSetting(vertical); addSetting(chance);
     }
 
     @Override
@@ -36,48 +28,49 @@ public class Velocity extends Module {
         String m = mode.get();
         if (!m.equals(lastMode) || "Custom".equals(m)) {
             lastMode = m;
-            if (!"Custom".equals(m)) {
-                ClientSettings.applyVelocityMode(m.toLowerCase());
-                horizontal.set(ClientSettings.velocityHorizontal);
-            } else {
-                ClientSettings.velocityHorizontal = Math.max(0.45, horizontal.get());
-                ClientSettings.velocityVertical = Math.max(0.85, vertical.get());
+            switch (m) {
+                case "Soft" -> { horizontal.set(0.85); vertical.set(1.0); }
+                case "Medium" -> { horizontal.set(0.55); vertical.set(1.0); }
+                case "Strong" -> { horizontal.set(0.15); vertical.set(0.9); }
+                case "JumpReset" -> { horizontal.set(0.70); vertical.set(1.0); }
+                default -> {}
             }
+            try {
+                ClientSettings.velocityHorizontal = horizontal.get();
+                ClientSettings.velocityVertical = vertical.get();
+            } catch (Throwable ignored) {}
         }
-        setTag(mode.get() + " " + (int) (horizontalFactor() * 100) + "%");
+        setTag(m + " " + (int)(horizontal.get()*100) + "%");
     }
 
-    /**
-     * Factor for mixin. Returns 1.0 when skipping (full vanilla).
-     */
     public static double horizontalFactor() {
-        double base = ClientSettings.velocityHorizontal;
-        if (base < 0.45) base = 0.45;
-
-        int ch = 85;
         try {
-            Module mod = com.jay.hackclient.JayHackClient.moduleManager != null
-                    ? com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity") : null;
-            if (mod instanceof Velocity v) {
-                ch = v.chance.getInt();
-                if ("Custom".equals(v.mode.get())) base = Math.max(0.45, v.horizontal.get());
-            }
-        } catch (Throwable ignored) {}
-
-        // Skip = leave packet vanilla (LB Modify-style chance)
-        if (!Humanizer.chance(ch)) {
-            return 1.0;
-        }
-
-        if (Humanizer.chance(ClientSettings.velocityVanillaChance)) {
-            return Math.min(0.95, base + 0.18);
-        }
-
-        double noise = (Math.random() * 0.06) - 0.03;
-        return Math.max(0.45, Math.min(0.95, base + noise));
+            Module mod = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
+            if (mod == null || !mod.isEnabled()) return 1.0;
+            Velocity v = (Velocity) mod;
+            if (Math.random()*100 > v.chance.get()) return 1.0;
+            return Math.max(0.0, v.horizontal.get());
+        } catch (Throwable t) { return 1.0; }
     }
 
     public static double verticalFactor() {
-        return 1.0;
+        try {
+            Module mod = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
+            if (mod == null || !mod.isEnabled()) return 1.0;
+            Velocity v = (Velocity) mod;
+            if (Math.random()*100 > v.chance.get()) return 1.0;
+            return Math.max(0.0, v.vertical.get());
+        } catch (Throwable t) { return 1.0; }
+    }
+
+    public static boolean isActive() {
+        try {
+            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
+            return m != null && m.isEnabled();
+        } catch (Throwable t) { return false; }
+    }
+
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }
