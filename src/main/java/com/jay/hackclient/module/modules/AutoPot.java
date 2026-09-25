@@ -1,67 +1,51 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
-import com.jay.hackclient.util.MathUtil;
-import com.jay.hackclient.util.SlotLock;
+import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.RealPackets;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 
-/** Nethpot-style splash heal when low HP. */
 public class AutoPot extends Module {
-
-    private long lastPot = 0;
-    private final float healthThreshold = 12.0f; // 6 hearts
-
+    public final NumberSetting health = new NumberSetting("Health", "Pot below HP", 10, 1, 20, 0.5);
+    public final NumberSetting delay = new NumberSetting("Delay", "Ms between pots", 400, 100, 1500, 50);
+    private long lastPot;
+    private int restoreSlot = -1;
+    private int stage;
     public AutoPot() {
-        super("AutoPot", "Throws splash heal pot when low HP", Category.COMBAT);
+        super("AutoPot", "Auto splash heal pots", Category.COMBAT);
+        addSetting(health); addSetting(delay);
     }
-
-    @Override
-    public void onTick() {
+    @Override public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
-        if (mc.currentScreen != null) return;
-        if (SlotLock.isLockedByOther("AutoPot")) return;
-        if (mc.player.getHealth() + mc.player.getAbsorptionAmount() > healthThreshold) return;
-        if (mc.player.hasStatusEffect(StatusEffects.REGENERATION)
-                && mc.player.getHealth() > 8) return;
-
-        long now = System.currentTimeMillis();
-        if (now - lastPot < MathUtil.randomDelay(650, 950)) return;
-
-        int slot = findSplashHeal();
-        if (slot == -1) return;
-
-        int prev = mc.player.getInventory().getSelectedSlot();
-        if (!SlotLock.tryAcquire("AutoPot", 450)) return;
-        mc.player.getInventory().setSelectedSlot(slot);
-
-        // Look down slightly for self-pot
-        float pitch = mc.player.getPitch();
-        mc.player.setPitch(Math.min(90f, pitch + 60f));
-
-        mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
-        mc.player.swingHand(Hand.MAIN_HAND);
-
-        mc.player.setPitch(pitch);
-        mc.player.getInventory().setSelectedSlot(prev);
-        SlotLock.release("AutoPot");
-        lastPot = now;
-    }
-
-    private int findSplashHeal() {
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (stack.isOf(Items.SPLASH_POTION) || stack.isOf(Items.LINGERING_POTION)) {
-                // Prefer anything named heal/regeneration — name check is soft
-                String n = stack.getName().getString().toLowerCase();
-                if (n.contains("heal") || n.contains("regeneration") || n.contains("instant") || n.contains("potion")) {
-                    return i;
-                }
-                return i; // fallback any splash
-            }
+        if (restoreSlot >= 0 && stage == 2) {
+            RealPackets.selectSlot(restoreSlot); restoreSlot = -1; stage = 0; return;
         }
-        return -1;
+        if (mc.player.getHealth() > health.get()) return;
+        if (mc.player.hasStatusEffect(StatusEffects.REGENERATION) && mc.player.getHealth() > health.get()*0.7) return;
+        if (System.currentTimeMillis() - lastPot < delay.get()) return;
+        int pot = -1;
+        for (int i = 0; i < 9; i++) {
+            ItemStack s = mc.player.getInventory().getStack(i);
+            if (s.isEmpty()) continue;
+            if (s.isOf(Items.SPLASH_POTION)) { pot = i; break; }
+            String n = s.getItem().toString().toLowerCase();
+            if (n.contains("splash") && (n.contains("heal") || n.contains("regeneration"))) { pot = i; break; }
+        }
+        if (pot < 0) { setTag("none"); return; }
+        restoreSlot = mc.player.getInventory().selectedSlot;
+        RealPackets.selectSlot(pot);
+        float oldPitch = mc.player.getPitch();
+        RealPackets.sendLook(mc.player.getYaw(), 85f, mc.player.isOnGround());
+        mc.player.setPitch(85f);
+        mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
+        mc.player.setPitch(oldPitch);
+        RealPackets.sendLook(mc.player.getYaw(), oldPitch, mc.player.isOnGround());
+        lastPot = System.currentTimeMillis(); stage = 2; setTag("pot");
+    }
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }
