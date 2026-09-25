@@ -1,39 +1,19 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
-import com.jay.hackclient.module.setting.NumberSetting;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import com.jay.hackclient.module.setting.ModeSetting;
+import com.jay.hackclient.util.RealPackets;
 
-/** Soft packet no-fall — only when fallDistance is high. */
 public class NoFall extends Module {
-
-    public final NumberSetting minFall = new NumberSetting("MinFall", "Fall distance to trigger", 2.8, 2.0, 5.0, 0.1);
-
-    private long lastPacket;
-
-    public NoFall() {
-        super("NoFall", "Packet no-fall when falling hard", Category.MOVEMENT);
-        addSetting(minFall);
+    public final ModeSetting mode = new ModeSetting("Mode", "Style", "Packet", "Packet", "NoGround", "Spoof");
+    public NoFall() { super("NoFall", "Prevent fall damage", Category.MOVEMENT); addSetting(mode); }
+    @Override public void onTick() {
+        if (mc.player == null || mc.player.fallDistance < 2.5f) return;
+        if ("NoGround".equals(mode.get())) RealPackets.sendOnGround(false);
+        else { RealPackets.sendOnGround(true); mc.player.fallDistance = 0; }
+        setTag(mode.get());
     }
-
-    @Override
-    public void onTick() {
-        if (mc.player == null || mc.getNetworkHandler() == null) return;
-        if (mc.player.isOnGround()) return;
-        if (mc.player.hasVehicle()) return;
-        if (mc.player.fallDistance < minFall.getFloat()) return;
-
-        long now = System.currentTimeMillis();
-        if (now - lastPacket < 250) return;
-
-        try {
-            // Claim on-ground for this tick only — soft / not every packet
-            mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.OnGroundOnly(true, false));
-            mc.player.fallDistance = 0;
-            lastPacket = now;
-        } catch (Throwable ignored) {
-            // Fallback: zero fall distance client-side only
-            mc.player.fallDistance = Math.min(mc.player.fallDistance, minFall.getFloat() * 0.5f);
-        }
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

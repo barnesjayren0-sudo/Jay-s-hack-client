@@ -1,64 +1,51 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
+import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import net.minecraft.util.math.Vec3d;
+import com.jay.hackclient.util.RealPackets;
 
-/** Creative-like fly for anarchy — disable on servers with AC. */
 public class Fly extends Module {
-
-    public final NumberSetting speed = new NumberSetting("Speed", "Fly speed", 0.8, 0.2, 3.0, 0.1);
-    public final NumberSetting vertical = new NumberSetting("Vertical", "Up/down speed", 0.6, 0.2, 2.0, 0.1);
-
+    public final ModeSetting mode = new ModeSetting("Mode", "Fly style", "Velocity", "Velocity", "Creative", "Packet");
+    public final NumberSetting speed = new NumberSetting("Speed", "Fly speed", 1.0, 0.2, 5.0, 0.1);
+    public final NumberSetting vertical = new NumberSetting("Vertical", "Up/down speed", 0.6, 0.1, 3.0, 0.1);
     public Fly() {
-        super("Fly", "Anarchy fly", Category.ANARCHY);
-        addSetting(speed);
-        addSetting(vertical);
+        super("Fly", "Velocity / creative / packet fly", Category.MOVEMENT);
+        addSetting(mode); addSetting(speed); addSetting(vertical);
     }
-
-    @Override
-    public void onDisable() {
-        if (mc.player != null) {
-            mc.player.getAbilities().flying = false;
-            if (!mc.player.isCreative() && !mc.player.isSpectator()) {
-                mc.player.getAbilities().allowFlying = false;
+    @Override public void onEnable() {
+        if (mc.player != null && "Creative".equals(mode.get())) mc.player.getAbilities().flying = true;
+    }
+    @Override public void onDisable() {
+        if (mc.player != null) mc.player.getAbilities().flying = false;
+        setTag(null);
+    }
+    @Override public void onTick() {
+        if (mc.player == null) return;
+        setTag(mode.get());
+        switch (mode.get()) {
+            case "Creative" -> {
+                mc.player.getAbilities().flying = true;
+                mc.player.getAbilities().setFlySpeed((float)(speed.get()*0.05));
             }
+            case "Packet" -> { tickVelocity(); RealPackets.syncPosition(); }
+            default -> tickVelocity();
         }
     }
-
-    @Override
-    public void onTick() {
-        if (mc.player == null || mc.options == null) return;
-
-        mc.player.getAbilities().allowFlying = true;
-        mc.player.getAbilities().flying = true;
-
-        double spd = speed.get();
-        double vert = vertical.get();
-        if (mc.options.sprintKey.isPressed()) spd *= 1.6;
-
-        float yaw = mc.player.getYaw() * ((float) Math.PI / 180f);
-        double fx = -Math.sin(yaw);
-        double fz = Math.cos(yaw);
-        double sx = Math.cos(yaw);
-        double sz = Math.sin(yaw);
-
-        double mx = 0, mz = 0, my = 0;
-        if (mc.options.forwardKey.isPressed()) { mx += fx; mz += fz; }
-        if (mc.options.backKey.isPressed()) { mx -= fx; mz -= fz; }
-        if (mc.options.leftKey.isPressed()) { mx += sx; mz += sz; }
-        if (mc.options.rightKey.isPressed()) { mx -= sx; mz -= sz; }
-        if (mc.options.jumpKey.isPressed()) my += vert;
-        if (mc.options.sneakKey.isPressed()) my -= vert;
-
-        double len = Math.sqrt(mx * mx + mz * mz);
-        if (len > 1e-4) {
-            mx = mx / len * spd;
-            mz = mz / len * spd;
-        }
-
-        mc.player.setVelocity(mx, my, mz);
-        mc.player.fallDistance = 0;
-        mc.player.setOnGround(false);
+    private void tickVelocity() {
+        double sp = speed.get()*0.4, vy = 0;
+        if (mc.options.jumpKey.isPressed()) vy = vertical.get()*0.4;
+        if (mc.options.sneakKey.isPressed()) vy = -vertical.get()*0.4;
+        float yaw = mc.player.getYaw();
+        double mx=0,mz=0; boolean moving=false;
+        if (mc.options.forwardKey.isPressed()) { mx-=Math.sin(Math.toRadians(yaw)); mz+=Math.cos(Math.toRadians(yaw)); moving=true; }
+        if (mc.options.backKey.isPressed()) { mx+=Math.sin(Math.toRadians(yaw)); mz-=Math.cos(Math.toRadians(yaw)); moving=true; }
+        if (mc.options.leftKey.isPressed()) { mx+=Math.cos(Math.toRadians(yaw)); mz+=Math.sin(Math.toRadians(yaw)); moving=true; }
+        if (mc.options.rightKey.isPressed()) { mx-=Math.cos(Math.toRadians(yaw)); mz-=Math.sin(Math.toRadians(yaw)); moving=true; }
+        if (moving) { double len=Math.sqrt(mx*mx+mz*mz); mx=mx/len*sp; mz=mz/len*sp; }
+        mc.player.setVelocity(mx, vy, mz);
+    }
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

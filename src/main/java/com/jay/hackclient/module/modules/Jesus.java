@@ -1,36 +1,34 @@
 package com.jay.hackclient.module.modules;
 
 import com.jay.hackclient.module.Module;
-import net.minecraft.block.Blocks;
-import net.minecraft.util.math.BlockPos;
+import com.jay.hackclient.module.setting.ModeSetting;
+import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.RealPackets;
 import net.minecraft.util.math.Vec3d;
 
-/** Walk on water / lava surface. */
 public class Jesus extends Module {
-
-    public Jesus() {
-        super("Jesus", "Walk on water and lava", Category.ANARCHY);
-    }
-
-    @Override
-    public void onTick() {
-        if (mc.player == null || mc.world == null) return;
-        if (mc.player.isSneaking()) return; // hold shift to sink
-
-        boolean inFluid = mc.player.isTouchingWater() || mc.player.isInLava();
-        BlockPos below = BlockPos.ofFloored(mc.player.getX(), mc.player.getY() - 0.2, mc.player.getZ());
-        boolean fluidBelow = mc.world.getBlockState(below).isOf(Blocks.WATER)
-                || mc.world.getBlockState(below).isOf(Blocks.LAVA)
-                || mc.world.getBlockState(below).isOf(Blocks.BUBBLE_COLUMN);
-
-        if (inFluid || fluidBelow) {
-            Vec3d v = mc.player.getVelocity();
-            // Keep on surface
-            if (mc.player.getY() % 1 < 0.9 || inFluid) {
-                mc.player.setVelocity(v.x, Math.max(v.y, 0.02), v.z);
+    public final ModeSetting mode = new ModeSetting("Mode", "Style", "Solid", "Solid", "Boost", "Dolphin");
+    public final NumberSetting speed = new NumberSetting("Speed", "Water walk speed", 1.1, 0.8, 2.0, 0.05);
+    public Jesus() { super("Jesus", "Walk on water / lava", Category.MOVEMENT); addSetting(mode); addSetting(speed); }
+    @Override public void onTick() {
+        if (mc.player == null) return;
+        if (!(mc.player.isTouchingWater() || mc.player.isInLava())) { setTag(null); return; }
+        setTag(mode.get());
+        Vec3d v = mc.player.getVelocity();
+        switch (mode.get()) {
+            case "Solid" -> { if (v.y < 0) mc.player.setVelocity(v.x, 0, v.z); mc.player.setOnGround(true); RealPackets.sendOnGround(true); }
+            case "Boost" -> {
+                double s = speed.get()*0.25; float yaw = mc.player.getYaw();
+                mc.player.setVelocity(-Math.sin(Math.toRadians(yaw))*s, Math.max(v.y,0.02), Math.cos(Math.toRadians(yaw))*s);
             }
-            mc.player.setOnGround(true);
-            mc.player.fallDistance = 0;
+            case "Dolphin" -> {
+                if (mc.options.jumpKey.isPressed()) mc.player.setVelocity(v.x, 0.4, v.z);
+                else if (v.y < 0) mc.player.setVelocity(v.x, v.y*0.5, v.z);
+            }
+            default -> {}
         }
+    }
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

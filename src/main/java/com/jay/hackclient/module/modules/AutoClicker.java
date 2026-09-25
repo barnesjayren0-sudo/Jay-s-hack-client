@@ -3,100 +3,50 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
-import com.jay.hackclient.util.CombatManager;
-import com.jay.hackclient.util.Humanizer;
-import com.jay.hackclient.util.ItemUtil;
+import com.jay.hackclient.util.RealPackets;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/**
- * Humanized hold-click.
- * Does NOT force attackKey.setPressed(true) every tick (that stuck the key).
- */
 public class AutoClicker extends Module {
-
-    public final NumberSetting minCps = new NumberSetting("MinCPS", "Min clicks/sec", 8, 4, 14, 1);
-    public final NumberSetting maxCps = new NumberSetting("MaxCPS", "Max clicks/sec", 11, 5, 16, 1);
-    public final BoolSetting weaponsOnly = new BoolSetting("WeaponsOnly", "Sword/axe only", true);
-    public final BoolSetting onEntity = new BoolSetting("OnEntity", "Only when aiming entity", true);
-    public final BoolSetting breakBlocks = new BoolSetting("Blocks", "Allow mining clicks", false);
-
+    public final NumberSetting cps = new NumberSetting("CPS", "Clicks per second", 10, 1, 20, 1);
+    public final BoolSetting onlyEntity = new BoolSetting("Only Entity", "Only on entity", true);
+    public final BoolSetting weaponsOnly = new BoolSetting("Weapons Only", "Sword/axe only", true);
+    public final BoolSetting realPackets = new BoolSetting("Real Packets", "Vanilla attack", true);
+    public final BoolSetting attributeSwap = new BoolSetting("Attr Swap", "Trigger AttributeSwap", true);
     private long lastClick;
-    private int nextDelay = 110;
-
     public AutoClicker() {
-        super("AutoClicker", "Humanized hold-click", Category.COMBAT);
-        addSetting(minCps);
-        addSetting(maxCps);
-        addSetting(weaponsOnly);
-        addSetting(onEntity);
-        addSetting(breakBlocks);
+        super("AutoClicker", "Auto attack clicks", Category.COMBAT);
+        addSetting(cps); addSetting(onlyEntity); addSetting(weaponsOnly); addSetting(realPackets); addSetting(attributeSwap);
     }
-
-    @Override
-    public void onEnable() {
-        nextDelay = Humanizer.clickDelay();
-        lastClick = 0;
-    }
-
-    @Override
-    public void onTick() {
-        if (!CombatManager.canCombatModulesRun()) return;
-        if (mc.player == null || mc.options == null || mc.interactionManager == null) return;
-        if (!mc.options.attackKey.isPressed()) return;
-        if (weaponsOnly.get() && !ItemUtil.isSwordOrAxe(mc.player.getMainHandStack())) return;
-        if (mc.player.isUsingItem()) return;
-
-        if (onEntity.get()) {
-            if (mc.crosshairTarget == null) return;
-            HitResult.Type t = mc.crosshairTarget.getType();
-            if (t == HitResult.Type.ENTITY) {
-                // ok
-            } else if (t == HitResult.Type.BLOCK && breakBlocks.get()) {
-                // vanilla hold handles block breaking — don't spam
-                return;
-            } else {
-                return;
-            }
+    @Override public void onTick() {
+        if (mc.player == null || !mc.options.attackKey.isPressed()) return;
+        if (weaponsOnly.get()) {
+            String n = mc.player.getMainHandStack().getItem().toString().toLowerCase();
+            if (!n.contains("sword") && !n.contains("axe") && !n.contains("mace")) return;
         }
-
+        long interval = (long)(1000.0 / cps.get());
         long now = System.currentTimeMillis();
-        if (now - lastClick < nextDelay) return;
-
-        if (Humanizer.chance(8)) {
-            lastClick = now;
-            nextDelay = 40 + Humanizer.delay(25, 10, 20, 80);
-            return;
+        if (now - lastClick < interval) return;
+        Entity target = null;
+        if (mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.ENTITY)
+            target = ((EntityHitResult)mc.crosshairTarget).getEntity();
+        if (onlyEntity.get() && target == null) return;
+        if (attributeSwap.get()) {
+            AttributeSwap as = AttributeSwap.get();
+            if (as != null) as.trySwapForAttack(target);
         }
-
-        // Yield to TriggerBot / KillAura
-        try {
-            Module tb = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("TriggerBot");
-            Module ka = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("KillAura");
-            if ((tb != null && tb.isEnabled()) || (ka != null && ka.isEnabled())) {
-                lastClick = now;
-                nextDelay = Humanizer.clickDelay();
-                return;
-            }
-        } catch (Throwable ignored) {}
-
-        // Entity hit path only — no sticky key simulation
-        if (mc.crosshairTarget instanceof EntityHitResult ehr) {
-            Entity e = ehr.getEntity();
-            if (e != null && e.isAlive()) {
-                mc.interactionManager.attackEntity(mc.player, e);
-                mc.player.swingHand(Hand.MAIN_HAND);
-                CombatManager.onAttack();
-            }
-        }
-
+        try { Criticals c = Criticals.get(); if (c != null) c.doCritPackets(); } catch (Throwable ignored) {}
+        if (target != null && realPackets.get()) RealPackets.attackEntity(target);
+        else if (mc.interactionManager != null && target != null) {
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+        } else mc.player.swingHand(Hand.MAIN_HAND);
         lastClick = now;
-        int min = Math.min(minCps.getInt(), maxCps.getInt());
-        int max = Math.max(minCps.getInt(), maxCps.getInt());
-        int cps = min + (int) (Math.random() * (max - min + 1));
-        nextDelay = Math.max(Humanizer.clickDelay(), 1000 / Math.max(1, cps));
-        setTag(String.valueOf(cps));
+        setTag(String.valueOf((int)cps.get()));
+    }
+    private void setTag(String t) {
+        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }
