@@ -1,16 +1,24 @@
 package com.jay.hackclient.module;
 
-import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.modules.AttributeSwap;
+import com.jay.hackclient.module.modules.HandAnimation;
+import com.jay.hackclient.module.modules.SprintReset;
 
-/** Ensures new modules are registered even if JayHackClient list is stale. */
+/** Extra module registration (called from JayHackClient). */
 public final class ModuleBootstrap {
     private ModuleBootstrap() {}
-    public static void ensureExtras() {
+
+    public static void registerExtra(ModuleManager mm) {
+        if (mm == null) return;
+        tryRegister(mm, "AttributeSwap", () -> new AttributeSwap());
+        tryRegister(mm, "HandAnimation", () -> new HandAnimation());
+        tryRegister(mm, "SprintReset", () -> new SprintReset());
+    }
+
+    private static void tryRegister(ModuleManager mm, String name, java.util.function.Supplier<Module> factory) {
         try {
-            if (JayHackClient.moduleManager == null) return;
-            if (JayHackClient.moduleManager.getModuleByName("AttributeSwap") == null) {
-                JayHackClient.moduleManager.register(new AttributeSwap());
+            if (mm.getModuleByName(name) == null) {
+                mm.register(factory.get());
             }
         } catch (Throwable ignored) {}
     }
