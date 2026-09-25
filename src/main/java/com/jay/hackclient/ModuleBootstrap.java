@@ -15,6 +15,8 @@ public final class ModuleBootstrap {
             mm.register(new PearlTrajectory());
             mm.register(new CombatHUD());
             mm.register(new Waypoints());
+            mm.register(new HandAnimation());
+            mm.register(new SprintReset());
         } catch (Throwable t) {
             System.err.println("[Jay] extra modules: " + t.getMessage());
         }
