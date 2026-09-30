@@ -191,7 +191,7 @@ public final class LegitProfile {
 
     public static void applyRage() {
         if (JayHackClient.moduleManager != null) JayHackClient.moduleManager.unfreeze();
-        ClientSettings.applyRageConfig();
+        ClientSettings.applySwordAggressiveConfig();
         Hitboxes.setExpand(ClientSettings.hitboxExpand);
         on("KillAura");
         on("ComboHit");
@@ -253,7 +253,7 @@ public final class LegitProfile {
 
     public static void applyKit() {
         off();
-        ClientSettings.applyKitConfig();
+        ClientSettings.applySwordConfig();
         on("AimAssist");
         on("TriggerBot");
         on("ComboHit");

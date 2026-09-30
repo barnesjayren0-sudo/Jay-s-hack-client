@@ -13,25 +13,42 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
+/** Burrow — place a block inside your feet. Public setTag, null-safe. */
 public class Burrow extends Module {
     public final NumberSetting height = new NumberSetting("Height", "Jump height packet", 0.42, 0.2, 1.0, 0.01);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Position + slot", true);
     public final BoolSetting once = new BoolSetting("Once", "Disable after burrow", true);
+
     public Burrow() { super("Burrow", "Place block in your feet", Category.ANARCHY); addSetting(height); addSetting(realPackets); addSetting(once); }
+
     @Override public void onEnable() {
+        setTag("burrow");
         if (mc.player == null || mc.world == null || mc.interactionManager == null) { setEnabled(false); return; }
-        int slot = findBlock(); if (slot < 0) { setEnabled(false); return; }
-        BlockPos feet = mc.player.getBlockPos(); int prev = mc.player.getInventory().selectedSlot;
+        int slot = findBlock();
+        if (slot < 0) { setTag("no blocks"); setEnabled(false); return; }
+        BlockPos feet = mc.player.getBlockPos();
+        int prev = RealPackets.getSelectedSlot();
         if (realPackets.get()) {
             double x = mc.player.getX(), y = mc.player.getY(), z = mc.player.getZ();
-            RealPackets.sendPosition(x, y + height.get(), z, false); RealPackets.selectSlot(slot);
-        } else mc.player.getInventory().selectedSlot = slot;
-        BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(feet.down()).add(0,0.5,0), Direction.UP, feet.down(), false);
-        mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit); mc.player.swingHand(Hand.MAIN_HAND);
-        if (realPackets.get()) { RealPackets.selectSlot(prev); RealPackets.syncPosition(); }
-        else mc.player.getInventory().selectedSlot = prev;
+            RealPackets.sendPosition(x, y + height.get(), z, false);
+            RealPackets.selectSlot(slot);
+        } else {
+            try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {}
+        }
+        BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(feet.down()).add(0, 0.5, 0), Direction.UP, feet.down(), false);
+        mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
+        mc.player.swingHand(Hand.MAIN_HAND);
+        if (realPackets.get()) {
+            RealPackets.selectSlot(prev);
+            RealPackets.syncPosition();
+        } else {
+            try { mc.player.getInventory().setSelectedSlot(prev); } catch (Throwable ignored) {}
+        }
         if (once.get()) setEnabled(false);
     }
+
+    @Override public void onTick() { /* one-shot module */ }
+
     private int findBlock() {
         for (int i = 0; i < 9; i++) {
             ItemStack s = mc.player.getInventory().getStack(i);

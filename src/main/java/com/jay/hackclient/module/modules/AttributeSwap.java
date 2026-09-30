@@ -10,7 +10,9 @@ import net.minecraft.item.ItemStack;
 
 /**
  * AttributeSwap — Simple / Smart weapon attribute swap.
- * Smart scans hotbar for Sword/Axe/Mace and swaps with real UpdateSelectedSlotC2SPacket.
+ * Smart scans the whole hotbar for Sword / Axe / Mace and swaps with a real
+ * UpdateSelectedSlotC2SPacket (via RealPackets.selectSlot → setSelectedSlot).
+ * Attribute-swap style: best damage item held only for the hit, restore right after.
  */
 public class AttributeSwap extends Module {
 
@@ -18,8 +20,8 @@ public class AttributeSwap extends Module {
     public final ModeSetting weapon = new ModeSetting("Weapon", "Smart: preferred type", "Sword", "Sword", "Axe", "Mace", "Any");
     public final NumberSetting swapSlot = new NumberSetting("Swap Slot", "Simple: hotbar 0-8", 1, 0, 8, 1);
     public final NumberSetting holdMs = new NumberSetting("Hold Ms", "Ms before restore", 50, 0, 200, 5);
-    public final BoolSetting onlyOnAttack = new BoolSetting("Only On Attack", "Swap only on attack", true);
-    public final BoolSetting restore = new BoolSetting("Restore", "Switch back after hit", true);
+    public final BoolSetting onlyOnAttack = new BoolSetting("Only On Attack", "Swap only when attacking", true);
+    public final BoolSetting restore = new BoolSetting("Restore", "Switch back after hold", true);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "UpdateSelectedSlotC2SPacket", true);
 
     private int originalSlot = -1;
@@ -34,8 +36,10 @@ public class AttributeSwap extends Module {
 
     @Override
     public void onDisable() {
-        if (swapped && originalSlot >= 0) select(originalSlot);
-        swapped = false; originalSlot = -1; setTag(null);
+        if (swapped && originalSlot >= 0 && mc.player != null) select(originalSlot);
+        swapped = false;
+        originalSlot = -1;
+        setTag(null);
     }
 
     @Override
@@ -43,19 +47,23 @@ public class AttributeSwap extends Module {
         if (mc.player == null) return;
         if (swapped && System.currentTimeMillis() >= swapUntil) {
             if (restore.get() && originalSlot >= 0) select(originalSlot);
-            swapped = false; originalSlot = -1; setTag(null); return;
+            swapped = false;
+            originalSlot = -1;
+            setTag(null);
+            return;
         }
-        if (onlyOnAttack.get() && !mc.options.attackKey.isPressed()) return;
-        if (!swapped) trySwapForAttack(null);
+        if (swapped) return;
+        if (onlyOnAttack.get() && !mc.options.attackKey.isPressed() && !KillAura.isActive()) return;
+        trySwapForAttack(null);
     }
 
     public boolean trySwapForAttack(Entity target) {
         if (!isEnabled() || mc.player == null) return false;
         if (swapped) return true;
-        int current = mc.player.getInventory().selectedSlot;
+        int current = RealPackets.getSelectedSlot();
         int dest = -1;
         if ("Simple".equals(mode.get())) {
-            dest = (int) swapSlot.get();
+            dest = swapSlot.getInt();
             if (dest == current) return false;
             if (mc.player.getInventory().getStack(dest).isEmpty()) return false;
         } else {
@@ -66,27 +74,20 @@ public class AttributeSwap extends Module {
         select(dest);
         swapped = true;
         swapUntil = System.currentTimeMillis() + (long) holdMs.get();
-        setTag(mode.get() + " ->" + dest);
+        setTag(mode.get() + " →" + dest);
         return true;
     }
 
     private int findSmartSlot(int current) {
         String pref = weapon.get().toLowerCase();
-        int best = -1, bestScore = -1;
+        int best = -1, bestScore = 0;
         for (int i = 0; i < 9; i++) {
             ItemStack stack = mc.player.getInventory().getStack(i);
             if (stack.isEmpty()) continue;
             int score = scoreItem(stack.getItem().toString().toLowerCase(), pref);
             if (score > bestScore) { bestScore = score; best = i; }
         }
-        if (best == current && bestScore > 0) {
-            for (int i = 0; i < 9; i++) {
-                if (i == current) continue;
-                ItemStack stack = mc.player.getInventory().getStack(i);
-                if (stack.isEmpty()) continue;
-                if (scoreItem(stack.getItem().toString().toLowerCase(), pref) == bestScore) return i;
-            }
-        }
+        if (best == current) return -1; // already holding the best weapon
         return bestScore > 0 ? best : -1;
     }
 
@@ -115,19 +116,10 @@ public class AttributeSwap extends Module {
     private void select(int slot) {
         if (slot < 0 || slot > 8 || mc.player == null) return;
         if (realPackets.get()) {
-            try { RealPackets.selectSlot(slot); }
-            catch (Throwable t) {
-                try {
-                    var n = mc.getNetworkHandler();
-                    if (n != null) n.sendPacket(new net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket(slot));
-                    mc.player.getInventory().selectedSlot = slot;
-                } catch (Throwable ignored) {}
-            }
-        } else mc.player.getInventory().selectedSlot = slot;
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
+            RealPackets.selectSlot(slot);
+        } else {
+            try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {}
+        }
     }
 
     public static AttributeSwap get() {

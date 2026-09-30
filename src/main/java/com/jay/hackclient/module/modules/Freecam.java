@@ -39,11 +39,13 @@ public class Freecam extends Module {
         yaw = mc.player.getYaw();
         pitch = mc.player.getPitch();
         active = true;
+        setTag("freecam");
     }
 
     @Override
     public void onDisable() {
         active = false;
+        setTag(null);
     }
 
     @Override

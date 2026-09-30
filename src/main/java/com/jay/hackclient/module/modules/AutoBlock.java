@@ -8,7 +8,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 
-/** AutoBlock — raise shield when enemy close. */
+/** AutoBlock — raise shield when enemy close. Public setTag. */
 public class AutoBlock extends Module {
 
     public final NumberSetting range = new NumberSetting("Range", "Threat range", 3.6, 2.0, 6.0, 0.1);
@@ -47,9 +47,5 @@ public class AutoBlock extends Module {
         Hand hand = off.isOf(Items.SHIELD) ? Hand.OFF_HAND : Hand.MAIN_HAND;
         if (!mc.player.isUsingItem()) mc.interactionManager.interactItem(mc.player, hand);
         setTag("block");
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

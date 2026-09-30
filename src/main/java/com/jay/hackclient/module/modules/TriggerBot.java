@@ -13,12 +13,13 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/** TriggerBot — real packets only. Hits when crosshair is on target. */
+/** TriggerBot — hits when crosshair is on target. Real packets, public setTag. */
 public class TriggerBot extends Module {
 
     public final NumberSetting minCooldown = new NumberSetting("Cooldown", "Min attack cooldown 0-1", 0.9, 0.5, 1.0, 0.05);
     public final BoolSetting playersOnly = new BoolSetting("Players Only", "Only players", true);
-    public final BoolSetting weaponOnly = new BoolSetting("Weapons Only", "Sword/axe only", true);
+    public final BoolSetting weaponOnly = new BoolSetting("Weapons Only", "Sword/axe/mace only", true);
+    public final BoolSetting comboHit = new BoolSetting("Combo Hit", "Respect ComboHit gate", true);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Vanilla attack packets", true);
 
     private long lastAttack;
@@ -26,7 +27,8 @@ public class TriggerBot extends Module {
 
     public TriggerBot() {
         super("TriggerBot", "Hit when crosshair is on target", Category.COMBAT);
-        addSetting(minCooldown); addSetting(playersOnly); addSetting(weaponOnly); addSetting(realPackets);
+        addSetting(minCooldown); addSetting(playersOnly); addSetting(weaponOnly);
+        addSetting(comboHit); addSetting(realPackets);
     }
 
     @Override
@@ -35,40 +37,42 @@ public class TriggerBot extends Module {
         if (mc.player.isUsingItem()) return;
         if (weaponOnly.get()) {
             String n = mc.player.getMainHandStack().getItem().toString().toLowerCase();
-            if (!n.contains("sword") && !n.contains("axe") && !n.contains("mace")) return;
+            if (!n.contains("sword") && !n.contains("axe") && !n.contains("mace")) { setTag(null); return; }
         }
         try { if (Humanizer.shouldSkipTick()) return; } catch (Throwable ignored) {}
-        if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) return;
+        if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.ENTITY) { setTag(null); return; }
         EntityHitResult hit = (EntityHitResult) mc.crosshairTarget;
         Entity entity = hit.getEntity();
+        if (entity == mc.player) return;
         if (playersOnly.get()) {
             if (!(entity instanceof PlayerEntity player)) return;
-            if (player == mc.player || !player.isAlive()) return;
+            if (!player.isAlive()) return;
             try { if (AntiBot.isBot(player)) return; } catch (Throwable ignored) {}
             try {
                 if (JayHackClient.friendManager != null
                         && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
             } catch (Throwable ignored) {}
         }
+        if (comboHit.get() && entity instanceof PlayerEntity p
+                && !ComboHit.shouldAttack(mc.player, p)) return;
         if (mc.player.getAttackCooldownProgress(0.5f) < minCooldown.getFloat()) return;
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
         try {
             if (Humanizer.shouldMiss()) {
-                lastAttack = now; nextDelay = 80 + (int)(Math.random()*40); return;
+                lastAttack = now; nextDelay = 80 + (int) (Math.random() * 40); return;
             }
         } catch (Throwable ignored) {}
-        if (realPackets.get()) RealPackets.attackEntity(entity);
-        else if (mc.interactionManager != null) {
+        if (realPackets.get()) {
+            RealPackets.attackEntity(entity);
+        } else if (mc.interactionManager != null) {
             mc.interactionManager.attackEntity(mc.player, entity);
             mc.player.swingHand(Hand.MAIN_HAND);
         }
         try { CombatManager.onAttack(); } catch (Throwable ignored) {}
-        lastAttack = now; nextDelay = 80 + (int)(Math.random()*50);
+        try { ReachHUD.recordHit(mc.player.distanceTo(entity)); } catch (Throwable ignored) {}
+        lastAttack = now;
+        nextDelay = 80 + (int) (Math.random() * 50);
         setTag(String.format("%.1f", mc.player.distanceTo(entity)));
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

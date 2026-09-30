@@ -28,15 +28,15 @@ import net.minecraft.util.math.MathHelper;
  */
 public class TargetHUD extends Module {
 
-    private final ModeSetting mode = new ModeSetting("Mode", "Modern", "Modern", "Compact", "Legacy");
-    private final BoolSetting showHead = new BoolSetting("Show Head", true);
-    private final BoolSetting showDistance = new BoolSetting("Show Distance", true);
-    private final BoolSetting showArmor = new BoolSetting("Show Armor", true);
-    private final BoolSetting showHealthPct = new BoolSetting("Health %", true);
-    private final BoolSetting glow = new BoolSetting("Glow", true);
-    private final NumberSetting scaleSetting = new NumberSetting("Scale", 1.0, 0.6, 1.6, 0.05);
-    private final NumberSetting xOffset = new NumberSetting("X", 0.55, 0.0, 1.0, 0.01);
-    private final NumberSetting yOffset = new NumberSetting("Y", 0.55, 0.0, 1.0, 0.01);
+    private final ModeSetting mode = new ModeSetting("Mode", "HUD layout", "Modern", "Modern", "Compact", "Legacy");
+    private final BoolSetting showHead = new BoolSetting("Show Head", "Render head area", true);
+    private final BoolSetting showDistance = new BoolSetting("Show Distance", "Distance to target", true);
+    private final BoolSetting showArmor = new BoolSetting("Show Armor", "Armor points", true);
+    private final BoolSetting showHealthPct = new BoolSetting("Health %", "Health percent", true);
+    private final BoolSetting glow = new BoolSetting("Glow", "Accent glow", true);
+    private final NumberSetting scaleSetting = new NumberSetting("Scale", "HUD scale", 1.0, 0.6, 1.6, 0.05);
+    private final NumberSetting xOffset = new NumberSetting("X", "Screen X fraction", 0.55, 0.0, 1.0, 0.01);
+    private final NumberSetting yOffset = new NumberSetting("Y", "Screen Y fraction", 0.55, 0.0, 1.0, 0.01);
 
     private final Animation openAnim = new Animation(220, 1.0, Animation.Easing.EASE_OUT_BACK);
     private float animatedHealth = 20f;
@@ -46,7 +46,34 @@ public class TargetHUD extends Module {
 
     public TargetHUD() {
         super("TargetHUD", "Premium target info panel", Category.RENDER);
-        addSettings(mode, showHead, showDistance, showArmor, showHealthPct, glow, scaleSetting, xOffset, yOffset);
+        addSetting(mode); addSetting(showHead); addSetting(showDistance); addSetting(showArmor);
+        addSetting(showHealthPct); addSetting(glow); addSetting(scaleSetting); addSetting(xOffset); addSetting(yOffset);
+    }
+
+    /** Snapshot of tracked target for HUD renderers (null-safe). */
+    public static PlayerEntity snapshotTarget() {
+        TargetHUD h = instance();
+        LivingEntity t = h != null ? h.currentTarget : null;
+        return t instanceof PlayerEntity p ? p : null;
+    }
+
+    /** {hp, maxHp, armorPoints, distance} — null-safe. */
+    public static float[] snapshotStats(PlayerEntity fallback) {
+        PlayerEntity t = snapshotTarget() != null ? snapshotTarget() : fallback;
+        if (t == null) return new float[]{0f, 20f, 0f, 0f};
+        return new float[]{
+                t.getHealth() + t.getAbsorptionAmount(),
+                Math.max(1f, t.getMaxHealth()),
+                t.getArmor(),
+                (float) net.minecraft.client.MinecraftClient.getInstance().player.distanceTo(t)
+        };
+    }
+
+    private static TargetHUD instance() {
+        try {
+            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("TargetHUD");
+            return m instanceof TargetHUD h ? h : null;
+        } catch (Throwable t) { return null; }
     }
 
     public void render(DrawContext ctx, float tickDelta) {
@@ -89,23 +116,23 @@ public class TargetHUD extends Module {
         int screenW = mc.getWindow().getScaledWidth();
         int screenH = mc.getWindow().getScaledHeight();
 
-        float panelW = mode.is("Compact") ? 120f : 150f;
-        float panelH = mode.is("Compact") ? 36f : 48f;
+        float panelW = "Compact".equals(mode.get()) ? 120f : 150f;
+        float panelH = "Compact".equals(mode.get()) ? 36f : 48f;
 
         float x = (float) (screenW * xOffset.get()) - panelW / 2f;
         float y = (float) (screenH * yOffset.get()) - panelH / 2f;
 
-        ctx.getMatrices().push();
+        ctx.getMatrices().pushMatrix();
         float cx = x + panelW / 2f;
         float cy = y + panelH / 2f;
-        ctx.getMatrices().translate(cx, cy, 0);
-        ctx.getMatrices().scale(scale, scale, 1f);
-        ctx.getMatrices().translate(-cx, -cy, 0);
+        ctx.getMatrices().translate(cx, cy);
+        ctx.getMatrices().scale(scale, scale);
+        ctx.getMatrices().translate(-cx, -cy);
 
         float alpha = MathHelper.clamp(anim, 0f, 1f);
         renderModern(ctx, mc, target, x, y, panelW, panelH, alpha, realHealth, maxHealth);
 
-        ctx.getMatrices().pop();
+        ctx.getMatrices().popMatrix();
     }
 
     private void renderModern(DrawContext ctx, MinecraftClient mc, LivingEntity target,

@@ -32,7 +32,7 @@ public class PearlCatch extends Module {
         if (best == null) return;
 
         Vec3d eyes = mc.player.getEyePos();
-        Vec3d pos = best.getEntityPos();
+        Vec3d pos = new Vec3d(best.getX(), best.getY(), best.getZ());
         double dx = pos.x - eyes.x;
         double dy = pos.y - eyes.y;
         double dz = pos.z - eyes.z;

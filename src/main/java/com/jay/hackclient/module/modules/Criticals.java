@@ -17,6 +17,7 @@ public class Criticals extends Module {
 
     @Override
     public void onTick() {
+        setTag(mode.get());
         if ("Jump".equals(mode.get())) {
             try { com.jay.hackclient.settings.ClientSettings.critTiming = true; } catch (Throwable ignored) {}
         }
@@ -24,6 +25,7 @@ public class Criticals extends Module {
 
     @Override
     public void onDisable() {
+        setTag(null);
         if (!isCritAssistOn()) {
             try { com.jay.hackclient.settings.ClientSettings.critTiming = false; } catch (Throwable ignored) {}
         }

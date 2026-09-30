@@ -9,31 +9,45 @@ import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
+/** SelfTrap — trap yourself (head block). Public setTag, slot restore. */
 public class SelfTrap extends Module {
     public final NumberSetting delay = new NumberSetting("Delay", "Ms between places", 60, 20, 200, 10);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Slot packets", true);
     public final BoolSetting autoDisable = new BoolSetting("Auto Disable", "Off when done", true);
     private long last;
+
     public SelfTrap() { super("SelfTrap", "Trap yourself (head block)", Category.ANARCHY); addSetting(delay); addSetting(realPackets); addSetting(autoDisable); }
+
     @Override public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        long now = System.currentTimeMillis(); if (now - last < delay.get()) return;
-        var above = mc.player.getBlockPos().up(); var head = mc.player.getBlockPos().up(2);
+        long now = System.currentTimeMillis();
+        if (now - last < delay.get()) return;
+        BlockPos above = mc.player.getBlockPos().up();
+        BlockPos head = mc.player.getBlockPos().up(2);
         if (!mc.world.getBlockState(above).isReplaceable() && !mc.world.getBlockState(head).isReplaceable()) {
-            if (autoDisable.get()) setEnabled(false); return;
+            setTag("done");
+            if (autoDisable.get()) setEnabled(false);
+            return;
         }
-        int slot = findBlock(); if (slot < 0) return;
-        int prev = mc.player.getInventory().selectedSlot;
-        if (realPackets.get()) RealPackets.selectSlot(slot); else mc.player.getInventory().selectedSlot = slot;
-        BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(mc.player.getBlockPos()).add(0,1,0), Direction.UP, mc.player.getBlockPos(), false);
+        int slot = findBlock();
+        if (slot < 0) { setTag("no blocks"); return; }
+        int prev = RealPackets.getSelectedSlot();
+        if (realPackets.get()) RealPackets.selectSlot(slot);
+        else { try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {} }
+        BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(mc.player.getBlockPos()).add(0, 1, 0), Direction.UP, mc.player.getBlockPos(), false);
         if (realPackets.get()) RealPackets.sendLook(mc.player.getYaw(), -60f, true);
-        mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit); mc.player.swingHand(Hand.MAIN_HAND);
-        if (realPackets.get()) RealPackets.selectSlot(prev); else mc.player.getInventory().selectedSlot = prev;
+        mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
+        mc.player.swingHand(Hand.MAIN_HAND);
+        if (realPackets.get()) RealPackets.selectSlot(prev);
+        else { try { mc.player.getInventory().setSelectedSlot(prev); } catch (Throwable ignored) {} }
         last = now;
+        setTag("trap");
     }
+
     private int findBlock() {
         for (int i = 0; i < 9; i++) {
             ItemStack s = mc.player.getInventory().getStack(i);

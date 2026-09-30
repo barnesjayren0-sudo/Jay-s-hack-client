@@ -34,6 +34,7 @@ public class ClickGuiScreen extends Screen {
     private String search = ""; private boolean searchFocused; private Module selected;
     private enum SortMode { NAME, ENABLED, FAVORITES } private SortMode sort = SortMode.NAME;
     private Module holdModule; private long holdStart; private boolean bindingMode; private Module bindingModule;
+    private int accentX = -1;
     private final Animation openAnim = new Animation(260, 1.0, Animation.Easing.EASE_OUT_BACK);
 
     public ClickGuiScreen() { super(Text.literal("JAY CLIENT")); }
@@ -93,11 +94,11 @@ public class ClickGuiScreen extends Screen {
         int pw = panelW(), rh = rowH(), barH = 22, pinH = pinned().isEmpty() ? 0 : 18, top = barH + pinH;
 
         ctx.fill(0, 0, width, height, RenderUtil.withAlpha(0x000000, 0.45f * anim));
-        ctx.getMatrices().push();
+        ctx.getMatrices().pushMatrix();
         float cx = width / 2f, cy = height / 2f;
-        ctx.getMatrices().translate(cx, cy, 0);
-        ctx.getMatrices().scale(0.92f + 0.08f * anim, 0.92f + 0.08f * anim, 1f);
-        ctx.getMatrices().translate(-cx, -cy, 0);
+        ctx.getMatrices().translate(cx, cy);
+        ctx.getMatrices().scale(0.92f + 0.08f * anim, 0.92f + 0.08f * anim);
+        ctx.getMatrices().translate(-cx, -cy);
 
         ctx.fill(0, 0, width, barH, PremiumTheme.BG_PANEL);
         ctx.fill(0, barH - 1, width, barH, PremiumTheme.ACCENT);
@@ -119,6 +120,12 @@ public class ClickGuiScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, sorts[i], srx + 5, 7, on ? PremiumTheme.ACCENT : PremiumTheme.TEXT_DIM);
             srx += sw + 3;
         }
+
+        // Accent picker swatch (click to cycle purple → blue → red → green → …)
+        accentX = srx + 4;
+        ctx.fill(accentX, 4, accentX + 18, 18, PremiumTheme.BG_MODULE);
+        ctx.fill(accentX + 3, 7, accentX + 15, 15, GuiColors.accent);
+        ctx.drawTextWithShadow(textRenderer, GuiColors.presetName(), accentX + 22, 7, PremiumTheme.TEXT_DIM);
 
         List<Module> pins = pinned();
         if (!pins.isEmpty()) {
@@ -172,7 +179,7 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (selected != null && !selected.getSettings().isEmpty()) drawSettingsPanel(ctx, mouseX, mouseY, rh);
-        ctx.getMatrices().pop();
+        ctx.getMatrices().popMatrix();
     }
 
     private void drawSettingsPanel(DrawContext ctx, int mouseX, int mouseY, int rh) {
@@ -208,6 +215,18 @@ public class ClickGuiScreen extends Screen {
             int sw = textRenderer.getWidth(sorts[i]) + 10;
             if (mouseX >= srx && mouseX <= srx + sw && mouseY >= 4 && mouseY <= 18) { sort = modes[i]; return true; }
             srx += sw + 3;
+        }
+
+        // Accent picker click
+        if (accentX > 0 && mouseX >= accentX && mouseX <= accentX + 18 && mouseY >= 4 && mouseY <= 18) {
+            String preset = GuiColors.cycleAccentPreset();
+            try {
+                if (JayHackClient.configManager != null) JayHackClient.configManager.save();
+            } catch (Throwable ignored) {}
+            try {
+                com.jay.hackclient.util.Notifications.push("Theme", "Accent: " + preset);
+            } catch (Throwable ignored) {}
+            return true;
         }
 
         if (selected != null && !selected.getSettings().isEmpty() && button == 0) {

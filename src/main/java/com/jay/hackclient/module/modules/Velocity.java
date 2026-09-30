@@ -6,7 +6,7 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
 import org.lwjgl.glfw.GLFW;
 
-/** Velocity — knockback reduction. Soft/Medium/Strong/Custom/JumpReset. */
+/** Velocity — knockback reduction. Chance + horizontal/vertical factors, real reduction logic via mixin. */
 public class Velocity extends Module {
 
     public static long lastPacketMs = 0;
@@ -40,37 +40,32 @@ public class Velocity extends Module {
                 ClientSettings.velocityVertical = vertical.get();
             } catch (Throwable ignored) {}
         }
-        setTag(m + " " + (int)(horizontal.get()*100) + "%");
+        setTag(m + " " + (int) (horizontal.get() * 100) + "%");
     }
 
+    /** Reduction factors actually applied by EntityVelocityUpdateS2CPacketMixin. */
     public static double horizontalFactor() {
-        try {
-            Module mod = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
-            if (mod == null || !mod.isEnabled()) return 1.0;
-            Velocity v = (Velocity) mod;
-            if (Math.random()*100 > v.chance.get()) return 1.0;
-            return Math.max(0.0, v.horizontal.get());
-        } catch (Throwable t) { return 1.0; }
+        Velocity v = instance();
+        if (v == null) return 1.0;
+        if (Math.random() * 100 > v.chance.get()) return 1.0;
+        return Math.max(0.0, v.horizontal.get());
     }
 
     public static double verticalFactor() {
-        try {
-            Module mod = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
-            if (mod == null || !mod.isEnabled()) return 1.0;
-            Velocity v = (Velocity) mod;
-            if (Math.random()*100 > v.chance.get()) return 1.0;
-            return Math.max(0.0, v.vertical.get());
-        } catch (Throwable t) { return 1.0; }
+        Velocity v = instance();
+        if (v == null) return 1.0;
+        if (Math.random() * 100 > v.chance.get()) return 1.0;
+        return Math.max(0.0, v.vertical.get());
     }
 
     public static boolean isActive() {
-        try {
-            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
-            return m != null && m.isEnabled();
-        } catch (Throwable t) { return false; }
+        return instance() != null;
     }
 
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
+    private static Velocity instance() {
+        try {
+            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Velocity");
+            return (m instanceof Velocity v && v.isEnabled()) ? v : null;
+        } catch (Throwable t) { return null; }
     }
 }

@@ -14,7 +14,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
-/** Surround — obsidian box. Real slot/look packets. */
+/** Surround — obsidian box. Real slot/look packets, restores slot, public setTag. */
 public class Surround extends Module {
 
     public final NumberSetting delay = new NumberSetting("Delay", "Ms between places", 50, 20, 150, 5);
@@ -34,7 +34,7 @@ public class Surround extends Module {
     @Override public void onEnable() {
         if (center.get() && mc.player != null) {
             BlockPos bp = mc.player.getBlockPos();
-            mc.player.setPosition(bp.getX()+0.5, mc.player.getY(), bp.getZ()+0.5);
+            mc.player.setPosition(bp.getX() + 0.5, mc.player.getY(), bp.getZ() + 0.5);
             if (realPackets.get()) RealPackets.syncPosition();
         }
     }
@@ -42,9 +42,10 @@ public class Surround extends Module {
     @Override public void onDisable() {
         if (restoreSlot >= 0 && mc.player != null) {
             if (realPackets.get()) RealPackets.selectSlot(restoreSlot);
-            else mc.player.getInventory().selectedSlot = restoreSlot;
+            else { try { mc.player.getInventory().setSelectedSlot(restoreSlot); } catch (Throwable ignored) {} }
         }
-        restoreSlot = -1; setTag(null);
+        restoreSlot = -1;
+        setTag(null);
     }
 
     @Override
@@ -68,11 +69,11 @@ public class Surround extends Module {
         int slot = findBlockSlot();
         if (slot < 0) { setTag("no blocks"); return; }
 
-        int prev = mc.player.getInventory().selectedSlot;
+        int prev = RealPackets.getSelectedSlot();
         if (autoSwitch.get() && slot != prev) {
             restoreSlot = prev;
             if (realPackets.get()) RealPackets.selectSlot(slot);
-            else mc.player.getInventory().selectedSlot = slot;
+            else { try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {} }
         }
 
         for (Direction d : dirs) {
@@ -82,11 +83,13 @@ public class Surround extends Module {
             if (!mc.world.getBlockState(target.down()).isAir() && !mc.world.getBlockState(target.down()).isReplaceable())
                 hit = new BlockHitResult(Vec3d.ofCenter(target.down()).add(0, 0.5, 0), Direction.UP, target.down(), false);
             else
-                hit = new BlockHitResult(Vec3d.ofCenter(feet).add(d.getOffsetX()*0.5, 0, d.getOffsetZ()*0.5), d, feet, false);
+                hit = new BlockHitResult(Vec3d.ofCenter(feet).add(d.getOffsetX() * 0.5, 0, d.getOffsetZ() * 0.5), d, feet, false);
             if (realPackets.get()) RealPackets.sendLook(mc.player.getYaw(), 70f, true);
             mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
             mc.player.swingHand(Hand.MAIN_HAND);
-            lastPlace = now; setTag(d.getName() + " " + missing); break;
+            lastPlace = now;
+            setTag(d.asString() + " " + missing);
+            break;
         }
     }
 
@@ -99,9 +102,5 @@ public class Surround extends Module {
                 return i;
         }
         return -1;
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

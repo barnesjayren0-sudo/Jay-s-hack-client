@@ -3,6 +3,7 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
 
+/** Hitboxes — expand entity hitboxes; consumed by EntityMixin via isActive()/getExpand()/setExpand(). */
 public class Hitboxes extends Module {
     private static double expand = 0.1;
     public final NumberSetting size = new NumberSetting("Expand", "Box expand", 0.1, 0.0, 1.0, 0.05);
@@ -23,11 +24,7 @@ public class Hitboxes extends Module {
     }
 
     public static double getExpand() {
-        try {
-            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Hitboxes");
-            if (m != null && m.isEnabled()) return expand;
-        } catch (Throwable ignored) {}
-        return 0;
+        return isActive() ? expand : 0;
     }
 
     public static void setExpand(double v) {

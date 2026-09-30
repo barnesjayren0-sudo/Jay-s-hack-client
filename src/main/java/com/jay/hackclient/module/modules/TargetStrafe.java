@@ -9,7 +9,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
-/** TargetStrafe — Circle / Adaptive / Keep orbit. */
+/** TargetStrafe — Circle / Adaptive / Keep orbit. Public setTag, null-safe. */
 public class TargetStrafe extends Module {
 
     public final ModeSetting mode = new ModeSetting("Mode", "Strafe style", "Circle", "Circle", "Adaptive", "Keep");
@@ -50,7 +50,7 @@ public class TargetStrafe extends Module {
 
         double dx = t.getX() - mc.player.getX();
         double dz = t.getZ() - mc.player.getZ();
-        double dist = Math.sqrt(dx*dx + dz*dz);
+        double dist = Math.sqrt(dx * dx + dz * dz);
         double targetYaw = Math.toDegrees(Math.atan2(dz, dx)) - 90.0;
         double sp = speed.get();
         Vec3d v = mc.player.getVelocity();
@@ -59,28 +59,24 @@ public class TargetStrafe extends Module {
             case "Adaptive" -> {
                 if (dist > distance.get() + 0.4) {
                     float rad = (float) Math.toRadians(targetYaw);
-                    mc.player.setVelocity(v.x*0.5 + -MathHelper.sin(rad)*sp, v.y, v.z*0.5 + MathHelper.cos(rad)*sp);
+                    mc.player.setVelocity(v.x * 0.5 + -MathHelper.sin(rad) * sp, v.y, v.z * 0.5 + MathHelper.cos(rad) * sp);
                 } else {
-                    float rad = (float) Math.toRadians(targetYaw + 90*dir);
-                    mc.player.setVelocity(v.x*0.55 + MathHelper.sin(-rad)*sp, v.y, v.z*0.55 + MathHelper.cos(rad)*sp);
+                    float rad = (float) Math.toRadians(targetYaw + 90 * dir);
+                    mc.player.setVelocity(v.x * 0.55 + MathHelper.sin(-rad) * sp, v.y, v.z * 0.55 + MathHelper.cos(rad) * sp);
                 }
             }
             case "Keep" -> {
                 float rad;
                 if (dist > distance.get()) rad = (float) Math.toRadians(targetYaw);
                 else if (dist < distance.get() - 0.3) rad = (float) Math.toRadians(targetYaw + 180);
-                else rad = (float) Math.toRadians(targetYaw + 90*dir);
-                mc.player.setVelocity(v.x*0.5 + -MathHelper.sin(rad)*sp, v.y, v.z*0.5 + MathHelper.cos(rad)*sp);
+                else rad = (float) Math.toRadians(targetYaw + 90 * dir);
+                mc.player.setVelocity(v.x * 0.5 + -MathHelper.sin(rad) * sp, v.y, v.z * 0.5 + MathHelper.cos(rad) * sp);
             }
             default -> {
-                float rad = (float) Math.toRadians(targetYaw + 90*dir);
-                mc.player.setVelocity(v.x*0.55 + MathHelper.sin(-rad)*sp, v.y, v.z*0.55 + MathHelper.cos(rad)*sp);
+                float rad = (float) Math.toRadians(targetYaw + 90 * dir);
+                mc.player.setVelocity(v.x * 0.55 + MathHelper.sin(-rad) * sp, v.y, v.z * 0.55 + MathHelper.cos(rad) * sp);
             }
         }
         if (jump.get() && mc.player.isOnGround()) mc.player.jump();
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

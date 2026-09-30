@@ -8,14 +8,17 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 
+/** AutoTotem — auto equip totem in offhand. Public setTag. */
 public class AutoTotem extends Module {
     public final NumberSetting health = new NumberSetting("Health", "Swap below HP (0=always)", 0, 0, 20, 0.5);
     public final BoolSetting soft = new BoolSetting("Soft", "Skip while in GUI", true);
     private int cooldown;
+
     public AutoTotem() {
         super("AutoTotem", "Auto equip totem in offhand", Category.COMBAT);
         addSetting(health); addSetting(soft);
     }
+
     @Override public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (cooldown > 0) { cooldown--; return; }
@@ -30,9 +33,7 @@ public class AutoTotem extends Module {
         if (slot < 0) { setTag("none"); return; }
         int screenSlot = slot < 9 ? slot + 36 : slot;
         mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, screenSlot, 40, SlotActionType.SWAP, mc.player);
-        cooldown = 3; setTag("swap");
-    }
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
+        cooldown = 3;
+        setTag("swap");
     }
 }

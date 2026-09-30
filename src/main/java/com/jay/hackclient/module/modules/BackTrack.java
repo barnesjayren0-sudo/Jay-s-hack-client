@@ -8,17 +8,20 @@ import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.RealPackets;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayDeque;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * BackTrack — hit enemies at their recent positions.
- * Latency / Distance / Smart modes. Real attack packets only.
+ * BackTrack — hit enemies at their recent server-side positions.
+ * Latency / Distance / Smart modes; configurable history window, samples and range.
+ * Real attack packets only (PlayerInteractEntityC2SPacket via RealPackets).
  */
 public class BackTrack extends Module {
 
@@ -32,6 +35,7 @@ public class BackTrack extends Module {
     public final BoolSetting autoHit = new BoolSetting("Auto Hit", "Attack when BT pos valid", false);
 
     private final Map<UUID, ArrayDeque<Sample>> history = new ConcurrentHashMap<>();
+    private long lastAttack;
 
     public BackTrack() {
         super("BackTrack", "Hit enemies at recent positions", Category.COMBAT);
@@ -39,14 +43,18 @@ public class BackTrack extends Module {
         addSetting(samples); addSetting(playersOnly); addSetting(realPackets); addSetting(autoHit);
     }
 
-    @Override public void onDisable() { history.clear(); setTag(null); }
+    @Override
+    public void onDisable() {
+        history.clear();
+        setTag(null);
+    }
 
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
         long now = System.currentTimeMillis();
         long window = (long) delay.get();
-        int maxSamples = (int) samples.get();
+        int maxSamples = samples.getInt();
 
         for (PlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive() || p.isSpectator()) continue;
@@ -58,27 +66,34 @@ public class BackTrack extends Module {
 
             UUID id = p.getUuid();
             ArrayDeque<Sample> q = history.computeIfAbsent(id, k -> new ArrayDeque<>());
-            q.addLast(new Sample(now, p.getPos(), p.getBoundingBox()));
+            q.addLast(new Sample(now, new Vec3d(p.getX(), p.getY(), p.getZ()), p.getBoundingBox()));
             while (q.size() > maxSamples) q.removeFirst();
             while (!q.isEmpty() && now - q.peekFirst().time > window + 50) q.removeFirst();
         }
 
-        history.entrySet().removeIf(e -> {
-            for (PlayerEntity p : mc.world.getPlayers())
-                if (p.getUuid().equals(e.getKey())) return false;
-            return true;
-        });
+        Iterator<Map.Entry<UUID, ArrayDeque<Sample>>> it = history.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<UUID, ArrayDeque<Sample>> e = it.next();
+            boolean present = false;
+            for (PlayerEntity p : mc.world.getPlayers()) {
+                if (p.getUuid().equals(e.getKey())) { present = true; break; }
+            }
+            if (!present) it.remove();
+        }
 
         if (autoHit.get()) {
             PlayerEntity target = findBacktrackTarget();
-            if (target != null && canBacktrackHit(target)) {
+            if (target != null && canBacktrackHit(target)
+                    && now - lastAttack >= 250
+                    && mc.player.getAttackCooldownProgress(0.5f) >= 0.9f) {
                 Sample s = bestSample(target);
-                if (s != null && mc.player.getAttackCooldownProgress(0.5f) >= 0.9f) {
+                if (s != null) {
                     if (realPackets.get()) RealPackets.attackEntity(target);
                     else if (mc.interactionManager != null) {
                         mc.interactionManager.attackEntity(mc.player, target);
-                        mc.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                        mc.player.swingHand(Hand.MAIN_HAND);
                     }
+                    lastAttack = now;
                     setTag(String.format("%.1fm", distTo(s.pos)));
                 }
             }
@@ -106,8 +121,8 @@ public class BackTrack extends Module {
             case "Latency" -> histDist <= maxR;
             case "Distance" -> histDist <= maxR && cur <= maxR + 1.5;
             default -> {
-                double expand = Reach.isActive() ? Reach.getReach() : 3.0;
-                yield histDist <= Math.max(maxR, expand + 0.15);
+                double reach = Reach.isActive() ? Reach.getReach() : 3.0;
+                yield histDist <= Math.max(maxR, reach + 0.15);
             }
         };
     }
@@ -163,14 +178,6 @@ public class BackTrack extends Module {
         BackTrack bt = get();
         if (bt == null || !bt.isEnabled()) return false;
         return bt.canBacktrackHit(entity);
-    }
-
-    private void setTag(String t) {
-        try {
-            var f = Module.class.getDeclaredField("tag");
-            f.setAccessible(true);
-            f.set(this, t);
-        } catch (Throwable ignored) {}
     }
 
     public static final class Sample {

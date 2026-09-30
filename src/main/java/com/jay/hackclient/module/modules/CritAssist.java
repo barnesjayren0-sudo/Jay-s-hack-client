@@ -45,7 +45,7 @@ public class CritAssist extends Module {
             }
         } catch (Throwable ignored) {}
 
-        float fd = player.fallDistance;
+        float fd = (float) player.fallDistance;
         return fd > min && fd < max;
     }
 }

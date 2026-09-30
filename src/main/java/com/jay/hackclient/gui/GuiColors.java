@@ -1,6 +1,6 @@
 package com.jay.hackclient.gui;
 
-/** Customizable ClickGUI colors. */
+/** Customizable ClickGUI colors. Public accent picker + presets. */
 public final class GuiColors {
 
     public static int accent      = 0xFF9B6BFF;
@@ -28,6 +28,8 @@ public final class GuiColors {
                 | (Math.max(0, r - 50) << 16)
                 | (Math.max(0, g - 50) << 8)
                 | Math.max(0, b - 50);
+        // Mirror into the render utilities so HUD + TargetHUD follow the picker too.
+        try { com.jay.hackclient.util.RenderUtil.setAccent(accent); } catch (Throwable ignored) {}
     }
 
     public static void setAccentHex(String hex) {
@@ -36,4 +38,42 @@ public final class GuiColors {
             if (h.length() == 6) setAccent(Integer.parseInt(h, 16));
         } catch (Throwable ignored) {}
     }
+
+    /** Cycle through curated accent presets (purple → blue → red → green → orange → pink → gold → white). */
+    public static String cycleAccentPreset() {
+        String[] names = { "purple", "blue", "red", "green", "orange", "pink", "gold", "white" };
+        String cur = presetName();
+        int i = 0;
+        for (; i < names.length; i++) if (names[i].equals(cur)) break;
+        String next = names[(i + 1) % names.length];
+        applyPreset(next);
+        return next;
+    }
+
+    public static void applyPreset(String name) {
+        switch (name == null ? "" : name.toLowerCase()) {
+            case "blue"   -> setAccent(0x3DDCFF);
+            case "red"    -> setAccent(0xFF5555);
+            case "green"  -> setAccent(0x55FF88);
+            case "orange" -> setAccent(0xFFAA33);
+            case "pink"   -> setAccent(0xFF6BCB);
+            case "gold"   -> setAccent(0xFFC84A);
+            case "white"  -> setAccent(0xE8E8F0);
+            default       -> setAccent(0x9B6BFF); // purple
+        }
+    }
+
+    public static String presetName() {
+        int a = accent & 0xFFFFFF;
+        for (String[] p : PRESETS) {
+            if (Integer.parseInt(p[1], 16) == a) return p[0];
+        }
+        return "custom";
+    }
+
+    private static final String[][] PRESETS = {
+        { "purple", "9B6BFF" }, { "blue", "3DDCFF" }, { "red", "FF5555" },
+        { "green", "55FF88" }, { "orange", "FFAA33" }, { "pink", "FF6BCB" },
+        { "gold", "FFC84A" }, { "white", "E8E8F0" }
+    };
 }
