@@ -58,7 +58,7 @@ public final class CombatRequirements {
         if (mc.player == null) return false;
         var p = mc.player;
         if (p.isOnGround() || p.isClimbing() || p.hasVehicle()) return false;
-        if (p.isTouchingWater() || p.isInLava() || p.isInPowderSnow()) return false;
+        if (p.isTouchingWater() || p.isInLava() || p.inPowderSnow) return false;
         if (p.getAbilities().flying) return false;
         return p.fallDistance > 0.0f;
     }

@@ -7,7 +7,7 @@ import com.jay.hackclient.module.setting.NumberSetting;
 
 /**
  * Hand Animation — slows / restyles first-person swing & equip animations.
- * Settings are read by HeldItemRenderer / LivingEntity mixins (static getters).
+ * Settings are read by HandAnimationMixin (static getters).
  * Real client-side only — no custom packets.
  */
 public class HandAnimation extends Module {
@@ -104,13 +104,5 @@ public class HandAnimation extends Module {
     @Override
     public void onTick() {
         if (isEnabled()) setTag(mode.get());
-    }
-
-    private void setTag(String t) {
-        try {
-            var f = Module.class.getDeclaredField("tag");
-            f.setAccessible(true);
-            f.set(this, t);
-        } catch (Throwable ignored) {}
     }
 }

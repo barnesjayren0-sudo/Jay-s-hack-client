@@ -35,7 +35,8 @@ public final class RotationSystem {
         if (mc.player == null || target == null) return null;
 
         Vec3d eyes = mc.player.getEyePos();
-        Vec3d pos = target.getEntityPos().add(0.0, target.getHeight() * 0.72, 0.0);
+        Vec3d pos = new Vec3d(target.getX(), target.getY(), target.getZ())
+                .add(0.0, target.getHeight() * 0.72, 0.0);
 
         double dx = pos.x - eyes.x;
         double dy = pos.y - eyes.y;

@@ -42,6 +42,7 @@ public class KillAura extends Module {
     public final BoolSetting playersOnly = new BoolSetting("Players Only", "Only attack players", true);
     public final BoolSetting throughWalls = new BoolSetting("Through Walls", "Ignore line of sight", false);
     public final BoolSetting cooldownCheck = new BoolSetting("Cooldown", "Wait for attack cooldown", true);
+    public final BoolSetting comboHit = new BoolSetting("Combo Hit", "Respect ComboHit gate", true);
     public final BoolSetting swing = new BoolSetting("Swing", "Swing hand on hit", true);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Use vanilla C2S packets only", true);
 
@@ -57,7 +58,7 @@ public class KillAura extends Module {
         addSetting(rotateMode); addSetting(range); addSetting(fov); addSetting(aps);
         addSetting(slotSmooth); addSetting(weaponsOnly); addSetting(requireClick);
         addSetting(playersOnly); addSetting(throughWalls); addSetting(cooldownCheck);
-        addSetting(swing); addSetting(realPackets);
+        addSetting(comboHit); addSetting(swing); addSetting(realPackets);
     }
 
     @Override
@@ -114,6 +115,8 @@ public class KillAura extends Module {
 
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
+
+        if (comboHit.get() && !ComboHit.shouldAttack(mc.player, target)) return;
 
         if (cooldownCheck.get()) {
             try {
@@ -232,7 +235,7 @@ public class KillAura extends Module {
             if (a != null) return a;
         } catch (Throwable ignored) {}
         Vec3d eyes = mc.player.getEyePos();
-        Vec3d pos = target.getPos().add(0, target.getHeight() * 0.85, 0);
+        Vec3d pos = new Vec3d(target.getX(), target.getY(), target.getZ()).add(0, target.getHeight() * 0.85, 0);
         double dx = pos.x - eyes.x, dy = pos.y - eyes.y, dz = pos.z - eyes.z;
         double horiz = Math.sqrt(dx * dx + dz * dz);
         float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
@@ -244,4 +247,11 @@ public class KillAura extends Module {
     public boolean hasSilentAngles() { return hasSilent; }
     public float getSilentYaw() { return silentYaw; }
     public float getSilentPitch() { return silentPitch; }
+
+    public static boolean isActive() {
+        try {
+            Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("KillAura");
+            return m != null && m.isEnabled();
+        } catch (Throwable t) { return false; }
+    }
 }

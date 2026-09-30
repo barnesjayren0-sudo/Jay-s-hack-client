@@ -100,7 +100,7 @@ public final class HudRenderer {
             try { PearlTrajectory.drawHud(context, screenW, screenH); } catch (Throwable ignored) {}
         }
 
-        try { Notifications.render(context); } catch (Throwable ignored) {}
+        try { Notifications.render(context, screenW, screenH); } catch (Throwable ignored) {}
 
         try {
             if (BaritoneCompat.isPathing()) {
@@ -184,13 +184,13 @@ public final class HudRenderer {
     }
 
     private static void drawTargetAt(DrawContext context, MinecraftClient mc, int bx, int by) {
-        PlayerEntity t = TargetHUD.currentTarget;
+        PlayerEntity t = TargetHUD.snapshotTarget();
         if (t == null || !t.isAlive()) return;
 
-        float hp = TargetHUD.currentHp > 0 ? TargetHUD.currentHp : (t.getHealth() + t.getAbsorptionAmount());
-        float max = TargetHUD.currentMaxHp > 0 ? TargetHUD.currentMaxHp : Math.max(1f, t.getMaxHealth());
+        float[] snap = TargetHUD.snapshotStats(t);
+        float hp = snap[0], max = snap[1];
         float pct = Math.max(0f, Math.min(1f, hp / max));
-        int armor = TargetHUD.armorPoints;
+        int armor = (int) snap[2];
 
         int boxW = 128;
         int boxH = 36;
@@ -198,7 +198,7 @@ public final class HudRenderer {
         context.fill(bx, by, bx + 2, by + boxH, CYAN);
 
         String name = t.getName().getString();
-        String info = String.format("%s  §7%.1fm", name, TargetHUD.currentDistance);
+        String info = String.format("%s  §7%.1fm", name, snap[3]);
         context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 4, 0xFFF0F0F8);
 
         String hpText = String.format("§f%.1f §8| §7A%d", hp, armor);

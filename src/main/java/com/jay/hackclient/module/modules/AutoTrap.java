@@ -15,37 +15,51 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
+/** AutoTrap — trap nearest enemy with obsidian. Slot restore, public setTag. */
 public class AutoTrap extends Module {
     public final NumberSetting range = new NumberSetting("Range", "Target range", 5.0, 2.0, 8.0, 0.5);
     public final NumberSetting delay = new NumberSetting("Delay", "Ms between places", 50, 20, 200, 10);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Slot + look", true);
     private long last;
+
     public AutoTrap() { super("AutoTrap", "Trap nearest enemy", Category.ANARCHY); addSetting(range); addSetting(delay); addSetting(realPackets); }
+
     @Override public void onTick() {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
-        long now = System.currentTimeMillis(); if (now - last < delay.get()) return;
-        PlayerEntity target = null; double best = range.get();
+        long now = System.currentTimeMillis();
+        if (now - last < delay.get()) return;
+        PlayerEntity target = null;
+        double best = range.get();
         for (PlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive()) continue;
+            try { if (AntiBot.isBot(p)) continue; } catch (Throwable ignored) {}
             try { if (JayHackClient.friendManager != null && JayHackClient.friendManager.isFriend(p.getName().getString())) continue; } catch (Throwable ignored) {}
-            double d = mc.player.distanceTo(p); if (d < best) { best = d; target = p; }
+            double d = mc.player.distanceTo(p);
+            if (d < best) { best = d; target = p; }
         }
-        if (target == null) return;
-        int slot = findBlock(); if (slot < 0) return;
+        if (target == null) { setTag(null); return; }
+        int slot = findBlock();
+        if (slot < 0) { setTag("no blocks"); return; }
         BlockPos feet = target.getBlockPos();
         BlockPos[] places = { feet.up(2), feet.north(), feet.south(), feet.east(), feet.west(),
-            feet.up().north(), feet.up().south(), feet.up().east(), feet.up().west() };
+                feet.up().north(), feet.up().south(), feet.up().east(), feet.up().west() };
         for (BlockPos pos : places) {
             if (!mc.world.getBlockState(pos).isReplaceable()) continue;
-            int prev = mc.player.getInventory().selectedSlot;
-            if (realPackets.get()) RealPackets.selectSlot(slot); else mc.player.getInventory().selectedSlot = slot;
+            int prev = RealPackets.getSelectedSlot();
+            if (realPackets.get()) RealPackets.selectSlot(slot);
+            else { try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {} }
             if (realPackets.get()) RealPackets.sendLook(mc.player.getYaw(), 40f, mc.player.isOnGround());
-            BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(pos.down()).add(0,0.5,0), Direction.UP, pos.down(), false);
-            mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit); mc.player.swingHand(Hand.MAIN_HAND);
-            if (realPackets.get()) RealPackets.selectSlot(prev); else mc.player.getInventory().selectedSlot = prev;
-            last = now; return;
+            BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(pos.down()).add(0, 0.5, 0), Direction.UP, pos.down(), false);
+            mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
+            mc.player.swingHand(Hand.MAIN_HAND);
+            if (realPackets.get()) RealPackets.selectSlot(prev);
+            else { try { mc.player.getInventory().setSelectedSlot(prev); } catch (Throwable ignored) {} }
+            last = now;
+            setTag(target.getName().getString());
+            return;
         }
     }
+
     private int findBlock() {
         for (int i = 0; i < 9; i++) {
             ItemStack s = mc.player.getInventory().getStack(i);

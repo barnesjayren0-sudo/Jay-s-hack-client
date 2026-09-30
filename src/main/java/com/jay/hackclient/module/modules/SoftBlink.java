@@ -6,7 +6,7 @@ import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.RealPackets;
 
-/** SoftBlink — Damp / GroundSpoof / Combo pulse. Real on-ground packets. */
+/** SoftBlink — Damp / GroundSpoof / Combo pulse. Real on-ground packets, public setTag. */
 public class SoftBlink extends Module {
 
     public final ModeSetting mode = new ModeSetting("Mode", "Pulse style", "Damp", "Damp", "GroundSpoof", "Combo");
@@ -41,6 +41,7 @@ public class SoftBlink extends Module {
     }
 
     private void applyPulse() {
+        if (mc.player == null) return;
         String m = mode.get();
         if ("Damp".equals(m) || "Combo".equals(m)) {
             double d = damp.get();
@@ -50,9 +51,5 @@ public class SoftBlink extends Module {
         if ("GroundSpoof".equals(m) || "Combo".equals(m)) {
             RealPackets.sendOnGround(!mc.player.isOnGround());
         }
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

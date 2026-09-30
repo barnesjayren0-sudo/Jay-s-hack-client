@@ -4,7 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.settings.ClientSettings;
 
-/** Reach — soft attack range (no custom packets). */
+/** Reach — soft attack range (no custom packets). Public Module.setTag. */
 public class Reach extends Module {
 
     private static double reach = 3.05;
@@ -36,8 +36,4 @@ public class Reach extends Module {
 
     public static double getReach() { return isActive() ? reach : 3.0; }
     public static void setReach(double v) { reach = Math.max(3.0, Math.min(6.0, v)); }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
-    }
 }

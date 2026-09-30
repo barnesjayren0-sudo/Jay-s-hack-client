@@ -13,7 +13,11 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
-/** Scaffold — Normal / Telly / Godbridge / Tower / Expand. Real look + slot packets. */
+/**
+ * Scaffold — Normal / Telly / Godbridge / Tower / Expand.
+ * Real look (PlayerMoveC2SPacket) + slot (UpdateSelectedSlotC2SPacket) + place path.
+ * Rate limited; restores slot + look on disable. Public setTag.
+ */
 public class Scaffold extends Module {
 
     public final ModeSetting mode = new ModeSetting("Mode", "Place style", "Telly", "Normal", "Telly", "Godbridge", "Tower", "Expand");
@@ -57,7 +61,7 @@ public class Scaffold extends Module {
         String m = mode.get();
         long now = System.currentTimeMillis();
         if (now - secondStamp >= 1000) { secondStamp = now; placesThisSecond = 0; }
-        if (placesThisSecond >= 14) return;
+        if (placesThisSecond >= 14) return; // hard rate limit
 
         if (mc.player.isOnGround()) {
             ticksInAir = 0;
@@ -68,7 +72,7 @@ public class Scaffold extends Module {
         if (now - lastPlace < delay.get()) return;
         if ("Telly".equals(m) && !mc.player.isOnGround() && ticksInAir < 2) return;
 
-        if (sprint.get() && mc.options.forwardKey.isPressed()) {
+        if (sprint.get() && mc.options.forwardKey.isPressed() && !mc.player.isSprinting()) {
             mc.player.setSprinting(true);
             if (realPackets.get()) RealPackets.startSprint();
         }
@@ -79,7 +83,7 @@ public class Scaffold extends Module {
         boolean ok = tryPlace(below);
         if (!ok || "Expand".equals(m) || "Godbridge".equals(m)) {
             Vec3d look = mc.player.getRotationVector();
-            int n = "Expand".equals(m) ? (int) expand.get() : 1;
+            int n = "Expand".equals(m) ? expand.getInt() : 1;
             for (int i = 1; i <= Math.max(1, n); i++) {
                 BlockPos ahead = below.add((int) Math.round(look.x * i), 0, (int) Math.round(look.z * i));
                 if (tryPlace(ahead)) { ok = true; break; }
@@ -109,17 +113,21 @@ public class Scaffold extends Module {
     }
 
     private void aimAt(BlockPos neighbor, Direction face) {
-        Vec3d hit = Vec3d.ofCenter(neighbor).add(face.getOffsetX()*0.5, face.getOffsetY()*0.5, face.getOffsetZ()*0.5);
+        Vec3d hit = Vec3d.ofCenter(neighbor).add(face.getOffsetX() * 0.5, face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
         Vec3d eyes = mc.player.getEyePos();
         double dx = hit.x - eyes.x, dy = hit.y - eyes.y, dz = hit.z - eyes.z;
-        double horiz = Math.sqrt(dx*dx + dz*dz);
-        float yaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
-        float pitch = Math.max(-90f, Math.min(90f, (float)-Math.toDegrees(Math.atan2(dy, horiz))));
+        double horiz = Math.sqrt(dx * dx + dz * dz);
+        float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        float pitch = Math.max(-90f, Math.min(90f, (float) -Math.toDegrees(Math.atan2(dy, horiz))));
         if (Float.isNaN(savedPitch)) { savedPitch = mc.player.getPitch(); savedYaw = mc.player.getYaw(); }
-        if (silentRotate.get() && realPackets.get()) RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
-        else {
-            mc.player.setYaw(yaw); mc.player.setPitch(pitch);
-            if (realPackets.get()) RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
+        if (silentRotate.get() && realPackets.get()) {
+            RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
+        } else {
+            if (!silentRotate.get()) {
+                mc.player.setYaw(yaw);
+                mc.player.setPitch(pitch);
+            }
+            // movement packets from vanilla pipeline carry the look; extra packet only for silent mode
         }
     }
 
@@ -129,29 +137,35 @@ public class Scaffold extends Module {
             mc.player.setPitch(savedPitch);
             if (!Float.isNaN(savedYaw)) mc.player.setYaw(savedYaw);
         }
-        if (realPackets.get()) RealPackets.sendLook(Float.isNaN(savedYaw)?mc.player.getYaw():savedYaw, savedPitch, mc.player.isOnGround());
-        savedPitch = Float.NaN; savedYaw = Float.NaN;
+        savedPitch = Float.NaN;
+        savedYaw = Float.NaN;
     }
 
     private boolean placeAgainst(BlockPos neighbor, Direction face) {
         Hand hand = Hand.MAIN_HAND;
-        if (!(mc.player.getMainHandStack().getItem() instanceof BlockItem) && mc.player.getOffHandStack().getItem() instanceof BlockItem)
+        if (!(mc.player.getMainHandStack().getItem() instanceof BlockItem)
+                && mc.player.getOffHandStack().getItem() instanceof BlockItem)
             hand = Hand.OFF_HAND;
-        Vec3d hit = Vec3d.ofCenter(neighbor).add(face.getOffsetX()*0.5, face.getOffsetY()*0.5, face.getOffsetZ()*0.5);
+        Vec3d hit = Vec3d.ofCenter(neighbor).add(face.getOffsetX() * 0.5, face.getOffsetY() * 0.5, face.getOffsetZ() * 0.5);
         BlockHitResult bhr = new BlockHitResult(hit, face, neighbor, false);
         try {
             var result = mc.interactionManager.interactBlock(mc.player, hand, bhr);
             mc.player.swingHand(hand);
             return result != null && result.isAccepted();
         } catch (Exception e) {
-            try { mc.interactionManager.interactBlock(mc.player, hand, bhr); mc.player.swingHand(hand); return true; }
-            catch (Exception e2) { return false; }
+            try {
+                mc.interactionManager.interactBlock(mc.player, hand, bhr);
+                mc.player.swingHand(hand);
+                return true;
+            } catch (Exception e2) { return false; }
         }
     }
 
     private boolean holdingBlock() {
-        return mc.player.getMainHandStack().getItem() instanceof BlockItem || mc.player.getOffHandStack().getItem() instanceof BlockItem;
+        return mc.player.getMainHandStack().getItem() instanceof BlockItem
+                || mc.player.getOffHandStack().getItem() instanceof BlockItem;
     }
+
     private int findBlockSlot() {
         for (int i = 0; i < 9; i++) {
             ItemStack s = mc.player.getInventory().getStack(i);
@@ -159,17 +173,18 @@ public class Scaffold extends Module {
         }
         return -1;
     }
+
     private void switchSlot(int slot) {
-        if (prevSlot < 0) prevSlot = mc.player.getInventory().selectedSlot;
-        if (realPackets.get()) RealPackets.selectSlot(slot); else mc.player.getInventory().selectedSlot = slot;
+        if (prevSlot < 0) prevSlot = RealPackets.getSelectedSlot();
+        if (realPackets.get()) RealPackets.selectSlot(slot);
+        else { try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {} }
     }
+
     private void restoreSlot() {
         if (prevSlot >= 0 && mc.player != null) {
-            if (realPackets.get()) RealPackets.selectSlot(prevSlot); else mc.player.getInventory().selectedSlot = prevSlot;
+            if (realPackets.get()) RealPackets.selectSlot(prevSlot);
+            else { try { mc.player.getInventory().setSelectedSlot(prevSlot); } catch (Throwable ignored) {} }
         }
         prevSlot = -1;
-    }
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

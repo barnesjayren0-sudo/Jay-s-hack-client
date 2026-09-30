@@ -17,6 +17,7 @@ public class ReachHUD extends Module {
     @Override
     public void onTick() {
         if (mc.player == null) return;
+        setTag(String.format("%.2f", lastReach));
         if (mc.crosshairTarget != null && mc.crosshairTarget.getType() == HitResult.Type.ENTITY
                 && mc.crosshairTarget instanceof EntityHitResult ehr) {
             double dist = mc.player.getEyePos().distanceTo(ehr.getPos());

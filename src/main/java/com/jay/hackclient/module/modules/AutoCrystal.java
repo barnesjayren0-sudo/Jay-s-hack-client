@@ -17,7 +17,7 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
-/** AutoCrystal — place + break. Real attack/slot/look packets. */
+/** AutoCrystal — place + break crystals. Real attack/slot/look packets, restores slot. */
 public class AutoCrystal extends Module {
 
     public final NumberSetting range = new NumberSetting("Range", "Crystal range", 4.5, 2.0, 6.0, 0.1);
@@ -39,11 +39,16 @@ public class AutoCrystal extends Module {
     }
 
     @Override public void onDisable() {
+        restoreSlot();
+        setTag(null);
+    }
+
+    private void restoreSlot() {
         if (restoreSlot >= 0 && mc.player != null) {
             if (realPackets.get()) RealPackets.selectSlot(restoreSlot);
-            else mc.player.getInventory().selectedSlot = restoreSlot;
+            else { try { mc.player.getInventory().setSelectedSlot(restoreSlot); } catch (Throwable ignored) {} }
         }
-        restoreSlot = -1; setTag(null);
+        restoreSlot = -1;
     }
 
     @Override
@@ -53,10 +58,12 @@ public class AutoCrystal extends Module {
 
         EndCrystalEntity crystal = bestCrystal();
         if (crystal != null && now - lastBreak >= breakDelay.get()) {
-            if (rotate.get()) lookAt(crystal.getPos().add(0, 0.5, 0));
+            if (rotate.get()) lookAt(new Vec3d(crystal.getX(), crystal.getY(), crystal.getZ()).add(0, 0.5, 0));
             if (realPackets.get()) RealPackets.attackEntity(crystal);
             else { mc.interactionManager.attackEntity(mc.player, crystal); mc.player.swingHand(Hand.MAIN_HAND); }
-            lastBreak = now; setTag("break"); return;
+            lastBreak = now;
+            setTag("break");
+            return;
         }
         if (breakOnly.get()) return;
         if (now - lastPlace < placeDelay.get()) return;
@@ -69,29 +76,31 @@ public class AutoCrystal extends Module {
         BlockPos best = bestPlacePos(target);
         if (best == null) { setTag(target.getName().getString()); return; }
 
-        int prev = mc.player.getInventory().selectedSlot;
+        int prev = RealPackets.getSelectedSlot();
         if (autoSwitch.get() && slot != prev) {
             restoreSlot = prev;
             if (realPackets.get()) RealPackets.selectSlot(slot);
-            else mc.player.getInventory().selectedSlot = slot;
+            else { try { mc.player.getInventory().setSelectedSlot(slot); } catch (Throwable ignored) {} }
         }
         if (rotate.get()) lookAt(Vec3d.ofCenter(best).add(0, 1, 0));
         BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(best).add(0, 0.5, 0), Direction.UP, best, false);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
         mc.player.swingHand(Hand.MAIN_HAND);
-        lastPlace = now; setTag("place");
+        lastPlace = now;
+        setTag("place");
     }
 
     private void lookAt(Vec3d pos) {
         Vec3d eyes = mc.player.getEyePos();
         double dx = pos.x - eyes.x, dy = pos.y - eyes.y, dz = pos.z - eyes.z;
-        double h = Math.sqrt(dx*dx + dz*dz);
-        float yaw = (float)(MathHelper.atan2(dz, dx)*(180.0/Math.PI)) - 90f;
-        float pitch = MathHelper.clamp((float)-(MathHelper.atan2(dy, h)*(180.0/Math.PI)), -90f, 90f);
-        if (silent.get() && realPackets.get()) RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
-        else {
-            mc.player.setYaw(yaw); mc.player.setPitch(pitch);
-            if (realPackets.get()) RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
+        double h = Math.sqrt(dx * dx + dz * dz);
+        float yaw = (float) (MathHelper.atan2(dz, dx) * (180.0 / Math.PI)) - 90f;
+        float pitch = MathHelper.clamp((float) -(MathHelper.atan2(dy, h) * (180.0 / Math.PI)), -90f, 90f);
+        if (silent.get() && realPackets.get()) {
+            RealPackets.sendLook(yaw, pitch, mc.player.isOnGround());
+        } else {
+            mc.player.setYaw(yaw);
+            mc.player.setPitch(pitch);
         }
     }
 
@@ -101,13 +110,14 @@ public class AutoCrystal extends Module {
             base.down(), base.north(), base.south(), base.east(), base.west(),
             base.north().down(), base.south().down(), base.east().down(), base.west().down()
         };
-        BlockPos best = null; double bestScore = -1;
+        BlockPos best = null;
+        double bestScore = -1;
         for (BlockPos floor : candidates) {
             if (!canPlaceCrystal(floor)) continue;
-            double dist = mc.player.squaredDistanceTo(floor.getX()+0.5, floor.getY()+1, floor.getZ()+0.5);
-            if (dist > range.get()*range.get()) continue;
-            double enemyDist = target.squaredDistanceTo(floor.getX()+0.5, floor.getY()+1, floor.getZ()+0.5);
-            double score = 100.0/(1.0+enemyDist) - dist*0.05;
+            double dist = mc.player.squaredDistanceTo(floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5);
+            if (dist > range.get() * range.get()) continue;
+            double enemyDist = target.squaredDistanceTo(floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5);
+            double score = 100.0 / (1.0 + enemyDist) - dist * 0.05;
             if (score > bestScore) { bestScore = score; best = floor; }
         }
         return best;
@@ -120,20 +130,23 @@ public class AutoCrystal extends Module {
     }
 
     private EndCrystalEntity bestCrystal() {
-        EndCrystalEntity best = null; double bestD = range.get();
+        EndCrystalEntity best = null;
+        double bestD = range.get();
         PlayerEntity enemy = nearestEnemy();
         for (Entity e : mc.world.getEntities()) {
             if (!(e instanceof EndCrystalEntity c)) continue;
             double d = mc.player.distanceTo(c);
             if (d > bestD) continue;
             if (enemy != null && c.distanceTo(enemy) > 6) continue;
-            bestD = d; best = c;
+            bestD = d;
+            best = c;
         }
         return best;
     }
 
     private PlayerEntity nearestEnemy() {
-        PlayerEntity best = null; double bestD = range.get() + 2.0;
+        PlayerEntity best = null;
+        double bestD = range.get() + 2.0;
         for (PlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive()) continue;
             try { if (JayHackClient.friendManager != null && JayHackClient.friendManager.isFriend(p.getName().getString())) continue; } catch (Throwable ignored) {}
@@ -148,9 +161,5 @@ public class AutoCrystal extends Module {
         for (int i = 0; i < 9; i++)
             if (mc.player.getInventory().getStack(i).isOf(Items.END_CRYSTAL)) return i;
         return -1;
-    }
-
-    private void setTag(String t) {
-        try { var f = Module.class.getDeclaredField("tag"); f.setAccessible(true); f.set(this, t); } catch (Throwable ignored) {}
     }
 }

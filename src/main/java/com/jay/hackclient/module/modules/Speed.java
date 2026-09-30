@@ -149,8 +149,9 @@ public class Speed extends Module {
 
     private boolean isMoving() {
         try {
-            return mc.player.input != null
-                    && (mc.player.input.movementForward != 0 || mc.player.input.movementSideways != 0);
+            return mc.player.input != null && mc.player.input.playerInput != null
+                    && (mc.player.input.playerInput.forward() || mc.player.input.playerInput.backward()
+                        || mc.player.input.playerInput.left() || mc.player.input.playerInput.right());
         } catch (Throwable t) {
             return mc.options.forwardKey.isPressed() || mc.options.backKey.isPressed()
                     || mc.options.leftKey.isPressed() || mc.options.rightKey.isPressed();
@@ -163,8 +164,9 @@ public class Speed extends Module {
         float yaw = mc.player.getYaw();
         float forward, side;
         try {
-            forward = mc.player.input.movementForward;
-            side = mc.player.input.movementSideways;
+            var pi = mc.player.input.playerInput;
+            forward = (pi.forward() ? 1f : 0f) - (pi.backward() ? 1f : 0f);
+            side = (pi.left() ? 1f : 0f) - (pi.right() ? 1f : 0f);
         } catch (Throwable t) { return; }
         if (forward == 0 && side == 0) return;
         float angle = yaw;
@@ -181,8 +183,9 @@ public class Speed extends Module {
         float yaw = mc.player.getYaw();
         float forward, side;
         try {
-            forward = mc.player.input.movementForward;
-            side = mc.player.input.movementSideways;
+            var pi = mc.player.input.playerInput;
+            forward = (pi.forward() ? 1f : 0f) - (pi.backward() ? 1f : 0f);
+            side = (pi.left() ? 1f : 0f) - (pi.right() ? 1f : 0f);
         } catch (Throwable t) { return; }
         if (forward == 0 && side == 0) return;
         double rad = Math.toRadians(yaw);

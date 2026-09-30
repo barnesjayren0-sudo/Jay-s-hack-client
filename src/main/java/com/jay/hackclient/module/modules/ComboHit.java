@@ -45,7 +45,6 @@ public class ComboHit extends Module {
             if (Criticals.isActive() || CritAssist.canAttackNow(self)) {
                 return CritAssist.canAttackNow(self) || self.getAttackCooldownProgress(0.5f) >= 0.95f;
             }
-            // CritAssist off: still prefer full cooldown grounded hits
             return self.isOnGround() && self.getAttackCooldownProgress(0.5f) >= 0.92f;
         }
 

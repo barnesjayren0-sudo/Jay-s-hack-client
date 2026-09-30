@@ -8,7 +8,7 @@ import java.awt.Color;
 
 /**
  * Premium drawing helpers — rounded rects, glow, gradients, health bars.
- * Style inspired by Prestige / Grave / Elusive Ghost clients.
+ * Accent is mutable via setAccent (driven by GuiColors picker); no final fields written elsewhere.
  */
 public final class RenderUtil {
 
@@ -49,14 +49,21 @@ public final class RenderUtil {
         }
     }
 
-    /** Accent purple matching the reference screenshot */
-    public static final int ACCENT = 0xFF9B6BFF;
-    public static final int ACCENT_DARK = 0xFF6B3FA0;
+    /** Accent (mutable — synced from GuiColors.setAccent). */
+    public static int ACCENT = 0xFF9B6BFF;
+    public static int ACCENT_DARK = 0xFF6B3FA0;
     public static final int BG_DARK = 0xE6121218;
     public static final int BG_PANEL = 0xF00E0E14;
     public static final int TEXT_WHITE = 0xFFFFFFFF;
     public static final int TEXT_DIM = 0xFFAAAAAA;
     public static final int BORDER = 0x40FFFFFF;
+
+    /** Called by GuiColors when the accent picker changes. */
+    public static void setAccent(int accentArgb) {
+        ACCENT = accentArgb;
+        int r = (accentArgb >> 16) & 0xFF, g = (accentArgb >> 8) & 0xFF, b = accentArgb & 0xFF;
+        ACCENT_DARK = rgba(Math.max(0, r - 60), Math.max(0, g - 60), Math.max(0, b - 60), 255);
+    }
 
     public static void drawRoundedRect(DrawContext ctx, float x, float y, float w, float h, float radius, int color) {
         int ix = (int) x, iy = (int) y, iw = (int) w, ih = (int) h;

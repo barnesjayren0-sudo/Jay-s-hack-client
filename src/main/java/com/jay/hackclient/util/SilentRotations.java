@@ -19,7 +19,7 @@ public final class SilentRotations {
 
         Vec3d eyes = mc.player.getEyePos();
         double body = 0.82 + MathUtil.randomDouble(-0.05, 0.05);
-        Vec3d pos = target.getEntityPos().add(
+        Vec3d pos = new Vec3d(target.getX(), target.getY(), target.getZ()).add(
                 Humanizer.aimJitter() * 0.015,
                 target.getHeight() * body,
                 Humanizer.aimJitter() * 0.015
