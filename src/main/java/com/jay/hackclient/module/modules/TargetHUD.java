@@ -15,8 +15,8 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 
 /**
- * Premium TargetHUD — Ghost-client tier.
- * Style reference: Prestige / Grave / Elusive / Vape + user purple screenshot.
+ * Premium TargetHUD panel.
+ * Style reference: Vape-style dark minimal target info.
  *
  * Features:
  *  - Smooth scale + alpha open/close (EaseOutBack)

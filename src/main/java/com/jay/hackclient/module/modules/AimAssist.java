@@ -26,6 +26,9 @@ public class AimAssist extends Module {
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Send vanilla look packets", true);
     public final BoolSetting respectPause = new BoolSetting("Respect Pause", "Honor CombatManager pauses", true);
 
+    private long lastSilentLook;
+    private float lastSilentYaw, lastSilentPitch;
+
     public AimAssist() {
         super("AimAssist", "Smooth / silent aim assist", Category.COMBAT);
         addSetting(mode); addSetting(range); addSetting(fov); addSetting(speed);
@@ -33,8 +36,17 @@ public class AimAssist extends Module {
     }
 
     @Override
+    public void onDisable() {
+        lastSilentLook = 0;
+        lastSilentYaw = 0;
+        lastSilentPitch = 0;
+        setTag(null);
+    }
+
+    @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
+        try { if (respectPause.get() && !CombatManager.canRotate()) { setTag(null); return; } } catch (Throwable ignored) {}
         if (weaponsOnly.get()) {
             String n = mc.player.getMainHandStack().getItem().toString().toLowerCase();
             if (!n.contains("sword") && !n.contains("axe") && !n.contains("mace")) { setTag(null); return; }
@@ -51,7 +63,17 @@ public class AimAssist extends Module {
         float[] ang = anglesTo(target);
         if (ang == null) return;
         if ("Silent".equals(mode.get())) {
-            if (realPackets.get()) RealPackets.sendLook(ang[0], ang[1], mc.player.isOnGround());
+            // Throttle + deadzone: only re-send the look when the aim moved meaningfully
+            long now = System.currentTimeMillis();
+            float dYaw = Math.abs(MathHelper.wrapDegrees(ang[0] - lastSilentYaw));
+            float dPitch = Math.abs(ang[1] - lastSilentPitch);
+            boolean moved = dYaw > 1.5f || dPitch > 1.0f;
+            if (realPackets.get() && moved && now - lastSilentLook >= 55) {
+                RealPackets.sendLook(ang[0] + Humanizer.aimJitter(), ang[1] + Humanizer.aimJitter() * 0.5f, mc.player.isOnGround());
+                lastSilentLook = now;
+                lastSilentYaw = ang[0];
+                lastSilentPitch = ang[1];
+            }
             return;
         }
         float smooth = Humanizer.aimSmooth("Snap".equals(mode.get()) ? 1.0f : (float) speed.get());

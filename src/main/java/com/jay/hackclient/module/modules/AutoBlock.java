@@ -1,5 +1,6 @@
 package com.jay.hackclient.module.modules;
 
+import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
@@ -40,6 +41,10 @@ public class AutoBlock extends Module {
         for (PlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive()) continue;
             try { if (AntiBot.isBot(p)) continue; } catch (Throwable ignored) {}
+            try {
+                if (JayHackClient.friendManager != null
+                        && JayHackClient.friendManager.isFriend(p.getName().getString())) continue;
+            } catch (Throwable ignored) {}
             if (mc.player.distanceTo(p) <= range.get()) { threat = true; break; }
         }
         if (!threat) { setTag(null); return; }

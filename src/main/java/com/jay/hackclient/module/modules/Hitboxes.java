@@ -6,7 +6,7 @@ import com.jay.hackclient.module.setting.NumberSetting;
 /** Hitboxes — expand entity hitboxes; consumed by EntityMixin via isActive()/getExpand()/setExpand(). */
 public class Hitboxes extends Module {
     private static double expand = 0.1;
-    public final NumberSetting size = new NumberSetting("Expand", "Box expand", 0.1, 0.0, 1.0, 0.05);
+    public final NumberSetting size = new NumberSetting("Expand", "Box expand", 0.1, 0.0, 0.55, 0.05);
 
     public Hitboxes() {
         super("Hitboxes", "Expand entity hitboxes", Category.COMBAT);
@@ -28,7 +28,7 @@ public class Hitboxes extends Module {
     }
 
     public static void setExpand(double v) {
-        expand = Math.max(0, Math.min(1.0, v));
+        expand = Math.max(0, Math.min(0.55, v)); // hard cap keeps aim assist plausible
         try {
             Module m = com.jay.hackclient.JayHackClient.moduleManager.getModuleByName("Hitboxes");
             if (m instanceof Hitboxes h) h.size.set(expand);

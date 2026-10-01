@@ -64,7 +64,7 @@ public final class RotationSystem {
         return angleTo(target) <= fov * 0.5f;
     }
 
-    public static void applyGhostCaps() {
+    public static void applyLegitCaps() {
         // Ensure settings never go blatant by accident
         if (ClientSettings.aimMaxStep > 5.5f) ClientSettings.aimMaxStep = 5.5f;
         if (ClientSettings.aimSmooth > 0.35f) ClientSettings.aimSmooth = 0.35f;

@@ -2,7 +2,7 @@ package com.jay.hackclient.util;
 
 /**
  * Premium animation system used by GUI + TargetHUD.
- * Ease curves match paid Ghost clients (Prestige / Grave / Elusive style).
+ * Ease curves tuned for a smooth premium client feel.
  */
 public final class Animation {
 

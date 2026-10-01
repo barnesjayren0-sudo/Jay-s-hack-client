@@ -17,8 +17,10 @@ import net.minecraft.util.hit.HitResult;
 public class TriggerBot extends Module {
 
     public final NumberSetting minCooldown = new NumberSetting("Cooldown", "Min attack cooldown 0-1", 0.9, 0.5, 1.0, 0.05);
+    public final NumberSetting hitChance = new NumberSetting("Hit Chance", "Percent of valid crosshair hits taken", 92, 40, 100, 1);
     public final BoolSetting playersOnly = new BoolSetting("Players Only", "Only players", true);
     public final BoolSetting weaponOnly = new BoolSetting("Weapons Only", "Sword/axe/mace only", true);
+    public final BoolSetting visibleOnly = new BoolSetting("Visible Only", "Skip targets without line of sight", true);
     public final BoolSetting comboHit = new BoolSetting("Combo Hit", "Respect ComboHit gate", true);
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Vanilla attack packets", true);
 
@@ -27,8 +29,8 @@ public class TriggerBot extends Module {
 
     public TriggerBot() {
         super("TriggerBot", "Hit when crosshair is on target", Category.COMBAT);
-        addSetting(minCooldown); addSetting(playersOnly); addSetting(weaponOnly);
-        addSetting(comboHit); addSetting(realPackets);
+        addSetting(minCooldown); addSetting(hitChance); addSetting(playersOnly); addSetting(weaponOnly);
+        addSetting(visibleOnly); addSetting(comboHit); addSetting(realPackets);
     }
 
     @Override
@@ -53,14 +55,18 @@ public class TriggerBot extends Module {
                         && JayHackClient.friendManager.isFriend(player.getName().getString())) return;
             } catch (Throwable ignored) {}
         }
+        if (visibleOnly.get() && !mc.player.canSee(entity)) return;
         if (comboHit.get() && entity instanceof PlayerEntity p
                 && !ComboHit.shouldAttack(mc.player, p)) return;
         if (mc.player.getAttackCooldownProgress(0.5f) < minCooldown.getFloat()) return;
         long now = System.currentTimeMillis();
         if (now - lastAttack < nextDelay) return;
         try {
-            if (Humanizer.shouldMiss()) {
-                lastAttack = now; nextDelay = 80 + (int) (Math.random() * 40); return;
+            // Humanized miss chance — occasionally holding fire reads as natural
+            if (Humanizer.chance(100 - hitChance.getInt()) || Humanizer.shouldMiss()) {
+                lastAttack = now;
+                nextDelay = Humanizer.delay(140, 45, 70, 320);
+                return;
             }
         } catch (Throwable ignored) {}
         if (realPackets.get()) {
@@ -72,7 +78,7 @@ public class TriggerBot extends Module {
         try { CombatManager.onAttack(); } catch (Throwable ignored) {}
         try { ReachHUD.recordHit(mc.player.distanceTo(entity)); } catch (Throwable ignored) {}
         lastAttack = now;
-        nextDelay = 80 + (int) (Math.random() * 50);
+        nextDelay = Humanizer.combatDelay();
         setTag(String.format("%.1f", mc.player.distanceTo(entity)));
     }
 }

@@ -162,7 +162,7 @@ public class ModuleManager {
         }
         if (frozen) return;
 
-        try { RotationSystem.applyGhostCaps(); } catch (Throwable ignored) {}
+        try { RotationSystem.applyLegitCaps(); } catch (Throwable ignored) {}
         try { CombatManager.tick(); } catch (Throwable ignored) {}
 
         pollKeybinds();

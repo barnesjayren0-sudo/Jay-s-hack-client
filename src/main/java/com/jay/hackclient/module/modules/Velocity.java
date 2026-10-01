@@ -13,9 +13,9 @@ public class Velocity extends Module {
     private String lastMode = "";
 
     public final ModeSetting mode = new ModeSetting("Mode", "Preset", "Soft", "Soft", "Medium", "Strong", "Custom", "JumpReset");
-    public final NumberSetting horizontal = new NumberSetting("Horizontal", "Keep fraction", 0.68, 0.0, 1.0, 0.01);
+    public final NumberSetting horizontal = new NumberSetting("Horizontal", "Keep fraction", 0.85, 0.0, 1.0, 0.01);
     public final NumberSetting vertical = new NumberSetting("Vertical", "Y keep", 1.0, 0.0, 1.0, 0.05);
-    public final NumberSetting chance = new NumberSetting("Chance", "% packets to modify", 90, 10, 100, 5);
+    public final NumberSetting chance = new NumberSetting("Chance", "% packets to modify", 75, 10, 100, 5);
 
     public Velocity() {
         super("Velocity", "Knockback reduction (ghost)", Category.COMBAT);
@@ -47,8 +47,11 @@ public class Velocity extends Module {
     public static double horizontalFactor() {
         Velocity v = instance();
         if (v == null) return 1.0;
+        // Never fully cancel KB on every hit in legit presets — chance gates it
         if (Math.random() * 100 > v.chance.get()) return 1.0;
-        return Math.max(0.0, v.horizontal.get());
+        double keep = Math.max(0.25, v.horizontal.get()); // hard floor so KB is never zeroed
+        if (keep > 0.9) return Math.max(keep, 0.92 + Math.random() * 0.06); // natural variance
+        return keep;
     }
 
     public static double verticalFactor() {

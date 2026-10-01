@@ -6,7 +6,7 @@ import net.minecraft.client.gui.DrawContext;
 
 /**
  * Premium visual theme for JAY CLIENT ClickGUI + HUD.
- * Reference: paid Ghost clients (Prestige, Grave, Elusive) + user purple screenshot.
+ * Reference: minimal dark premium clients + user purple screenshot.
  *
  * Accent = soft purple (#9B6BFF)
  * Background = near-black with blue undertone

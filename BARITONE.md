@@ -1,6 +1,6 @@
 # JayBaritone (v1.18.0)
 
-Jay's Hack Client does **not** re-ship Baritone source (LGPL).  
+Jay Utility Client does **not** re-ship Baritone source (LGPL).  
 It drives **official Baritone** at runtime when the jar is in `mods/`.
 
 ## Install (1.21.11)

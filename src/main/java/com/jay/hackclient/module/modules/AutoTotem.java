@@ -3,6 +3,7 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.MathUtil;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -33,7 +34,8 @@ public class AutoTotem extends Module {
         if (slot < 0) { setTag("none"); return; }
         int screenSlot = slot < 9 ? slot + 36 : slot;
         mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, screenSlot, 40, SlotActionType.SWAP, mc.player);
-        cooldown = 3;
+        // Human-like recovery between swaps (2-4 ticks) instead of a fixed 3
+        cooldown = MathUtil.randomDelay(2, 4);
         setTag("swap");
     }
 }

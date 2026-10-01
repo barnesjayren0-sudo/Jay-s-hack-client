@@ -4,6 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.RealPackets;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.EntityHitResult;
@@ -36,7 +37,8 @@ public class SprintReset extends Module {
         if (!newSwing) return;
         if (!(mc.crosshairTarget instanceof EntityHitResult ehr)) return;
         if (!(ehr.getEntity() instanceof PlayerEntity)) return;
-        until = now + (long) holdMs.get();
+        // Jittered hold window per tap
+        until = now + Humanizer.delay((int) holdMs.get(), 18, 40, 220);
         active = true;
         applyHold();
     }

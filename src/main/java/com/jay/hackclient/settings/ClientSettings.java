@@ -15,7 +15,7 @@ public final class ClientSettings {
     public static String aimMode = "classic";
     public static String targetPriority = "crosshair";
 
-    // Ghost defaults — tight FOV, slow smooth, near-vanilla reach
+    // Legit defaults — tight FOV, slow smooth, near-vanilla reach
     public static double aimRange = 3.85;
     public static float aimFov = 48f;
     public static float aimSmooth = 0.12f;

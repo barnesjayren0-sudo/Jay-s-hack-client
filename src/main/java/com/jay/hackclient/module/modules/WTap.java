@@ -3,6 +3,7 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.Humanizer;
 import com.jay.hackclient.util.RealPackets;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.EntityHitResult;
@@ -51,7 +52,9 @@ public class WTap extends Module {
         if (!(mc.crosshairTarget instanceof EntityHitResult ehr)) return;
         if (!(ehr.getEntity() instanceof PlayerEntity p) || p == mc.player) return;
         if (!mc.options.forwardKey.isPressed()) return;
-        resetUntil = now + (long) holdMs.get();
+        // Humanized hold window — jittered per tap so resets never look metronome-regular
+        long hold = Humanizer.delay((int) holdMs.get(), 18, 40, 220);
+        resetUntil = now + hold;
         mc.options.forwardKey.setPressed(false);
         mc.player.setSprinting(false);
         if (realPackets.get()) RealPackets.stopSprint();

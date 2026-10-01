@@ -8,16 +8,21 @@ import com.jay.hackclient.util.RealPackets;
 /** Fly — Velocity / Creative / Packet modes. Public setTag, throttled packet sync. */
 public class Fly extends Module {
     public final ModeSetting mode = new ModeSetting("Mode", "Fly style", "Velocity", "Velocity", "Creative", "Packet");
-    public final NumberSetting speed = new NumberSetting("Speed", "Fly speed", 1.0, 0.2, 5.0, 0.1);
-    public final NumberSetting vertical = new NumberSetting("Vertical", "Up/down speed", 0.6, 0.1, 3.0, 0.1);
+    public final NumberSetting speed = new NumberSetting("Speed", "Fly speed", 0.8, 0.2, 5.0, 0.1);
+    public final NumberSetting vertical = new NumberSetting("Vertical", "Up/down speed", 0.5, 0.1, 3.0, 0.1);
+    private long lastGroundPacket;
 
     public Fly() {
-        super("Fly", "Velocity / creative / packet fly", Category.MOVEMENT);
+        super("Fly", "Velocity / creative / packet flight (easily server-flagged)", Category.MOVEMENT);
         addSetting(mode); addSetting(speed); addSetting(vertical);
     }
 
     @Override public void onEnable() {
-        if (mc.player != null && "Creative".equals(mode.get())) mc.player.getAbilities().flying = true;
+        if (mc.player == null) { setEnabled(false); return; }
+        lastGroundPacket = 0;
+        // Let the server see the take-off position before we start floating
+        try { RealPackets.syncPosition(); } catch (Throwable ignored) {}
+        if ("Creative".equals(mode.get())) mc.player.getAbilities().flying = true;
     }
 
     @Override public void onDisable() {
@@ -40,7 +45,11 @@ public class Fly extends Module {
             }
             case "Packet" -> {
                 tickVelocity();
-                RealPackets.sendOnGround(false);
+                long now = System.currentTimeMillis();
+                if (now - lastGroundPacket >= 55) { // throttle: never every tick
+                    lastGroundPacket = now;
+                    RealPackets.sendOnGround(false);
+                }
             }
             default -> tickVelocity();
         }
