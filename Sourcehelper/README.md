@@ -2,34 +2,32 @@
 
 Reference source archives for Jay Utility Client development.
 
+## Downloads
+
+### Respect Client Src.rar
+
+**Download (MediaFire):**  
+https://www.mediafire.com/file/v1a6s8bj7cc2zqa/Respect+Client+Src.rar/file
+
+> Full Respect Client source (~126 MB). Hosted externally because it exceeds GitHub’s 100 MB file limit.
+
+### CyemerSourceCode1.21.11.rar
+
+Add this file to `Sourcehelper/` via local git when you have it (binary is under 100 MB and can live in the repo).
+
 ## Intended contents
 
 | File | Notes |
 |------|--------|
 | `CyemerSourceCode1.21.11.rar` | Cyemer Fabric 1.21.11 source archive (~228 KB) |
-| `Respect Client Src.rar` | Respect Client full source (~126 MB) |
-
-## Downloads
-
-### Respect Client Src
-
-Hosted externally (over GitHub’s 100 MB limit):
-
-**MediaFire:** https://www.mediafire.com/file/v1a6s8bj7cc2zqa/Respect+Client+Src.rar/file
-
-Direct-style link (same file):
-https://www.mediafire.com/file/v1a6s8bj7cc2zqa/Respect+Client+Src.rar/file
-
-### Cyemer
-
-Add `CyemerSourceCode1.21.11.rar` to this folder via local git when available (binary under 100 MB).
+| `Respect Client Src.rar` | [MediaFire download](https://www.mediafire.com/file/v1a6s8bj7cc2zqa/Respect+Client+Src.rar/file) (~126 MB) |
 
 ## Upload status
 
-- **Cyemer**: add via local git (binary) if not present — GitHub API from some environments cannot safely push large binaries.
-- **Respect Client Src.rar**: **not stored in this repo** (over 100 MB). Download from the MediaFire link above, or use [Git LFS](https://git-lfs.github.com/) if you prefer to keep a copy in git.
+- **Cyemer** — optional in-repo binary; push with normal `git add` / `git commit` / `git push`.
+- **Respect Client Src.rar** — **not stored in this repo**. Use the MediaFire link above, or Git LFS if you want a copy tracked in git.
 
-## Local upload (optional)
+## Local upload (Cyemer only)
 
 ```bash
 cd Jay-s-hack-client
