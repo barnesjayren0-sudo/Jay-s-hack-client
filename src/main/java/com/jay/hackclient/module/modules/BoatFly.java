@@ -14,8 +14,18 @@ public class BoatFly extends Module {
 
     public BoatFly() { super("BoatFly", "Fly with boat", Category.MOVEMENT); addSetting(speed); addSetting(vertical); addSetting(realPackets); }
 
+    @Override public void onDisable() {
+        // Never leave a boat rocketing on after the module goes off
+        try {
+            if (mc.player != null && mc.player.getVehicle() instanceof BoatEntity boat) {
+                boat.setVelocity(0, boat.getVelocity().y * 0.3, 0);
+            }
+        } catch (Throwable ignored) {}
+        setTag(null);
+    }
+
     @Override public void onTick() {
-        if (mc.player == null) return;
+        if (mc.player == null || mc.world == null) return;
         if (!(mc.player.getVehicle() instanceof BoatEntity boat)) { setTag(null); return; }
         setTag("boat");
         double sp = speed.get() * 0.5, vy = 0;

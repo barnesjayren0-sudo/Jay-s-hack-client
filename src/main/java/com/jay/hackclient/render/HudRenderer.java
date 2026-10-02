@@ -184,6 +184,16 @@ public final class HudRenderer {
             context.fill(x - 3, y - 1, baseRight, y + 10, (int) (0x66 * s) << 24 | 0x0D0D11);
             context.fill(baseRight - 2, y - 1, baseRight, y + 10, rowAccent);
             context.drawTextWithShadow(mc.textRenderer, label, x, y, 0xE8E8F0);
+            // live tag (target distance, mode, state…) pinned to the row's right edge
+            String tag = m.getTag();
+            if (tag != null && !tag.isEmpty()) {
+                int tw = mc.textRenderer.getWidth(tag);
+                int tx = baseRight - tw - 4;
+                if (tx > x + textW + 4) {
+                    context.drawTextWithShadow(mc.textRenderer, tag, tx, y,
+                            (int) (0xFF000000L | (accent & 0xFFFFFF)));
+                }
+            }
             y += 11;
             shown++;
         }

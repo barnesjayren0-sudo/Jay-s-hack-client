@@ -36,6 +36,7 @@ public class TriggerBot extends Module {
     @Override
     public void onTick() {
         if (mc.player == null || mc.world == null) return;
+        try { if (!CombatManager.canCombatModulesRun()) { setTag(null); return; } } catch (Throwable ignored) {}
         if (mc.player.isUsingItem()) return;
         if (weaponOnly.get()) {
             String n = mc.player.getMainHandStack().getItem().toString().toLowerCase();

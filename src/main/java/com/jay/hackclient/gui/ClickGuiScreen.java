@@ -51,6 +51,8 @@ public class ClickGuiScreen extends Screen {
     private static final int SETTING_H = 13;
     private static final int MAX_ROWS = 12;
     private static final long HOLD_MS = 450;
+    private static final int CFG_W = 138;   // config window width
+    private static final int CFG_ROW = 13;  // config window row height
 
     // preset swatches (mirrors GuiColors.applyPreset)
     private static final String[] PRESET_NAMES = {
@@ -96,6 +98,16 @@ public class ClickGuiScreen extends Screen {
     private int searchBoxX, searchBoxY, searchBoxW, searchBoxH;
     private int accentX = -1;
     private int stripY = -1;
+    private int cfgBtnX = -1;
+
+    // config window (draggable, always on top)
+    private boolean configOpen;
+    private int cfgX, cfgY;
+    private boolean cfgDrag;
+    private double cfgOx, cfgOy;
+    private int cfgAccentY, cfgScaleX, cfgScaleY, cfgScaleW;
+    private int cfgResetX, cfgResetY, cfgResetW, cfgResetH;
+    private boolean cfgScaleGrab;
 
     public ClickGuiScreen() {
         super(Text.literal("Jay Client"));
@@ -143,6 +155,9 @@ public class ClickGuiScreen extends Screen {
             out.add(m);
         }
         out.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+        // Favourites float to the top of every panel so pinned modules stay reachable.
+        out.sort((a, b) -> Boolean.compare(
+                ClientSettings.isFavorite(b.getName()), ClientSettings.isFavorite(a.getName())));
         return out;
     }
 
@@ -274,6 +289,7 @@ public class ClickGuiScreen extends Screen {
         drawSidebar(ctx, mx, my);
         drawTopBar(ctx, mx, my);
         if (presetStripOpen) drawPresetStrip(ctx, mx, my);
+        drawConfigWindow(ctx, mx, my);
 
         if (bindingMode && bindingModule != null) {
             String msg = "Press a key to bind " + bindingModule.getName() + "  (ESC cancels)";
@@ -326,6 +342,17 @@ public class ClickGuiScreen extends Screen {
         String shown = searchFocused ? search + "§d|" : (search.isEmpty() ? "§8search…" : search);
         ctx.drawTextWithShadow(textRenderer, shown, sbX + 4, y + 5, VapeTheme.TEXT());
 
+        // live match count while searching, so it is obvious the filter is applied
+        if (!search.isEmpty() && JayHackClient.moduleManager != null) {
+            int hits = 0;
+            for (Module m : JayHackClient.moduleManager.getModules()) {
+                if (m.getSearchBlob().contains(search.toLowerCase(Locale.ROOT).trim())) hits++;
+            }
+            String hc = hits + "§8/§7" + JayHackClient.moduleManager.getModules().size();
+            ctx.drawTextWithShadow(textRenderer, hc, sbX - textRenderer.getWidth(hc) - 4, y + 5,
+                    hits > 0 ? VapeTheme.ACCENT() : 0xFFFF5555);
+        }
+
         // accent swatch (opens preset strip)
         accentX = sbX - 16;
         boolean swHover = mx >= accentX && mx <= accentX + 12 && my >= y + 3 && my <= y + barH - 3;
@@ -335,6 +362,125 @@ public class ClickGuiScreen extends Screen {
             RenderUtil.drawRect(ctx, accentX, y + 3, 12, 1, VapeTheme.ACCENT());
             RenderUtil.drawRect(ctx, accentX, y + barH - 4, 12, 1, VapeTheme.ACCENT());
         }
+
+        // gear button — opens the config window
+        cfgBtnX = accentX - 16;
+        boolean gearHover = mx >= cfgBtnX && mx <= cfgBtnX + 12 && my >= y + 3 && my <= y + barH - 3;
+        RenderUtil.drawRect(ctx, cfgBtnX, y + 3, 12, barH - 6,
+                gearHover || configOpen ? RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.28f) : VapeTheme.BG_MODULE);
+        ctx.drawTextWithShadow(textRenderer, configOpen ? "▣" : "⚙", cfgBtnX + 3, y + 5,
+                configOpen ? VapeTheme.ACCENT() : VapeTheme.TEXT_DIM());
+    }
+
+    // --------------------------------------------------------- config window
+
+    private int cfgHeight() {
+        // header + info block + accent chips + scale slider + reset button + hint
+        return HEADER_H + 3 * CFG_ROW + 8 + CFG_ROW + CFG_ROW + CFG_ROW + 6;
+    }
+
+    private boolean insideConfig(double mx, double my) {
+        return configOpen
+                && mx >= cfgX && mx <= cfgX + CFG_W
+                && my >= cfgY && my <= cfgY + cfgHeight();
+    }
+
+    private void drawConfigWindow(DrawContext ctx, int mx, int my) {
+        if (!configOpen) return;
+        int x = cfgX, y = cfgY;
+        int w = CFG_W;
+        int h = cfgHeight();
+        boolean hover = insideConfig(mx, my);
+
+        RenderUtil.drawRoundedRect(ctx, x + 2, y + 2, w, h, 4f, RenderUtil.withAlpha(0x000000, 0.5f));
+        RenderUtil.drawRoundedRect(ctx, x, y, w, h, 4f, VapeTheme.BG_PANEL);
+        RenderUtil.drawRect(ctx, x + 2, y, w - 2, HEADER_H, VapeTheme.BG_HEADER);
+        RenderUtil.drawRect(ctx, x + 2, y + HEADER_H - 1, w - 2, 1, RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.9f));
+        ctx.drawTextWithShadow(textRenderer, "§d⚙ CONFIG", x + 7, y + 5, VapeTheme.TEXT());
+
+        if (hover) {
+            int oc = RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.35f);
+            RenderUtil.drawRect(ctx, x, y, w, 1, oc);
+            RenderUtil.drawRect(ctx, x, y + h - 1, w, 1, oc);
+            RenderUtil.drawRect(ctx, x, y, 1, h, oc);
+            RenderUtil.drawRect(ctx, x + w - 1, y, 1, h, oc);
+        }
+
+        int ry = y + HEADER_H + 3;
+        int total = 0, live = 0;
+        if (JayHackClient.moduleManager != null) {
+            for (Module m : JayHackClient.moduleManager.getModules()) {
+                total++;
+                if (m.isEnabled()) live++;
+            }
+        }
+        ctx.drawTextWithShadow(textRenderer, "JAY CLIENT §8v" + JayHackClient.VERSION, x + 7, ry, VapeTheme.TEXT());
+        ry += CFG_ROW;
+        ctx.drawTextWithShadow(textRenderer, "Modules §8" + total + " · " + live + " active",
+                x + 7, ry, VapeTheme.TEXT_DIM());
+        ry += CFG_ROW;
+
+        // accent chips — always visible, no strip needed
+        ctx.drawTextWithShadow(textRenderer, "Accent", x + 7, ry, VapeTheme.TEXT_DIM());
+        String pn = GuiColors.presetName();
+        ctx.drawTextWithShadow(textRenderer, pn, x + w - textRenderer.getWidth(pn) - 6, ry, VapeTheme.ACCENT_TEXT());
+        int sw = 12, gap = 3;
+        int sx0 = x + 7;
+        cfgAccentY = ry + CFG_ROW - 1;
+        for (int i = 0; i < PRESET_COLORS.length; i++) {
+            int sx = sx0 + i * (sw + gap);
+            int sy = cfgAccentY;
+            boolean ah = mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sw;
+            boolean active = pn.equals(PRESET_NAMES[i]);
+            RenderUtil.drawRect(ctx, sx, sy, sw, sw, PRESET_COLORS[i]);
+            if (ah || active) {
+                int oc = active ? 0xFFFFFFFF : VapeTheme.ACCENT();
+                RenderUtil.drawRect(ctx, sx, sy, sw, 1, oc);
+                RenderUtil.drawRect(ctx, sx, sy + sw - 1, sw, 1, oc);
+                RenderUtil.drawRect(ctx, sx, sy, 1, sw, oc);
+                RenderUtil.drawRect(ctx, sx + sw - 1, sy, 1, sw, oc);
+            }
+        }
+        ry += CFG_ROW + 6;
+
+        // GUI scale slider (matches the number-setting look used in panels)
+        float sc = ClientSettings.guiScale;
+        ctx.drawTextWithShadow(textRenderer, "GUI Scale", x + 7, ry, VapeTheme.TEXT_DIM());
+        String sv = String.format("%.2fx", sc);
+        ctx.drawTextWithShadow(textRenderer, sv, x + w - textRenderer.getWidth(sv) - 6, ry, VapeTheme.ACCENT_TEXT());
+        int slX = cfgScaleX = x + 7;
+        int slW = cfgScaleW = w - 14;
+        int slY = cfgScaleY = ry + CFG_ROW - 3;
+        RenderUtil.drawRect(ctx, slX, slY, slW, 4, VapeTheme.BG_HEADER);
+        float pct = MathHelper.clamp((sc - 0.85f) / 0.4f, 0f, 1f);
+        int fill = (int) (slW * pct);
+        RenderUtil.drawRect(ctx, slX, slY, fill, 4, VapeTheme.ACCENT());
+        RenderUtil.drawRect(ctx, slX + fill - 1, slY - 1, 2, 6, VapeTheme.ACCENT_TEXT());
+        ry += CFG_ROW + 6;
+
+        // reset layout
+        cfgResetX = x + 7; cfgResetY = ry; cfgResetW = w - 14; cfgResetH = CFG_ROW - 1;
+        boolean rh2 = mx >= cfgResetX && mx <= cfgResetX + cfgResetW
+                && my >= cfgResetY && my <= cfgResetY + cfgResetH;
+        RenderUtil.drawRect(ctx, cfgResetX, cfgResetY, cfgResetW, cfgResetH,
+                rh2 ? RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.35f) : RenderUtil.withAlpha(VapeTheme.BG_MODULE, 0.9f));
+        String rt = "Reset panel layout";
+        ctx.drawTextWithShadow(textRenderer, rt, cfgResetX + (cfgResetW - textRenderer.getWidth(rt)) / 2,
+                cfgResetY + 2, rh2 ? 0xFFFFFFFF : VapeTheme.TEXT_DIM());
+        ry += CFG_ROW;
+
+        ctx.drawTextWithShadow(textRenderer, "§8drag header · right-click closes", x + 7, ry, VapeTheme.TEXT_DIM());
+    }
+
+    private int cfgAccentAt(double mx, double my) {
+        if (!configOpen || cfgAccentY < 0) return -1;
+        int sw = 12, gap = 3;
+        int sx0 = cfgX + 7;
+        for (int i = 0; i < PRESET_COLORS.length; i++) {
+            int sx = sx0 + i * (sw + gap);
+            if (mx >= sx && mx <= sx + sw && my >= cfgAccentY && my <= cfgAccentY + sw) return i;
+        }
+        return -1;
     }
 
     private void drawPresetStrip(DrawContext ctx, int mx, int my) {
@@ -444,8 +590,17 @@ public class ClickGuiScreen extends Screen {
         RenderUtil.drawRect(ctx, x + 2, y + HEADER_H - 1, w - 2, 1, RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.9f));
         String mark = fold ? "▸ " : "▾ ";
         ctx.drawTextWithShadow(textRenderer, mark + cat.displayName, x + 7, y + 5, VapeTheme.TEXT());
-        String cnt = list.size() + "/" + enabledCount(cat);
-        ctx.drawTextWithShadow(textRenderer, cnt, x + w - textRenderer.getWidth(cnt) - 6, y + 5, VapeTheme.TEXT_DIM());
+        // enabled-count pill: accent filled once anything in the panel is active
+        int active = enabledCount(cat);
+        String cnt = active + "/" + list.size();
+        int cw = textRenderer.getWidth(cnt) + 8;
+        int cxp = x + w - cw - 5;
+        int cyp = y + (HEADER_H - 9) / 2;
+        RenderUtil.drawRoundedRect(ctx, cxp, cyp, cw, 9, 3f,
+                active > 0 ? RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.85f)
+                           : RenderUtil.withAlpha(VapeTheme.BG_HEADER, 0.9f));
+        ctx.drawTextWithShadow(textRenderer, cnt, cxp + (cw - textRenderer.getWidth(cnt)) / 2, cyp + 1,
+                active > 0 ? 0xFFFFFFFF : VapeTheme.TEXT_DIM());
 
         // hover outline (Respect-style bright border on the focused window)
         if (topHover) {
@@ -466,6 +621,18 @@ public class ClickGuiScreen extends Screen {
         int ry = y + HEADER_H + 2;
         int drawn = 0;
         int index = 0;
+
+        // search produced nothing — say so instead of drawing an empty window
+        if (list.isEmpty()) {
+            String msg = search.isEmpty() ? "no modules" : "no match §8· §7" + search;
+            int tw = textRenderer.getWidth(msg);
+            RenderUtil.drawRect(ctx, x + 2, y + HEADER_H + 2, w - 2, rh,
+                    RenderUtil.withAlpha(VapeTheme.BG_MODULE, 0.45f));
+            ctx.drawTextWithShadow(textRenderer, msg, x + (w - tw) / 2, y + HEADER_H + 2 + (rh - 8) / 2,
+                    VapeTheme.TEXT_DIM());
+            return;
+        }
+
         for (Module m : list) {
             if (index < scrl) { index++; continue; }
             if (drawn >= MAX_ROWS) break;
@@ -534,21 +701,37 @@ public class ClickGuiScreen extends Screen {
 
         String nameCol = on ? "§d" : (hv > 0.5f ? "§f" : "§7");
         String star = ClientSettings.isFavorite(m.getName()) ? "§6★ " : "";
-        ctx.drawTextWithShadow(textRenderer, star + nameCol + m.getName(), x + 8, y + (h - 8) / 2, VapeTheme.TEXT());
+        String label = star + nameCol + m.getName();
+        ctx.drawTextWithShadow(textRenderer, label, x + 8, y + (h - 8) / 2, VapeTheme.TEXT());
+        int nameEnd = x + 8 + textRenderer.getWidth(label);
 
-        // right side: keybind chip when bound, settings arrow otherwise
+        // right side, walked leftwards: keybind chip, settings arrow, live tag
+        int rightEdge = x + w - 6;
         String key = safeKeyLabel(m);
         boolean hasSettings = !m.getSettings().isEmpty();
         if (!key.isEmpty()) {
             int kw = textRenderer.getWidth(key) + 6;
-            int kx = x + w - kw - 6;
+            int kx = rightEdge - kw;
             RenderUtil.drawRect(ctx, kx, y + 2, kw, h - 4, RenderUtil.withAlpha(VapeTheme.BG_HEADER, 0.8f));
             ctx.drawTextWithShadow(textRenderer, key, kx + 3, y + (h - 8) / 2,
                     on ? VapeTheme.ACCENT_TEXT() : VapeTheme.TEXT_DIM());
+            rightEdge = kx - 4;
         } else if (hasSettings) {
             String arrow = isExpanded(m) ? "▾" : "▸";
-            ctx.drawTextWithShadow(textRenderer, arrow, x + w - 12, y + (h - 8) / 2,
+            int aw = textRenderer.getWidth(arrow);
+            ctx.drawTextWithShadow(textRenderer, arrow, rightEdge - aw, y + (h - 8) / 2,
                     hv > 0.5f ? VapeTheme.TEXT() : VapeTheme.TEXT_DIM());
+            rightEdge -= aw + 4;
+        }
+
+        // modules publish a live tag (target distance, state, speed…) — surface it
+        String tag = on ? m.getTag() : null;
+        if (tag != null && !tag.isEmpty()) {
+            int tw = textRenderer.getWidth(tag);
+            int tx = rightEdge - tw;
+            if (tx > nameEnd + 5) {
+                ctx.drawTextWithShadow(textRenderer, tag, tx, y + (h - 8) / 2, VapeTheme.ACCENT_TEXT());
+            }
         }
     }
 
@@ -600,6 +783,62 @@ public class ClickGuiScreen extends Screen {
     public boolean mouseClicked(Click click, boolean doubled) {
         double mouseX = click.x(), mouseY = click.y();
         int button = click.button();
+
+        // config window is always topmost
+        if (configOpen && insideConfig(mouseX, mouseY)) {
+            if (button == 1) { configOpen = false; return true; }
+            if (mouseY < cfgY + HEADER_H && button == 0) {
+                cfgDrag = true;
+                cfgOx = mouseX - cfgX;
+                cfgOy = mouseY - cfgY;
+                return true;
+            }
+            int asw = cfgAccentAt(mouseX, mouseY);
+            if (asw >= 0) {
+                GuiColors.applyPreset(PRESET_NAMES[asw]);
+                saveQuiet();
+                try { com.jay.hackclient.util.Notifications.push("Theme", "Accent: " + PRESET_NAMES[asw]); }
+                catch (Throwable ignored) {}
+                return true;
+            }
+            if (cfgScaleY > 0 && mouseY >= cfgScaleY - 4 && mouseY <= cfgScaleY + 8
+                    && mouseX >= cfgScaleX - 4 && mouseX <= cfgScaleX + cfgScaleW + 4) {
+                cfgScaleGrab = true;
+                applyCfgScale(mouseX);
+                return true;
+            }
+            if (cfgResetW > 0 && mouseX >= cfgResetX && mouseX <= cfgResetX + cfgResetW
+                    && mouseY >= cfgResetY && mouseY <= cfgResetY + cfgResetH) {
+                GuiLayout.POS.clear();
+                GuiLayout.ensureDefaults();
+                saveQuiet();
+                try { com.jay.hackclient.util.Notifications.push("GUI", "Panel layout reset"); }
+                catch (Throwable ignored) {}
+                return true;
+            }
+            return true;
+        }
+        if (cfgDrag || cfgScaleGrab) return true;
+
+        // gear button toggles the config window
+        if (cfgBtnX > 0 && button == 0 && mouseX >= cfgBtnX && mouseX <= cfgBtnX + 12
+                && mouseY >= searchBoxY && mouseY <= searchBoxY + searchBoxH) {
+            if (!configOpen) {
+                configOpen = true;
+                if (!GuiLayout.POS.isEmpty()) {
+                    float[] pos = GuiLayout.get(Module.Category.values()[0]);
+                    cfgX = Math.min(width - CFG_W - 6, (int) pos[0] + 8);
+                    cfgY = Math.min(Math.max(6, height - cfgHeight() - 6), (int) pos[1] + 8);
+                } else {
+                    cfgX = Math.max(6, width - CFG_W - 40);
+                    cfgY = Math.max(6, height - cfgHeight() - 40);
+                }
+                presetStripOpen = false;
+            } else {
+                configOpen = false;
+            }
+            return true;
+        }
 
         // preset strip swatches
         int swatch = presetStripAt(mouseX, mouseY);
@@ -771,6 +1010,15 @@ public class ClickGuiScreen extends Screen {
                 dragCat = null;
                 panelDragged = false;
             }
+            if (cfgDrag) {
+                cfgX = MathUtil.clamp((int) (click.x() - cfgOx), 2, Math.max(2, width - CFG_W - 2));
+                cfgY = MathUtil.clamp((int) (click.y() - cfgOy), 2, Math.max(2, height - cfgHeight() - 2));
+                cfgDrag = false;
+            }
+            if (cfgScaleGrab) {
+                cfgScaleGrab = false;
+                saveQuiet();
+            }
             if (draggingSlider != null) {
                 draggingSlider = null;
                 saveQuiet();
@@ -781,6 +1029,15 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseDragged(Click click, double dx, double dy) {
+        if (cfgScaleGrab) {
+            applyCfgScale(click.x());
+            return true;
+        }
+        if (cfgDrag) {
+            cfgX = MathUtil.clamp((int) (click.x() - cfgOx), 2, Math.max(2, width - CFG_W - 2));
+            cfgY = MathUtil.clamp((int) (click.y() - cfgOy), 2, Math.max(2, height - cfgHeight() - 2));
+            return true;
+        }
         if (draggingSlider != null) {
             NumberSetting num = draggingSlider;
             // slider geometry must match drawSetting (panel-local track x+7 .. w-14)
@@ -803,6 +1060,14 @@ public class ClickGuiScreen extends Screen {
             return true;
         }
         return super.mouseDragged(click, dx, dy);
+    }
+
+    /** Maps the config window's scale slider track onto ClientSettings.guiScale (0.85-1.25). */
+    private void applyCfgScale(double mx) {
+        if (cfgScaleW <= 0) return;
+        double rel = MathUtil.clamp((mx - cfgScaleX) / (double) cfgScaleW, 0.0, 1.0);
+        float snapped = Math.round((0.85f + rel * 0.4f) * 100f) / 100f;
+        ClientSettings.setGuiScale(snapped);
     }
 
     private Module.Category categoryOfPanelContaining(double x, double y) {
@@ -849,7 +1114,11 @@ public class ClickGuiScreen extends Screen {
                 return true;
             }
         }
-        if (key == GLFW.GLFW_KEY_ESCAPE) { close(); return true; }
+        if (key == GLFW.GLFW_KEY_ESCAPE) {
+            if (configOpen) { configOpen = false; return true; }
+            close();
+            return true;
+        }
         return super.keyPressed(input);
     }
 

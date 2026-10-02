@@ -3,6 +3,7 @@ package com.jay.hackclient.module.modules;
 import com.jay.hackclient.JayHackClient;
 import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
+import com.jay.hackclient.util.CombatManager;
 import net.minecraft.util.math.BlockPos;
 
 /**
@@ -27,6 +28,7 @@ public class SafeWalk extends Module {
     public void onDisable() {
         clearSneak();
         sneakTicks = 0;
+        setTag(null);
     }
 
     private void clearSneak() {
@@ -51,13 +53,17 @@ public class SafeWalk extends Module {
         // Never fight Scaffold (any mode)
         if (scaffoldActive()) {
             clearSneak();
+            setTag(null);
             return;
         }
+        try { if (!CombatManager.canCombatModulesRun()) { clearSneak(); setTag(null); return; } }
+        catch (Throwable ignored) {}
 
         if (!mc.player.isOnGround() || mc.player.isSneaking() && !forcedSneak) {
             // Player holding sneak themselves — don't touch
-            if (!forcedSneak) return;
+            if (!forcedSneak) { setTag(null); return; }
             clearSneak();
+            setTag(null);
             return;
         }
 
@@ -99,12 +105,14 @@ public class SafeWalk extends Module {
             mc.options.sneakKey.setPressed(true);
             forcedSneak = true;
             sneakTicks++;
+            setTag("edge");
             // Max 3 ticks of forced sneak then release — prevents sticky
             if (sneakTicks > 3) {
                 clearSneak();
             }
         } else {
             clearSneak();
+            setTag(null);
         }
     }
 }
