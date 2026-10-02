@@ -22,7 +22,8 @@ public class SelfTrap extends Module {
 
     public SelfTrap() { super("SelfTrap", "Trap yourself (head block)", Category.ANARCHY); addSetting(delay); addSetting(realPackets); addSetting(autoDisable); }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         long now = System.currentTimeMillis();
         if (now - last < delay.get()) return;

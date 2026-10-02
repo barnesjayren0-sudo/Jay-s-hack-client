@@ -24,7 +24,8 @@ public class HoleFill extends Module {
 
     public HoleFill() { super("HoleFill", "Fill holes near enemies", Category.ANARCHY); addSetting(range); addSetting(delay); addSetting(realPackets); }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         long now = System.currentTimeMillis();
         if (now - last < delay.get()) return;

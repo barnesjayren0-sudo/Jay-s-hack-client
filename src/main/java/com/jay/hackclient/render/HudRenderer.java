@@ -8,6 +8,7 @@ import com.jay.hackclient.module.modules.PearlTrajectory;
 import com.jay.hackclient.module.modules.PerfDashboard;
 import com.jay.hackclient.module.modules.ReachHUD;
 import com.jay.hackclient.module.modules.TargetHUD;
+import com.jay.hackclient.gui.GuiColors;
 import com.jay.hackclient.settings.ClientSettings;
 import com.jay.hackclient.util.Mobile;
 import com.jay.hackclient.util.Notifications;
@@ -48,7 +49,7 @@ public final class HudRenderer {
         int screenW = mc.getWindow().getScaledWidth();
         int screenH = mc.getWindow().getScaledHeight();
 
-        int accent = CYAN;
+        int accent = GuiColors.accent;
         if (ClientSettings.arrayListRainbow) {
             float hue = (System.currentTimeMillis() % 3000) / 3000f;
             accent = 0xFF000000 | java.awt.Color.HSBtoRGB(hue, 0.7f, 1f);
@@ -64,10 +65,12 @@ public final class HudRenderer {
                 if (m.isDrawn()) active++;
             }
             String watermark = ClientSettings.showActiveCount
-                    ? ("§bJAY §f" + ver + " §8· §7" + active)
-                    : ("§bJAY §f" + ver);
+                    ? ("§dJAY§f CLIENT §8· §7" + ver + " §8· §7" + active)
+                    : ("§dJAY§f CLIENT §8· §7" + ver);
             int ww = mc.textRenderer.getWidth(strip(watermark)) + 14;
-            context.fill(wx, wy, wx + ww, wy + 24, 0x990A0A10);
+            context.fill(wx + 1, wy + 1, wx + ww + 1, wy + 25, 0x55000000);
+            context.fill(wx, wy, wx + ww, wy + 24, 0xA80D0D11);
+            context.fill(wx, wy, wx + ww, wy + 1, 0x22FFFFFF);
             context.fill(wx, wy, wx + 2, wy + 24, accent);
             context.drawTextWithShadow(mc.textRenderer, watermark, wx + 6, wy + 3, 0xFFFFFF);
             context.drawTextWithShadow(mc.textRenderer, "§8" + ClientSettings.lastProfile, wx + 6, wy + 14, 0x888888);
@@ -119,8 +122,8 @@ public final class HudRenderer {
                 util.add(m);
             }
         }
-        sortModules(combat);
-        sortModules(util);
+        sortModules(combat, mc.textRenderer);
+        sortModules(util, mc.textRenderer);
 
         if (HudLayout.visible("arraylist")) {
             drawArrayList(context, mc, combat, screenW, HudLayout.get("arraylist"), phone, accent);
@@ -136,9 +139,10 @@ public final class HudRenderer {
         }
     }
 
-    private static void sortModules(List<Module> list) {
+    private static void sortModules(List<Module> list, net.minecraft.client.font.TextRenderer tr) {
+        // Vape-style: widest label on top for the clean staggered look
         list.sort(Comparator
-                .comparing((Module m) -> !ClientSettings.isFavorite(m.getName()))
+                .comparingInt((Module m) -> -tr.getWidth(m.getName()))
                 .thenComparing(m -> m.getName().toLowerCase()));
     }
 
@@ -170,12 +174,14 @@ public final class HudRenderer {
         for (Module m : list) {
             if (shown >= max) break;
             float s = slide.getOrDefault(m.getName(), 1f);
-            String star = ClientSettings.isFavorite(m.getName()) ? "§e★ " : "";
+            String star = ClientSettings.isFavorite(m.getName()) ? "§6★ " : "";
             String label = star + m.getName();
             int textW = mc.textRenderer.getWidth(m.getName()) + (ClientSettings.isFavorite(m.getName()) ? 12 : 0);
             int slidePx = (int) ((1f - s) * (textW + 16));
             int x = baseRight - textW - 4 + slidePx;
             int rowAccent = ClientSettings.arrayListRainbow ? accent : m.getCategoryColor();
+            // subtle row backing (fades in with the slide)
+            context.fill(x - 3, y - 1, baseRight, y + 10, (int) (0x66 * s) << 24 | 0x0D0D11);
             context.fill(baseRight - 2, y - 1, baseRight, y + 10, rowAccent);
             context.drawTextWithShadow(mc.textRenderer, label, x, y, 0xE8E8F0);
             y += 11;
@@ -194,15 +200,18 @@ public final class HudRenderer {
 
         int boxW = 128;
         int boxH = 36;
-        context.fill(bx, by, bx + boxW, by + boxH, 0x990A0A10);
-        context.fill(bx, by, bx + 2, by + boxH, CYAN);
+        int accent = GuiColors.accent;
+        context.fill(bx + 1, by + 1, bx + boxW + 1, by + boxH + 1, 0x55000000);
+        context.fill(bx, by, bx + boxW, by + boxH, 0xA80D0D11);
+        context.fill(bx, by, bx + boxW, by + 1, 0x22FFFFFF);
+        context.fill(bx, by, bx + 2, by + boxH, accent);
 
         String name = t.getName().getString();
         String info = String.format("%s  §7%.1fm", name, snap[3]);
         context.drawTextWithShadow(mc.textRenderer, info, bx + 8, by + 4, 0xFFF0F0F8);
 
         String hpText = String.format("§f%.1f §8| §7A%d", hp, armor);
-        context.drawTextWithShadow(mc.textRenderer, hpText, bx + 8, by + 14, CYAN);
+        context.drawTextWithShadow(mc.textRenderer, hpText, bx + 8, by + 14, accent);
 
         int barW = boxW - 16;
         int barY = by + 26;
@@ -213,6 +222,7 @@ public final class HudRenderer {
     }
 
     private static String strip(String s) {
-        return s.replace("§b", "").replace("§f", "").replace("§8", "").replace("§7", "").replace("§e", "");
+        return s.replace("§b", "").replace("§d", "").replace("§f", "").replace("§8", "")
+                .replace("§7", "").replace("§e", "").replace("§6", "");
     }
 }

@@ -161,12 +161,21 @@ public class TargetHUD extends Module {
                 int hy = (int) (y + (h - headSize) / 2f);
                 RenderUtil.drawRoundedRect(ctx, hx, hy, headSize, headSize, 4f,
                         RenderUtil.withAlpha(0xFF2A2A35, alpha));
-                String initial = target.getName().getString().substring(0, 1).toUpperCase();
-                ctx.drawText(mc.textRenderer, initial,
-                        hx + (int) (headSize / 2) - 3,
-                        hy + (int) (headSize / 2) - 4,
-                        text, false);
-            } catch (Throwable ignored) {}
+                // real player face (vanilla skin renderer), tinted via translucent backing
+                net.minecraft.client.gui.PlayerSkinDrawer.draw(ctx, player.getSkin(),
+                        hx + 1, hy + 1, (int) (headSize - 2));
+                RenderUtil.drawRect(ctx, hx, hy, headSize, 1, RenderUtil.withAlpha(0xFFFFFFFF, 0.10f * alpha));
+            } catch (Throwable ignored) {
+                try {
+                    int hx = (int) contentX;
+                    int hy = (int) (y + (h - headSize) / 2f);
+                    String initial = target.getName().getString().substring(0, 1).toUpperCase();
+                    ctx.drawText(mc.textRenderer, initial,
+                            hx + (int) (headSize / 2) - 3,
+                            hy + (int) (headSize / 2) - 4,
+                            text, false);
+                } catch (Throwable ignoredAgain) {}
+            }
             contentX += headSize + 6f;
         }
 

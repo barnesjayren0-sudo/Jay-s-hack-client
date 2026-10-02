@@ -17,6 +17,7 @@ public class Criticals extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         setTag(mode.get());
         if ("Jump".equals(mode.get())) {
             try { com.jay.hackclient.settings.ClientSettings.critTiming = true; } catch (Throwable ignored) {}

@@ -14,6 +14,7 @@ public class JumpReset extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null) return;
         if (!mc.player.isOnGround()) return;
 

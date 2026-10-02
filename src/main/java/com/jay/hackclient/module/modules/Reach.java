@@ -15,7 +15,8 @@ public class Reach extends Module {
         addSetting(distance);
     }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         reach = distance.get();
         try { ClientSettings.reachDistance = reach; } catch (Throwable ignored) {}
         setTag(String.format("%.2f", reach));

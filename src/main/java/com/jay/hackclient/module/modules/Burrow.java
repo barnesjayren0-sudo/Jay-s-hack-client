@@ -47,7 +47,8 @@ public class Burrow extends Module {
         if (once.get()) setEnabled(false);
     }
 
-    @Override public void onTick() { /* one-shot module */ }
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {} /* one-shot module */ }
 
     private int findBlock() {
         for (int i = 0; i < 9; i++) {

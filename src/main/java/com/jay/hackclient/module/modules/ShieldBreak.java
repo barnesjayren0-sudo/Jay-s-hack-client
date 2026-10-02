@@ -24,7 +24,8 @@ public class ShieldBreak extends Module {
         setTag(null);
     }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null) return;
         if (restore >= 0 && System.currentTimeMillis() > restoreAt) {
             select(restore);

@@ -18,6 +18,7 @@ public class NoFall extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null) return;
         float fd = (float) mc.player.fallDistance;
         if (fd < (float) minFall.get()) { setTag(null); return; }

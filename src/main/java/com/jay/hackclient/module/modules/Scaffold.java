@@ -50,6 +50,7 @@ public class Scaffold extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         if (mc.currentScreen != null) { restoreLook(); return; }
         if (autoSwitch.get() && !holdingBlock()) {

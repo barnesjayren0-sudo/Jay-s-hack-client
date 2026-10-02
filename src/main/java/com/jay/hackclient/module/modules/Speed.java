@@ -39,6 +39,7 @@ public class Speed extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null) return;
         if (mc.player.getAbilities().flying) return;
         if (pauseSneak.get() && mc.player.isSneaking()) return;

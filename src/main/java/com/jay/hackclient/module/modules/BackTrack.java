@@ -51,6 +51,7 @@ public class BackTrack extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null) return;
         long now = System.currentTimeMillis();
         long window = (long) delay.get();

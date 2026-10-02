@@ -8,7 +8,8 @@ import com.jay.hackclient.util.RealPackets;
 public class KeepSprint extends Module {
     public final BoolSetting realPackets = new BoolSetting("Real Packets", "Resync sprint packets", true);
     public KeepSprint() { super("KeepSprint", "Keep sprint after attacking", Category.MOVEMENT); addSetting(realPackets); }
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null) { return; }
         boolean moving = mc.options.forwardKey.isPressed() || mc.options.backKey.isPressed()
                 || mc.options.leftKey.isPressed() || mc.options.rightKey.isPressed();

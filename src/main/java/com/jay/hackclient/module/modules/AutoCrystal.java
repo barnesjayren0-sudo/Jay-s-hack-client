@@ -53,6 +53,7 @@ public class AutoCrystal extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
         long now = System.currentTimeMillis();
 

@@ -22,7 +22,8 @@ public class SprintReset extends Module {
 
     @Override public void onDisable() { cleanup(); setTag(null); }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.options == null) return;
         long now = System.currentTimeMillis();
         if (now < until) { applyHold(); setTag(mode.get()); return; }

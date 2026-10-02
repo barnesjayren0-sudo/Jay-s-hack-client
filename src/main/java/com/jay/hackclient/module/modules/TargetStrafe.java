@@ -30,6 +30,7 @@ public class TargetStrafe extends Module {
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.world == null) return;
         if (onlyOnGround.get() && !mc.player.isOnGround()) return;
 

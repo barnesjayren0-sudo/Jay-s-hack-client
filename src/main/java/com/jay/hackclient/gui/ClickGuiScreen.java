@@ -22,17 +22,24 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.IdentityHashMap;
 
 /**
- * Vape V4–inspired ClickGUI for Jay Utility Client.
- * Dark near-black panels, soft accent, clean sidebar, module rows with
- * status bars and inline expandable settings. All motion uses ease-out
- * transitions in the 150–250 ms range.
+ * Vape/Respect-style ClickGUI for Jay Utility Client.
+ *
+ * Layout mirrors the reference design: every category is its own floating,
+ * draggable panel with a header accent underline, item-count badge and
+ * hover-bright outline; a fixed sidebar with animated selection bar focuses
+ * or folds panels; a top bar hosts the logo, global search and the accent
+ * preset swatch strip. Module rows carry animated status bars, keybind chips
+ * and inline settings — mini switches for toggles, cyclic value chips for
+ * modes and label/value + track sliders for numbers.
+ *
+ * All motion is frame-rate independent ease-out in the 140–260 ms range and
+ * uses only the 1.21.11 Matrix3x2fStack push/translate/scale/pop surface.
  */
 public class ClickGuiScreen extends Screen {
 
@@ -42,40 +49,53 @@ public class ClickGuiScreen extends Screen {
     private static final int HEADER_H = 17;
     private static final int ROW_H = 15;
     private static final int SETTING_H = 13;
-    private static final int MAX_ROWS = 14;
+    private static final int MAX_ROWS = 12;
     private static final long HOLD_MS = 450;
 
-    // dragging
-    private boolean dragSidebar;
+    // preset swatches (mirrors GuiColors.applyPreset)
+    private static final String[] PRESET_NAMES = {
+            "purple", "blue", "red", "green", "orange", "pink", "gold", "white"
+    };
+    private static final int[] PRESET_COLORS = {
+            0x9B6BFF, 0x3DDCFF, 0xFF5555, 0x55FF88, 0xFFAA33, 0xFF6BCB, 0xFFC84A, 0xE8E8F0
+    };
+
+    // panel window state (all categories visible, draggable)
+    private final Map<Module, Boolean> expanded = new IdentityHashMap<>();
+    private final java.util.Set<Module.Category> folded = java.util.EnumSet.noneOf(Module.Category.class);
+    private final Map<Module.Category, Integer> scroll = new EnumMap<>(Module.Category.class);
+    private final List<Module.Category> drawOrder = new ArrayList<>();
     private Module.Category dragCat;
     private boolean panelDragged;
     private double dragOx, dragOy;
 
-    // state
-    private final Map<Module.Category, Integer> scroll = new EnumMap<>(Module.Category.class);
-    private final Set<Module.Category> collapsed = EnumSet.noneOf(Module.Category.class);
-    private final Map<Module, Boolean> expanded = new java.util.IdentityHashMap<>();
-    private Module.Category activeCat = Module.Category.COMBAT;
+    // top bar / search / accent strip
     private String search = "";
     private boolean searchFocused;
-    private Module selected;
+    private boolean presetStripOpen;
 
-    // binding
+    // hold-to-bind
     private Module holdModule;
     private long holdStart;
     private boolean bindingMode;
     private Module bindingModule;
+    private long bindHintUntil;
+    private Module bindHintModule;
 
     // widgets
     private NumberSetting draggingSlider;
     private final Map<String, Long> hoverAt = new java.util.HashMap<>();
-    private long bindHintUntil;
-    private Module bindHintModule;
+    private final Map<Setting, Float> toggleAnim = new IdentityHashMap<>();
 
     // animation
     private final Animation openAnim = new Animation(200, 1.0, Animation.Easing.EASE_OUT_CUBIC);
     private final Map<Module.Category, Float> sidebarSel = new EnumMap<>(Module.Category.class);
-    private final Map<Module, Float> expandAnim = new java.util.IdentityHashMap<>();
+    private final Map<Module, Float> expandAnim = new IdentityHashMap<>();
+
+    // hit boxes (rebuilt each render frame, used by input)
+    private int searchBoxX, searchBoxY, searchBoxW, searchBoxH;
+    private int accentX = -1;
+    private int stripY = -1;
 
     public ClickGuiScreen() {
         super(Text.literal("Jay Client"));
@@ -87,6 +107,9 @@ public class ClickGuiScreen extends Screen {
         openAnim.reset();
         openAnim.setDirection(Animation.Direction.FORWARDS);
         try { PremiumTheme.onGuiOpen(); } catch (Throwable ignored) {}
+        if (drawOrder.isEmpty()) {
+            for (Module.Category c : Module.Category.values()) drawOrder.add(c);
+        }
     }
 
     @Override
@@ -109,11 +132,6 @@ public class ClickGuiScreen extends Screen {
     private int sidebarX() { return 10; }
     private int sidebarY() { return 10; }
     private int sidebarH() { return Module.Category.values().length * Math.round(18 * guiScale()) + 2; }
-
-    private int panelX() { return sidebarX() + sidebarW() + 8; }
-    private int panelY() { return sidebarY(); }
-
-    private boolean panelVisible() { return activeCat != null; }
 
     private List<Module> modulesIn(Module.Category cat) {
         List<Module> out = new ArrayList<>();
@@ -149,8 +167,12 @@ public class ClickGuiScreen extends Screen {
         return next;
     }
 
-    private void hoverNote(String key) {
-        hoverAt.putIfAbsent(key, System.currentTimeMillis());
+    private float togglePos(Setting s, boolean on) {
+        float cur = toggleAnim.getOrDefault(s, on ? 1f : 0f);
+        float next = cur + ((on ? 1f : 0f) - cur) * 0.35f;
+        if (Math.abs(next - (on ? 1f : 0f)) < 0.02f) next = on ? 1f : 0f;
+        toggleAnim.put(s, next);
+        return next;
     }
 
     /** 0..1 hover ramp used for smooth row highlight (~140ms). */
@@ -160,9 +182,66 @@ public class ClickGuiScreen extends Screen {
             if (hoverAt.containsKey(key)) hoverAt.put(key, 0L);
             return 0f;
         }
-        hoverAt.put(key, start);
+        if (start == 0L) { start = System.currentTimeMillis(); hoverAt.put(key, start); }
         float t = (System.currentTimeMillis() - start) / 140f;
         return MathHelper.clamp(t, 0f, 1f);
+    }
+
+    private String safeKeyLabel(Module m) {
+        String k = m.getKeyLabel();
+        return (k == null || k.isEmpty()) ? "" : k;
+    }
+
+    private void saveQuiet() {
+        try { if (JayHackClient.configManager != null) JayHackClient.configManager.save(); } catch (Throwable ignored) {}
+    }
+
+    private boolean panelVisible() { return !drawOrder.isEmpty(); }
+
+    private void bringToFront(Module.Category cat) {
+        drawOrder.remove(cat);
+        drawOrder.add(cat);
+    }
+
+    // panel geometry ------------------------------------------------------
+
+    private int panelX(Module.Category cat) {
+        float[] pos = GuiLayout.get(cat);
+        return Math.max(4, (int) pos[0]);
+    }
+
+    private int panelY(Module.Category cat) {
+        float[] pos = GuiLayout.get(cat);
+        return Math.max(4, (int) pos[1]);
+    }
+
+    private boolean panelCollapsed(Module.Category cat) {
+        return folded.contains(cat);
+    }
+
+    private void setPanelCollapsed(Module.Category cat, boolean fold) {
+        if (fold) folded.add(cat); else folded.remove(cat);
+    }
+
+    /** Total rendered height of a panel (header + rows + expanded settings). */
+    private int panelHeight(Module.Category cat) {
+        if (panelCollapsed(cat)) return HEADER_H;
+        List<Module> list = modulesIn(cat);
+        int vis = Math.min(list.size(), MAX_ROWS);
+        int h = HEADER_H + 2 + vis * rowH();
+        for (int i = 0; i < vis; i++) {
+            Module m = list.get(i);
+            if (isExpanded(m) && !m.getSettings().isEmpty()) {
+                h += Math.round(settingRows(m) * setH() * expandProgress(m));
+            }
+        }
+        return h;
+    }
+
+    private boolean insidePanel(Module.Category cat, double mx, double my) {
+        int px = panelX(cat), py = panelY(cat), pw = panelW();
+        int ph = panelHeight(cat);
+        return mx >= px && mx <= px + pw && my >= py && my <= py + ph;
     }
 
     // ------------------------------------------------------------- render
@@ -173,7 +252,7 @@ public class ClickGuiScreen extends Screen {
         if (anim < 0.02f) return;
 
         // dim backdrop
-        ctx.fill(0, 0, width, height, RenderUtil.withAlpha(0x000000, 0.42f * anim));
+        ctx.fill(0, 0, width, height, RenderUtil.withAlpha(0x000000, 0.45f * anim));
 
         ctx.getMatrices().pushMatrix();
         float cx = width / 2f, cy = height / 2f;
@@ -184,10 +263,17 @@ public class ClickGuiScreen extends Screen {
 
         int mx = mouseX, my = mouseY;
 
-        drawSidebar(ctx, mx, my, anim);
-        if (panelVisible()) drawCategoryPanel(ctx, mx, my, anim);
+        Module.Category top = topCategoryAt(mx, my);
 
-        drawTopBar(ctx, mx, my, anim);
+        // panels below sidebar (topmost last for correct overlap)
+        for (Module.Category cat : drawOrder) {
+            if (cat != top) drawPanel(ctx, cat, mx, my);
+        }
+        if (top != null) drawPanel(ctx, top, mx, my);
+
+        drawSidebar(ctx, mx, my);
+        drawTopBar(ctx, mx, my);
+        if (presetStripOpen) drawPresetStrip(ctx, mx, my);
 
         if (bindingMode && bindingModule != null) {
             String msg = "Press a key to bind " + bindingModule.getName() + "  (ESC cancels)";
@@ -196,7 +282,8 @@ public class ClickGuiScreen extends Screen {
             RenderUtil.drawRoundedRect(ctx, bx, by, w, 16, 4f, VapeTheme.BG_HEADER);
             ctx.drawTextWithShadow(textRenderer, msg, bx + 6, by + 4, VapeTheme.ACCENT());
         } else if (System.currentTimeMillis() < bindHintUntil && bindHintModule != null) {
-            String msg = "Bound " + bindHintModule.getName() + " to " + safeKeyLabel(bindHintModule);
+            String msg = "Bound " + bindHintModule.getName() + " to " +
+                    (safeKeyLabel(bindHintModule).isEmpty() ? "none" : safeKeyLabel(bindHintModule));
             int w = textRenderer.getWidth(msg) + 12;
             RenderUtil.drawRoundedRect(ctx, width / 2 - w / 2, height - 30, w, 16, 4f, VapeTheme.BG_HEADER);
             ctx.drawTextWithShadow(textRenderer, msg, width / 2 - w / 2 + 6, height - 26, VapeTheme.TEXT());
@@ -205,17 +292,20 @@ public class ClickGuiScreen extends Screen {
         ctx.getMatrices().popMatrix();
     }
 
-    private String safeKeyLabel(Module m) {
-        String k = m.getKeyLabel();
-        return (k == null || k.isEmpty()) ? "none" : k;
+    private Module.Category topCategoryAt(int mx, int my) {
+        for (int i = drawOrder.size() - 1; i >= 0; i--) {
+            Module.Category c = drawOrder.get(i);
+            if (insidePanel(c, mx, my)) return c;
+        }
+        return null;
     }
 
-    private void drawTopBar(DrawContext ctx, int mx, int my, float anim) {
+    private void drawTopBar(DrawContext ctx, int mx, int my) {
         int barH = Math.round(18 * guiScale());
-        int x = sidebarX(), y = sidebarY() - barH - 6;
-        if (y < 2) y = 2;
+        int x = sidebarX(), y = 2;
         int w = sidebarW() + panelW() + 8;
 
+        RenderUtil.drawRoundedRect(ctx, x + 1, y + 1, w, barH, 3f, RenderUtil.withAlpha(0x000000, 0.4f));
         RenderUtil.drawRoundedRect(ctx, x, y, w, barH, 3f, VapeTheme.BG_HEADER);
         RenderUtil.drawRect(ctx, x, y + barH - 1, w, 1, RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.55f));
 
@@ -227,27 +317,74 @@ public class ClickGuiScreen extends Screen {
         int sbW = Math.round(96 * guiScale());
         int sbX = x + w - sbW - 4;
         searchBoxX = sbX; searchBoxY = y + 2; searchBoxW = sbW; searchBoxH = barH - 4;
-        RenderUtil.drawRect(ctx, sbX, y + 2, sbW, barH - 4, VapeTheme.BG_MODULE);
-        if (searchFocused) RenderUtil.drawRect(ctx, sbX, y + 2, sbW, 1, VapeTheme.ACCENT());
+        boolean sbHover = mx >= sbX && mx <= sbX + sbW && my >= searchBoxY && my <= searchBoxY + searchBoxH;
+        RenderUtil.drawRect(ctx, sbX, searchBoxY, sbW, searchBoxH, VapeTheme.BG_MODULE);
+        if (searchFocused || sbHover) {
+            RenderUtil.drawRect(ctx, sbX, searchBoxY, sbW, 1, searchFocused ? VapeTheme.ACCENT()
+                    : RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.4f));
+        }
         String shown = searchFocused ? search + "§d|" : (search.isEmpty() ? "§8search…" : search);
         ctx.drawTextWithShadow(textRenderer, shown, sbX + 4, y + 5, VapeTheme.TEXT());
 
-        // accent swatch
+        // accent swatch (opens preset strip)
         accentX = sbX - 16;
+        boolean swHover = mx >= accentX && mx <= accentX + 12 && my >= y + 3 && my <= y + barH - 3;
         RenderUtil.drawRect(ctx, accentX, y + 3, 12, barH - 6, VapeTheme.BG_MODULE);
         RenderUtil.drawRect(ctx, accentX + 2, y + 5, 8, barH - 10, GuiColors.accent);
+        if (swHover || presetStripOpen) {
+            RenderUtil.drawRect(ctx, accentX, y + 3, 12, 1, VapeTheme.ACCENT());
+            RenderUtil.drawRect(ctx, accentX, y + barH - 4, 12, 1, VapeTheme.ACCENT());
+        }
     }
 
-    private int searchBoxX, searchBoxY, searchBoxW, searchBoxH;
-    private int accentX = -1;
+    private void drawPresetStrip(DrawContext ctx, int mx, int my) {
+        if (accentX < 0) return;
+        int sw = 12, gap = 3;
+        int n = PRESET_NAMES.length;
+        int w = n * (sw + gap) - gap;
+        int x = Math.min(accentX - w + 12, width - w - 4);
+        int y = stripY = searchBoxY + searchBoxH + 3;
 
-    private void drawSidebar(DrawContext ctx, int mx, int my, float anim) {
+        RenderUtil.drawRoundedRect(ctx, x + 1, y + 1, w, sw + 6, 3f, RenderUtil.withAlpha(0x000000, 0.4f));
+        RenderUtil.drawRoundedRect(ctx, x, y, w, sw + 6, 3f, VapeTheme.BG_HEADER);
+        for (int i = 0; i < n; i++) {
+            int sx = x + 3 + i * (sw + gap);
+            int sy = y + 3;
+            boolean hover = mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sw;
+            boolean active = GuiColors.presetName().equals(PRESET_NAMES[i]);
+            RenderUtil.drawRect(ctx, sx, sy, sw, sw, PRESET_COLORS[i]);
+            if (hover || active) {
+                int oc = active ? 0xFFFFFFFF : VapeTheme.ACCENT();
+                RenderUtil.drawRect(ctx, sx, sy, sw, 1, oc);
+                RenderUtil.drawRect(ctx, sx, sy + sw - 1, sw, 1, oc);
+                RenderUtil.drawRect(ctx, sx, sy, 1, sw, oc);
+                RenderUtil.drawRect(ctx, sx + sw - 1, sy, 1, sw, oc);
+            }
+        }
+    }
+
+    /** Returns the preset strip swatch index under the mouse, or -1. */
+    private int presetStripAt(double mx, double my) {
+        if (!presetStripOpen || stripY < 0) return -1;
+        int sw = 12, gap = 3;
+        int n = PRESET_NAMES.length;
+        int w = n * (sw + gap) - gap;
+        int x = Math.min(accentX - w + 12, width - w - 4);
+        int y = stripY;
+        for (int i = 0; i < n; i++) {
+            int sx = x + 3 + i * (sw + gap);
+            if (mx >= sx && mx <= sx + sw && my >= y + 3 && my <= y + 3 + sw) return i;
+        }
+        return -1;
+    }
+
+    private void drawSidebar(DrawContext ctx, int mx, int my) {
         int x = sidebarX(), y = sidebarY();
         int w = sidebarW();
         int rowH = Math.round(18 * guiScale());
         int h = Module.Category.values().length * rowH + HEADER_H + 2;
 
-        RenderUtil.drawRoundedRect(ctx, x + 2, y + 2, w, h, 4f, RenderUtil.withAlpha(0x000000, 0.35f));
+        RenderUtil.drawRoundedRect(ctx, x + 2, y + 2, w, h, 4f, RenderUtil.withAlpha(0x000000, 0.4f));
         RenderUtil.drawRoundedRect(ctx, x, y, w, h, 4f, VapeTheme.BG_PANEL);
         RenderUtil.drawRect(ctx, x, y, 2, h, RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.8f));
 
@@ -255,17 +392,17 @@ public class ClickGuiScreen extends Screen {
 
         int ry = y + HEADER_H;
         for (Module.Category cat : Module.Category.values()) {
-            boolean active = cat == activeCat;
             boolean hover = mx >= x && mx < x + w && my >= ry && my < ry + rowH;
+            boolean onScreen = drawOrder.contains(cat) && !panelCollapsed(cat);
 
-            float sel = sidebarSel.getOrDefault(cat, active ? 1f : 0f);
-            float target = active ? 1f : (hover ? 0.45f : 0f);
+            float sel = sidebarSel.getOrDefault(cat, onScreen ? 0.8f : 0f);
+            float target = onScreen ? 0.8f : (hover ? 0.45f : 0f);
             sel = sel + (target - sel) * 0.25f;
             sidebarSel.put(cat, sel);
 
-            if (hover || active) {
+            if (hover) {
                 RenderUtil.drawRect(ctx, x + 2, ry, w - 4, rowH - 1,
-                        RenderUtil.withAlpha(VapeTheme.BG_MODULE, 0.9f * Math.max(sel, 0.35f)));
+                        RenderUtil.withAlpha(VapeTheme.BG_MODULE, 0.9f));
             }
             if (sel > 0.02f) {
                 RenderUtil.drawRect(ctx, x + 2, ry + 2, 2, rowH - 5,
@@ -278,7 +415,7 @@ public class ClickGuiScreen extends Screen {
                     if (m.getCategory() == cat && m.isEnabled()) enabled++;
                 }
             }
-            int nameCol = active ? VapeTheme.ACCENT() : (hover ? VapeTheme.TEXT() : VapeTheme.TEXT_DIM());
+            int nameCol = hover ? VapeTheme.TEXT() : (onScreen ? VapeTheme.ACCENT() : VapeTheme.TEXT_DIM());
             ctx.drawTextWithShadow(textRenderer, cat.displayName, x + 8, ry + 5, nameCol);
             String cnt = String.valueOf(enabled);
             ctx.drawTextWithShadow(textRenderer, cnt, x + w - textRenderer.getWidth(cnt) - 6, ry + 5,
@@ -287,33 +424,37 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
-    private void drawCategoryPanel(DrawContext ctx, int mx, int my, float anim) {
-        Module.Category cat = activeCat;
-        float[] pos = GuiLayout.get(cat);
-        int x = Math.max(panelX(), (int) pos[0]);
-        int y = Math.max(panelY(), (int) pos[1]);
+    private void drawPanel(DrawContext ctx, Module.Category cat, int mx, int my) {
+        int x = panelX(cat), y = panelY(cat);
         int w = panelW();
         int rh = rowH();
         int sh = setH();
-
+        boolean fold = panelCollapsed(cat);
         List<Module> list = modulesIn(cat);
-        boolean fold = collapsed.contains(cat);
+        int h = panelHeight(cat);
+        boolean topHover = cat == topCategoryAt(mx, my);
 
-        // compute height
-        int visRows = fold ? 0 : Math.min(list.size(), MAX_ROWS);
-        int h = HEADER_H + visRows * rh + 3;
-        if (fold) h = HEADER_H;
-
-        RenderUtil.drawRoundedRect(ctx, x + 2, y + 2, w, h, 4f, RenderUtil.withAlpha(0x000000, 0.4f));
+        // drop shadow + panel
+        RenderUtil.drawRoundedRect(ctx, x + 2, y + 2, w, h, 4f, RenderUtil.withAlpha(0x000000, 0.45f));
         RenderUtil.drawRoundedRect(ctx, x, y, w, h, 4f, VapeTheme.BG_PANEL);
         RenderUtil.drawRect(ctx, x, y, 2, h, RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.8f));
 
-        // header
+        // header (accent underline like the reference)
         RenderUtil.drawRect(ctx, x + 2, y, w - 2, HEADER_H, VapeTheme.BG_HEADER);
+        RenderUtil.drawRect(ctx, x + 2, y + HEADER_H - 1, w - 2, 1, RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.9f));
         String mark = fold ? "▸ " : "▾ ";
         ctx.drawTextWithShadow(textRenderer, mark + cat.displayName, x + 7, y + 5, VapeTheme.TEXT());
         String cnt = list.size() + "/" + enabledCount(cat);
         ctx.drawTextWithShadow(textRenderer, cnt, x + w - textRenderer.getWidth(cnt) - 6, y + 5, VapeTheme.TEXT_DIM());
+
+        // hover outline (Respect-style bright border on the focused window)
+        if (topHover) {
+            int oc = RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.35f);
+            RenderUtil.drawRect(ctx, x, y, w, 1, oc);
+            RenderUtil.drawRect(ctx, x, y + h - 1, w, 1, oc);
+            RenderUtil.drawRect(ctx, x, y, 1, h, oc);
+            RenderUtil.drawRect(ctx, x + w - 1, y, 1, h, oc);
+        }
 
         if (fold) return;
 
@@ -322,25 +463,22 @@ public class ClickGuiScreen extends Screen {
         scrl = MathHelper.clamp(scrl, 0, maxScroll);
         scroll.put(cat, scrl);
 
-        int ry = y + HEADER_H + 1;
+        int ry = y + HEADER_H + 2;
         int drawn = 0;
         int index = 0;
         for (Module m : list) {
-            if (index < scrl) { index++; continue; } // scroll skips whole modules
+            if (index < scrl) { index++; continue; }
             if (drawn >= MAX_ROWS) break;
 
-            // module row
             boolean hover = mx >= x && mx < x + w && my >= ry && my < ry + rh;
             drawModuleRow(ctx, m, x, ry, w, rh, hover, mx, my);
             ry += rh;
             drawn++;
 
-            // settings
             if (isExpanded(m) && !m.getSettings().isEmpty()) {
                 float ep = expandProgress(m);
                 if (ep > 0.02f) {
-                    int sCount = settingRows(m);
-                    int sTotalH = Math.round(sCount * sh * ep);
+                    int sTotalH = Math.round(settingRows(m) * sh * ep);
                     RenderUtil.drawRect(ctx, x + 2, ry, w - 2, sTotalH, RenderUtil.withAlpha(VapeTheme.BG_SUNKEN, 0.92f * ep));
                     int sy = ry;
                     for (Setting s : m.getSettings()) {
@@ -350,7 +488,7 @@ public class ClickGuiScreen extends Screen {
                         sy += rows * sh;
                     }
                 }
-                ry += Math.round(settingRows(m) * sh * expandProgress(m));
+                ry += Math.round(settingRows(m) * sh * ep);
             }
             index++;
         }
@@ -388,11 +526,17 @@ public class ClickGuiScreen extends Screen {
             RenderUtil.drawRect(ctx, x + 2, y + 1, 2, h - 2, VapeTheme.ACCENT());
         }
 
+        // hold-to-bind progress strip
+        if (m == holdModule) {
+            float held = MathHelper.clamp((System.currentTimeMillis() - holdStart) / (float) HOLD_MS, 0f, 1f);
+            RenderUtil.drawRect(ctx, x + 2, y + h - 2, (int) ((w - 4) * held), 2, VapeTheme.ACCENT());
+        }
+
         String nameCol = on ? "§d" : (hv > 0.5f ? "§f" : "§7");
         String star = ClientSettings.isFavorite(m.getName()) ? "§6★ " : "";
         ctx.drawTextWithShadow(textRenderer, star + nameCol + m.getName(), x + 8, y + (h - 8) / 2, VapeTheme.TEXT());
 
-        // right side: keybind chip or settings arrow
+        // right side: keybind chip when bound, settings arrow otherwise
         String key = safeKeyLabel(m);
         boolean hasSettings = !m.getSettings().isEmpty();
         if (!key.isEmpty()) {
@@ -410,30 +554,33 @@ public class ClickGuiScreen extends Screen {
 
     private void drawSetting(DrawContext ctx, Module owner, Setting s, int x, int y, int w, int h,
                              int mx, int my, float ep, int rows) {
-        float epA = MathHelper.clamp(ep, 0f, 1f);
         if (s instanceof BoolSetting b) {
             boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
             if (hover) RenderUtil.drawRect(ctx, x, y, w, h, RenderUtil.withAlpha(VapeTheme.BG_MODULE, 0.7f * ep));
             ctx.drawTextWithShadow(textRenderer, s.getName(), x + 8, y + (h - 8) / 2,
                     b.get() ? VapeTheme.TEXT() : VapeTheme.TEXT_DIM());
-            // mini switch
+            // animated mini switch
             int swW = 18, swH = 8;
             int swX = x + w - swW - 6, swY = y + (h - swH) / 2;
-            RenderUtil.drawRect(ctx, swX, swY, swW, swH, b.get() ? RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.35f) : VapeTheme.BG_HEADER);
-            int knob = b.get() ? swX + swW - swH : swX;
-            RenderUtil.drawRect(ctx, knob, swY, swH, swH, b.get() ? VapeTheme.ACCENT() : VapeTheme.TEXT_DIM());
+            float p = togglePos(s, b.get());
+            RenderUtil.drawRect(ctx, swX, swY, swW, swH,
+                    p > 0.5f ? RenderUtil.withAlpha(VapeTheme.ACCENT(), 0.35f + 0.25f * p) : VapeTheme.BG_HEADER);
+            int knob = swX + (int) (p * (swW - swH));
+            RenderUtil.drawRect(ctx, knob, swY, swH, swH, p > 0.5f ? VapeTheme.ACCENT() : VapeTheme.TEXT_DIM());
         } else if (s instanceof ModeSetting mode) {
             boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
             if (hover) RenderUtil.drawRect(ctx, x, y, w, h, RenderUtil.withAlpha(VapeTheme.BG_MODULE, 0.7f * ep));
             ctx.drawTextWithShadow(textRenderer, s.getName(), x + 8, y + (h - 8) / 2, VapeTheme.TEXT_DIM());
             String val = mode.get();
-            ctx.drawTextWithShadow(textRenderer, val, x + w - textRenderer.getWidth(val) - 6, y + (h - 8) / 2, VapeTheme.ACCENT_TEXT());
+            ctx.drawTextWithShadow(textRenderer, val, x + w - textRenderer.getWidth(val) - 6, y + (h - 8) / 2,
+                    VapeTheme.ACCENT_TEXT());
         } else if (s instanceof NumberSetting num) {
             // label row
             ctx.drawTextWithShadow(textRenderer, s.getName(), x + 8, y + 1, VapeTheme.TEXT_DIM());
             String val = s.getDisplayValue();
-            ctx.drawTextWithShadow(textRenderer, val, x + w - textRenderer.getWidth(val) - 6, y + 1, VapeTheme.ACCENT_TEXT());
-            // slider row
+            ctx.drawTextWithShadow(textRenderer, val, x + w - textRenderer.getWidth(val) - 6, y + 1,
+                    VapeTheme.ACCENT_TEXT());
+            // slider track row
             int slY = y + h / 2 + 1;
             int slH = 4;
             int slW = w - 14;
@@ -454,62 +601,59 @@ public class ClickGuiScreen extends Screen {
         double mouseX = click.x(), mouseY = click.y();
         int button = click.button();
 
+        // preset strip swatches
+        int swatch = presetStripAt(mouseX, mouseY);
+        if (swatch >= 0) {
+            GuiColors.applyPreset(PRESET_NAMES[swatch]);
+            presetStripOpen = false;
+            saveQuiet();
+            try { com.jay.hackclient.util.Notifications.push("Theme", "Accent: " + PRESET_NAMES[swatch]); }
+            catch (Throwable ignored) {}
+            return true;
+        }
+
         // search box
-        if (mouseX >= searchBoxX && mouseX <= searchBoxX + searchBoxW
-                && mouseY >= searchBoxY && mouseY <= searchBoxY + searchBoxH && searchBoxW > 0) {
+        if (searchBoxW > 0 && mouseX >= searchBoxX && mouseX <= searchBoxX + searchBoxW
+                && mouseY >= searchBoxY && mouseY <= searchBoxY + searchBoxH) {
             searchFocused = true;
             return true;
         }
         searchFocused = false;
 
-        // accent swatch
+        // accent swatch toggles the preset strip
         if (accentX > 0 && mouseX >= accentX && mouseX <= accentX + 12
                 && mouseY >= searchBoxY && mouseY <= searchBoxY + searchBoxH) {
-            String preset = GuiColors.cycleAccentPreset();
-            try { if (JayHackClient.configManager != null) JayHackClient.configManager.save(); } catch (Throwable ignored) {}
-            try { com.jay.hackclient.util.Notifications.push("Theme", "Accent: " + preset); } catch (Throwable ignored) {}
+            presetStripOpen = !presetStripOpen;
             return true;
         }
+        if (presetStripOpen && !presetStripHit(mouseX, mouseY)) presetStripOpen = false;
 
-        // sidebar
-        int sbRowH = Math.round(18 * guiScale());
-        int sbY = sidebarY() + HEADER_H;
-        if (mouseX >= sidebarX() && mouseX < sidebarX() + sidebarW()
-                && mouseY >= sidebarY() && mouseY < sidebarY() + sidebarH()) {
-            if (mouseY >= sbY) {
-                int idx = (int) ((mouseY - sbY) / sbRowH);
-                Module.Category[] cats = Module.Category.values();
-                if (idx >= 0 && idx < cats.length) {
-                    if (button == 0) { activeCat = cats[idx]; return true; }
-                    if (button == 1) { // right-click collapse panel
-                        Module.Category c = cats[idx];
-                        if (collapsed.contains(c)) collapsed.remove(c); else collapsed.add(c);
-                        activeCat = c;
-                        return true;
-                    }
-                }
-            }
-            if (button == 0) { dragSidebar = true; return true; }
-        }
-
-        // category panel
-        if (panelVisible()) {
-            float[] pos = GuiLayout.get(activeCat);
-            int px = Math.max(panelX(), (int) pos[0]);
-            int py = Math.max(panelY(), (int) pos[1]);
-            int pw = panelW();
+        // panels — topmost first
+        Module.Category hit = topCategoryAt((int) mouseX, (int) mouseY);
+        if (hit != null) {
+            bringToFront(hit);
+            int px = panelX(hit), py = panelY(hit), pw = panelW();
             int rh = rowH(), sh = setH();
-            boolean fold = collapsed.contains(activeCat);
+            boolean fold = panelCollapsed(hit);
 
-            if (mouseX >= px && mouseX < px + pw && mouseY >= py && mouseY < py + HEADER_H) {
-                if (button == 0) { dragCat = activeCat; panelDragged = false; dragOx = mouseX - px; dragOy = mouseY - py; return true; }
+            // header drag / fold
+            if (mouseY >= py && mouseY < py + HEADER_H) {
+                if (button == 0) {
+                    dragCat = hit; panelDragged = false;
+                    dragOx = mouseX - px; dragOy = mouseY - py;
+                    return true;
+                }
+                if (button == 1) {
+                    setPanelCollapsed(hit, !fold);
+                    return true;
+                }
             }
 
             if (!fold) {
-                List<Module> list = modulesIn(activeCat);
-                int scrl = MathHelper.clamp(scroll.getOrDefault(activeCat, 0), 0, Math.max(0, list.size() - MAX_ROWS));
-                scroll.put(activeCat, scrl);
-                int ry = py + HEADER_H + 1;
+                List<Module> list = modulesIn(hit);
+                int scrl = MathHelper.clamp(scroll.getOrDefault(hit, 0), 0, Math.max(0, list.size() - MAX_ROWS));
+                scroll.put(hit, scrl);
+                int ry = py + HEADER_H + 2;
                 int index = 0, drawn = 0;
                 for (Module m : list) {
                     if (index < scrl) { index++; continue; }
@@ -519,16 +663,15 @@ public class ClickGuiScreen extends Screen {
                         if (button == 0) {
                             holdModule = m;
                             holdStart = System.currentTimeMillis();
-                            selected = m;
                             return true;
                         }
                         if (button == 1) {
-                            if (m.getSettings().isEmpty()) return true;
-                            expanded.put(m, !isExpanded(m));
+                            if (!m.getSettings().isEmpty()) expanded.put(m, !isExpanded(m));
                             return true;
                         }
                         if (button == 2) {
                             ClientSettings.toggleFavorite(m.getName());
+                            saveQuiet();
                             return true;
                         }
                     }
@@ -536,14 +679,12 @@ public class ClickGuiScreen extends Screen {
                     ry += rh;
                     drawn++;
 
-                    if (isExpanded(m)) {
-                        int sCount = settingRows(m);
-                        int sTotalH = Math.round(sCount * sh);
-                        // settings hit-test only when fully expanded
+                    if (isExpanded(m) && !m.getSettings().isEmpty()) {
+                        int sTotalH = Math.round(settingRows(m) * sh);
                         if (expandProgress(m) > 0.95f && mouseY >= ry && mouseY < ry + sTotalH) {
                             if (button == 0) {
-                                Setting hit = hitSetting(m, px + 4, ry, pw - 8, sh, (int) mouseX, (int) mouseY);
-                                if (hit != null) { handleSettingClick(m, hit); return true; }
+                                Setting s = hitSetting(m, px + 4, ry, pw - 8, sh, (int) mouseX, (int) mouseY);
+                                if (s != null) { handleSettingClick(s); return true; }
                             }
                         }
                         ry += sTotalH;
@@ -551,21 +692,49 @@ public class ClickGuiScreen extends Screen {
                     index++;
                 }
             }
+            return true; // clicks inside a focused panel never fall through
+        }
+
+        // sidebar: focus panel, right-click folds/unfolds
+        int sbRowH = Math.round(18 * guiScale());
+        int sbY = sidebarY() + HEADER_H;
+        if (mouseX >= sidebarX() && mouseX < sidebarX() + sidebarW()
+                && mouseY >= sbY && mouseY < sbY + sbRowH * Module.Category.values().length) {
+            int idx = (int) ((mouseY - sbY) / sbRowH);
+            Module.Category[] cats = Module.Category.values();
+            if (idx >= 0 && idx < cats.length) {
+                Module.Category c = cats[idx];
+                if (button == 0) {
+                    if (panelCollapsed(c)) setPanelCollapsed(c, false);
+                    bringToFront(c);
+                    return true;
+                }
+                if (button == 1) {
+                    setPanelCollapsed(c, !panelCollapsed(c));
+                    return true;
+                }
+            }
         }
 
         return super.mouseClicked(click, doubled);
     }
 
+    private boolean presetStripHit(double mx, double my) {
+        return presetStripAt(mx, my) >= 0
+                || (mx >= accentX && mx <= accentX + 12 && my >= searchBoxY && my <= stripY + 21);
+    }
+
     private Setting hitSetting(Module m, int sx, int sy, int w, int h, int mx, int my) {
         int y = sy;
         for (Setting s : m.getSettings()) {
-            if (my >= y && my < y + h) return s;
-            y += h;
+            int rows = (s instanceof NumberSetting) ? 2 : 1;
+            if (my >= y && my < y + h * rows) return s;
+            y += h * rows;
         }
         return null;
     }
 
-    private void handleSettingClick(Module owner, Setting s) {
+    private void handleSettingClick(Setting s) {
         try {
             if (s instanceof BoolSetting b) {
                 b.toggle();
@@ -580,16 +749,12 @@ public class ClickGuiScreen extends Screen {
         } catch (Throwable ignored) {}
     }
 
-    private void saveQuiet() {
-        try { if (JayHackClient.configManager != null) JayHackClient.configManager.save(); } catch (Throwable ignored) {}
-    }
-
     @Override
     public boolean mouseReleased(Click click) {
         if (click.button() == 0) {
             if (holdModule != null) {
                 long held = System.currentTimeMillis() - holdStart;
-                if (held >= HOLD_MS) {
+                if (held >= HOLD_MS && !panelDragged) {
                     bindingMode = true;
                     bindingModule = holdModule;
                 } else if (!panelDragged) {
@@ -606,7 +771,6 @@ public class ClickGuiScreen extends Screen {
                 dragCat = null;
                 panelDragged = false;
             }
-            dragSidebar = false;
             if (draggingSlider != null) {
                 draggingSlider = null;
                 saveQuiet();
@@ -619,21 +783,18 @@ public class ClickGuiScreen extends Screen {
     public boolean mouseDragged(Click click, double dx, double dy) {
         if (draggingSlider != null) {
             NumberSetting num = draggingSlider;
-            // slider geometry must match drawSetting
-            Module.Category cat = activeCat;
+            // slider geometry must match drawSetting (panel-local track x+7 .. w-14)
+            Module.Category cat = categoryOfPanelContaining(click.x(), click.y());
+            if (cat == null) cat = drawOrder.isEmpty() ? null : drawOrder.get(drawOrder.size() - 1);
             if (cat == null) return true;
-            float[] pos = GuiLayout.get(cat);
-            int px = Math.max(panelX(), (int) pos[0]);
+            int px = panelX(cat);
             int pw = panelW();
-            int sh = setH();
-            // walk rows to find the armed slider — simpler: map mouse X across panel width
             double rel = (click.x() - (px + 7)) / (double) (pw - 8 - 14);
             rel = MathUtil.clamp(rel, 0.0, 1.0);
             double v = num.getMin() + rel * (num.getMax() - num.getMin());
             num.set(v); // set() snaps to step + clamps
             return true;
         }
-        if (dragSidebar) return true;
         if (dragCat != null) {
             panelDragged = true;
             float[] pos = GuiLayout.get(dragCat);
@@ -644,21 +805,22 @@ public class ClickGuiScreen extends Screen {
         return super.mouseDragged(click, dx, dy);
     }
 
+    private Module.Category categoryOfPanelContaining(double x, double y) {
+        for (int i = drawOrder.size() - 1; i >= 0; i--) {
+            Module.Category c = drawOrder.get(i);
+            if (insidePanel(c, x, y)) return c;
+        }
+        return null;
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horiz, double vert) {
-        if (panelVisible()) {
-            Module.Category cat = activeCat;
-            float[] pos = GuiLayout.get(cat);
-            int px = Math.max(panelX(), (int) pos[0]);
-            int py = Math.max(panelY(), (int) pos[1]);
-            int pw = panelW();
-            double h = HEADER_H + (collapsed.contains(cat) ? 0 : Math.min(modulesIn(cat).size(), MAX_ROWS) * rowH()) + 3;
-            if (mouseX >= px && mouseX < px + pw && mouseY >= py && mouseY < py + h) {
-                int scrl = scroll.getOrDefault(cat, 0) - (int) Math.signum(vert);
-                scrl = MathUtil.clamp(scrl, 0, Math.max(0, modulesIn(cat).size() - MAX_ROWS));
-                scroll.put(cat, scrl);
-                return true;
-            }
+        Module.Category cat = categoryOfPanelContaining(mouseX, mouseY);
+        if (cat != null && !panelCollapsed(cat)) {
+            int max = Math.max(0, modulesIn(cat).size() - MAX_ROWS);
+            int scrl = scroll.getOrDefault(cat, 0) - (int) Math.signum(vert);
+            scroll.put(cat, MathUtil.clamp(scrl, 0, max));
+            return true;
         }
         return super.mouseScrolled(mouseX, mouseY, horiz, vert);
     }

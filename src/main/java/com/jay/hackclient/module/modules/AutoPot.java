@@ -30,7 +30,8 @@ public class AutoPot extends Module {
         setTag(null);
     }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.interactionManager == null) return;
         if (restoreSlot >= 0 && stage == 2) {
             RealPackets.selectSlot(restoreSlot);

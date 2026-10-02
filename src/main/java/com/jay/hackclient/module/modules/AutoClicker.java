@@ -48,7 +48,8 @@ public class AutoClicker extends Module {
         setTag(null);
     }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || !mc.options.attackKey.isPressed()) return;
         if (weaponsOnly.get()) {
             String n = mc.player.getMainHandStack().getItem().toString().toLowerCase();

@@ -27,7 +27,8 @@ public class STap extends Module {
         setTag(null);
     }
 
-    @Override public void onTick() {
+    @Override    public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         if (mc.player == null || mc.options == null) return;
         long now = System.currentTimeMillis();
         if (now < until) {

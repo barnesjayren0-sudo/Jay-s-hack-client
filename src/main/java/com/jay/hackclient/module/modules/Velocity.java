@@ -18,13 +18,14 @@ public class Velocity extends Module {
     public final NumberSetting chance = new NumberSetting("Chance", "% packets to modify", 75, 10, 100, 5);
 
     public Velocity() {
-        super("Velocity", "Knockback reduction (ghost)", Category.COMBAT);
+        super("Velocity", "Knockback reduction (packet-based)", Category.COMBAT);
         setKeyBind(GLFW.GLFW_KEY_N);
         addSetting(mode); addSetting(horizontal); addSetting(vertical); addSetting(chance);
     }
 
     @Override
     public void onTick() {
+        try { if (!com.jay.hackclient.util.CombatManager.canCombatModulesRun()) return; } catch (Throwable ignored) {}
         String m = mode.get();
         if (!m.equals(lastMode) || "Custom".equals(m)) {
             lastMode = m;
