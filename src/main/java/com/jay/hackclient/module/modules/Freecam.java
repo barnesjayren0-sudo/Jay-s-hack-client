@@ -45,6 +45,15 @@ public class Freecam extends Module {
     @Override
     public void onDisable() {
         active = false;
+        // Hand control back to the body and flush the parked position so the
+        // server doesn't keep ticking the frozen coordinates we forced.
+        try {
+            if (mc.player != null) {
+                mc.player.setVelocity(Vec3d.ZERO);
+                mc.player.fallDistance = 0;
+                com.jay.hackclient.util.RealPackets.syncPosition();
+            }
+        } catch (Throwable ignored) {}
         setTag(null);
     }
 

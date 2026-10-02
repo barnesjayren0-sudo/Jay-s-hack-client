@@ -4,6 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
 import com.jay.hackclient.util.MathUtil;
+import com.jay.hackclient.util.SlotLock;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -20,12 +21,20 @@ public class AutoTotem extends Module {
         addSetting(health); addSetting(soft);
     }
 
+    @Override public void onDisable() {
+        cooldown = 0;
+        SlotLock.release("AutoTotem");
+        setTag(null);
+    }
+
     @Override public void onTick() {
         if (mc.player == null || mc.interactionManager == null) return;
         if (cooldown > 0) { cooldown--; return; }
+        // Never trade with an inventory re-equip or a hotbar swap mid-flight
+        if (SlotLock.isLockedByOther("AutoTotem")) { setTag("busy"); return; }
         if (soft.get() && mc.currentScreen != null && !(mc.currentScreen instanceof InventoryScreen)) return;
         if (mc.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) { setTag("OK"); return; }
-        if (health.get() > 0 && mc.player.getHealth() > health.get()) return;
+        if (health.get() > 0 && mc.player.getHealth() > health.get()) { setTag(null); return; }
         int slot = -1;
         for (int i = 0; i < 36; i++) {
             ItemStack s = mc.player.getInventory().getStack(i);
@@ -33,7 +42,12 @@ public class AutoTotem extends Module {
         }
         if (slot < 0) { setTag("none"); return; }
         int screenSlot = slot < 9 ? slot + 36 : slot;
-        mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, screenSlot, 40, SlotActionType.SWAP, mc.player);
+        if (!SlotLock.tryAcquire("AutoTotem", 220, SlotLock.PRIO_TOTEM)) { setTag("busy"); return; }
+        try {
+            mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, screenSlot, 40, SlotActionType.SWAP, mc.player);
+        } finally {
+            SlotLock.release("AutoTotem");
+        }
         // Human-like recovery between swaps (2-4 ticks) instead of a fixed 3
         cooldown = MathUtil.randomDelay(2, 4);
         setTag("swap");

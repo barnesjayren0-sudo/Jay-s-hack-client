@@ -4,6 +4,7 @@ import com.jay.hackclient.module.Module;
 import com.jay.hackclient.module.setting.BoolSetting;
 import com.jay.hackclient.module.setting.ModeSetting;
 import com.jay.hackclient.module.setting.NumberSetting;
+import com.jay.hackclient.util.CombatManager;
 import com.jay.hackclient.util.RealPackets;
 
 /** SoftBlink — Damp / GroundSpoof / Combo pulse. Real on-ground packets, public setTag. */
@@ -30,7 +31,9 @@ public class SoftBlink extends Module {
     public void onTick() {
         if (mc.player == null) return;
         long now = System.currentTimeMillis();
+        // An in-flight pulse always finishes so we never leave a stuck damp
         if (now < pulseUntil) { applyPulse(); setTag("pulse"); return; }
+        try { if (!CombatManager.canCombatModulesRun()) { setTag(null); return; } } catch (Throwable ignored) {}
         boolean combat = false;
         if (onHurt.get() && mc.player.hurtTime > 0) combat = true;
         if (onHit.get() && mc.player.getAttackCooldownProgress(0.5f) < 0.4f && mc.player.handSwinging) combat = true;

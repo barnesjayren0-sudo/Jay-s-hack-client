@@ -25,5 +25,13 @@ public class YClip extends Module {
         if (once.get()) setEnabled(false);
     }
 
+    @Override public void onDisable() {
+        // Flush the clipped coordinate so the server and client agree again
+        try {
+            if (mc.player != null && realPackets.get()) RealPackets.syncPosition();
+        } catch (Throwable ignored) {}
+        setTag(null);
+    }
+
     @Override public void onTick() { /* one-shot module */ }
 }
